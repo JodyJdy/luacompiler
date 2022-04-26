@@ -21,7 +21,7 @@ public class Lex {
     /**
      * 文件结尾
      */
-    public static int EOZ = -1;
+    public static final int EOZ = -1;
 
     public static String LUA_ENV = "_ENV";
 
@@ -87,19 +87,22 @@ public class Lex {
         lexState.buffer.add(lexState.current);
         next(lexState);
     }
-    public static void save(LexState lexState, int c){
+
+    public static void save(LexState lexState, int c) {
         lexState.buffer.add(c);
     }
-    public static String buffer2Str(LexState lexState, int start,int len){
 
-        StringBuilder sb  = new StringBuilder();
-        for(int i=start;i<start + len;i++){
-            int ch = lexState.buffer.get(start);
-            sb.append((char)ch);
+    public static String buffer2Str(LexState lexState, int start, int len) {
+
+        StringBuilder sb = new StringBuilder();
+        for (int i = start; i < start + len; i++) {
+            int ch = lexState.buffer.get(i);
+            sb.append((char) ch);
         }
         return sb.toString();
 
     }
+
     public static void bufferRemove(LexState lexState, int n) {
         List<Integer> lex = lexState.buffer;
         int i = 0;
@@ -175,14 +178,22 @@ public class Lex {
         if (first == '0' && check_next2(ls, "xX")) {
             isHex = true;
         }
+        if(isHexDigit(first)){
+            if(isHex){
+                val = Character.digit(first,16);
+            } else{
+                val = Character.digit(first,10);
+            }
+        }
         if (isHexDigit(ls.current) || ls.current == '.') {
+
             //读取整数数字
             if (ls.current != '.') {
                 for (; ; ) {
                     if (isHex && isHexDigit(ls.current)) {
                         val = val * 16 + Character.digit(ls.current, 16);
                     } else if (isDigit(ls.current)) {
-                        val = val * 16 + Character.digit(ls.current, 10);
+                        val = val * 10 + Character.digit(ls.current, 10);
                     } else {
                         break;
                     }
@@ -193,6 +204,7 @@ public class Lex {
             double POW = isHex ? 16.0 : 10.0;
             double d = POW;
             if (ls.current == '.') {
+                next(ls);
                 isFloat = true;
                 for (; ; ) {
                     if (isHex && isHexDigit(ls.current)) {
@@ -218,10 +230,10 @@ public class Lex {
 
     /**
      * 多行注释以 -- 开头,内容以 [=*[ 开头,  ]=*] 结尾, *代表有多个等于号必须是成对的
-     *
+     * <p>
      * 跳过开头的符号， 或者结尾的符号
      */
-    public static int skipSeq(LexState ls){
+    public static int skipSeq(LexState ls) {
         int count = 0;
         int s = ls.current;
         saveAndNext(ls);
@@ -235,61 +247,248 @@ public class Lex {
     /**
      * seq代表序列开头的部分，开头和结尾要保持一致
      */
-    public void readLongString(LexState ls,Token token, int seq){
+    public static void readLongString(LexState ls, Token token, int seq) {
         int line = ls.linenumber;
         saveAndNext(ls);
-        if(currIsNewLine(ls)){
+        if (currIsNewLine(ls)) {
             incLineNumber(ls);
         }
         boolean loop = true;
 
         endLoop:
         for (; ; ) {
-            switch (ls.current){
-                case -1 :
+            switch (ls.current) {
+                case EOZ:
                     System.err.println("error");
                     break endLoop;
                 case ']':
-                    if(skipSeq(ls) == seq){
+                    if (skipSeq(ls) == seq) {
                         saveAndNext(ls);
                         break endLoop;
                     }
-                    break ;
-                case '\n': case '\r':{
-                        save(ls,'\n');
-                        incLineNumber(ls);
-                        if(token == null){
-                            resetBuffer(ls);
-                        }
-                        break;
+                    break;
+                case '\n':
+                case '\r': {
+                    save(ls, '\n');
+                    incLineNumber(ls);
+                    if (token == null) {
+                        resetBuffer(ls);
+                    }
+                    break;
                 }
                 default:
-                    if(token != null){
+                    if (token != null) {
                         saveAndNext(ls);
-                    } else{
+                    } else {
                         next(ls);
                     }
             }
         }
-        if(token != null){
+        if (token != null) {
             //将 seq 之间的部分生成字符串
-            token.s = buffer2Str(ls,seq,ls.buffer.size() - 2 * seq);
+            token.s = buffer2Str(ls, seq, ls.buffer.size() - 2 * seq);
         }
     }
 
     /**
      * del means delimeter
-
      */
-    public static void readString(LexState ls,int del,Token token){
+    public static void readString(LexState ls, int del, Token token) {
         //save delimeter
         saveAndNext(ls);
-        while (ls.current != del){
-
+        while (ls.current != del) {
+            switch (ls.current){
+                case EOZ: case '\n': case '\r':
+                    System.err.println("error");
+                    break;
+                //转义符
+                case '\\': {
+                    //最后存储的字符 \\a 那么存储 \a
+                    int c = 0;
+                    //默认执行类型是0
+                    int executeType = 0;
+                    saveAndNext(ls);
+                    switch (ls.current) {
+                        case 'b': c = '\b';break;
+                        case 'f': c = '\f'; break;
+                        case 'n': c = '\n';break;
+                        case 'r': c = '\r';break;
+                        case 't': c = '\t';break;
+                        case '\n':
+                        case '\r':
+                            incLineNumber(ls);
+                            c = '\n';
+                            executeType = 1;
+                            break;
+                        case '\\': case '\"': case '\'':
+                            c = ls.current;
+                            break;
+                        case EOZ: default: {
+                            executeType = -1;
+                            break;
+                        }
+                    }
+                    if(executeType == 0){
+                        next(ls);
+                        //remove去除存储的转义符号
+                        bufferRemove(ls, 1);
+                        save(ls, c);
+                    }
+                    if(executeType == 1){
+                        //remove去除存储的转义符号
+                        bufferRemove(ls, 1);
+                        save(ls, c);
+                    }
+                    break;
+                }
+                default:saveAndNext(ls);
+            }
         }
-
+        saveAndNext(ls);
+        token.s = buffer2Str(ls,1,ls.buffer.size() - 2);
     }
 
+
+    public static int llex(LexState ls,Token token){
+        resetBuffer(ls);
+        for(;;){
+            switch (ls.current){
+                //换行
+                case '\n': case '\r':{
+                    incLineNumber(ls);
+                    break;
+                }
+                case ' ': case '\f': case '\t': {  /* spaces */
+                    next(ls);
+                    break;
+                }
+                //可能是操作符，也可能是注释
+                case '-':{
+                    next(ls);
+                    if (ls.current != '-') return '-';
+                    //注释
+                    next(ls);
+                    //长注释
+                    if(ls.current == '['){
+                        int seq = skipSeq(ls);
+                        resetBuffer(ls);
+                        if(seq >=2){
+                            readLongString(ls,null,seq);
+                            resetBuffer(ls);
+                            break;
+                        }
+                    }
+                    //短注释
+                    while(!currIsNewLine(ls) && ls.current != EOZ){
+                        next(ls);
+                    }
+                    break;
+                }
+                case '[':{
+                  // long string 或者 符号[,例如 a[x]
+                    int seq = skipSeq(ls);
+                    if(seq >=2){
+                        readLongString(ls,token,seq);
+                        return TK_STRING.t;
+                    } else if(seq == 0){
+                        System.err.println("invalid long string delimiter");
+                    }
+                    // 普通 [ 符号
+                    return '[';
+                }
+
+                case '=': {
+                    next(ls);
+                    if (check_next1(ls, '=')) return TK_EQ.t;  /* '==' */
+                    else return '=';
+                }
+                case '<': {
+                    next(ls);
+                    if (check_next1(ls, '=')) return TK_LE.t;  /* '<=' */
+                    else if (check_next1(ls, '<')) return TK_SHL.t;  /* '<<' */
+                    else return '<';
+                }
+                case '>': {
+                    next(ls);
+                    if (check_next1(ls, '=')) return TK_GE.t;  /* '>=' */
+                    else if (check_next1(ls, '>')) return TK_SHR.t;  /* '>>' */
+                    else return '>';
+                }
+                case '/': {
+                    next(ls);
+                    if (check_next1(ls, '/')) return TK_IDIV.t;  /* '//' */
+                    else return '/';
+                }
+                case '~': {
+                    next(ls);
+                    if (check_next1(ls, '=')) return TK_NE.t;  /* '~=' */
+                    else return '~';
+                }
+                case ':': {
+                    next(ls);
+                    if (check_next1(ls, ':')) return TK_DBCOLON.t;  /* '::' */
+                    else return ':';
+                }
+                case '"': case '\'': {  /* short literal strings */
+                    readString(ls, ls.current, token);
+                    return TK_STRING.t;
+                }
+                case '.': {  /* '.', '..', '...', or number */
+                    saveAndNext(ls);
+                    if (check_next1(ls, '.')) {
+                        if (check_next1(ls, '.'))
+                            return TK_DOTS.t;  /* '...' */
+                        else return TK_CONCAT.t;   /* '..' */
+                    }
+                    else if (!isDigit(ls.current)) return '.';
+                    else return read_numeral(ls, token);
+                }
+                case '0': case '1': case '2': case '3': case '4':
+                case '5': case '6': case '7': case '8': case '9': {
+                    return read_numeral(ls, token);
+                }
+                case EOZ: {
+                    return TK_EOS.t;
+                }
+                /** identifier or reserved word? */
+                default:{
+                    if(isAlpha(ls.current)){
+                        do{
+                            saveAndNext(ls);
+                        }while (isalNum(ls.current));
+
+                        String s = buffer2Str(ls,0,ls.buffer.size());
+                        token.s = s;
+                        //判断是否是保留词汇
+                        Reserved r = Reserved.isReserved(s);
+                        if(r != null){
+                            return r.t;
+                        }
+                        return TK_NAME.t;
+                    }
+                    int c = ls.current;
+                    next(ls);
+                    return c;
+                }
+            }
+        }
+    }
+
+    public void luaX_Next(LexState l){
+        l.lastline = l.linenumber;
+        if(l.lookahead.token != TK_EOS.t){
+            l.t = l.lookahead;
+        } else{
+            l.t = new Token();
+            l.t.token = llex(l,l.t);
+        }
+    }
+
+    int luaX_lookahead (LexState ls) {
+        ls.lookahead = new Token();
+        ls.lookahead.token = llex(ls, ls.lookahead);
+        return ls.lookahead.token;
+    }
 
 
     public static String format(String fom, Object args) {

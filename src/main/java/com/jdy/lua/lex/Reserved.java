@@ -1,9 +1,13 @@
 package com.jdy.lua.lex;
 
+import lombok.Data;
+import lombok.Getter;
+
 import static com.jdy.lua.lex.LexContants.FIRST_RESERVED;
 /**
  * 保留词
  */
+@Getter
 public enum  Reserved {
 
 
@@ -31,6 +35,17 @@ public enum  Reserved {
     public static Reserved getReserved(int t){
         for(Reserved r : Reserved.values()){
             if(r.t == t){
+                return r;
+            }
+        }
+        return null;
+    }
+
+    public static Reserved isReserved(String t){
+        for(Reserved r : Reserved.values()){
+            int index = r.t - FIRST_RESERVED;
+            //while是枚举类中最后一个保留词
+            if(r.t <= TK_WHILE.t && Lex.luaX_tokens[index].equals(t)){
                 return r;
             }
         }
