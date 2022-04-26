@@ -1,3 +1,5 @@
+import com.jdy.lua.lctype.LCtype;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -6,9 +8,9 @@ import java.util.Scanner;
 
 public class Test {
     public static void main(String[] args) throws Exception {
-        func2();
+        System.out.println(LCtype.isDigit('a'));
     }
-    public static void fun1() throws FileNotFoundException {
+    public static void func1() throws FileNotFoundException {
         Scanner scanner = new Scanner(new FileInputStream(new File("src/test/A.TXT")));
         while(scanner.hasNextLine()){
             String str = scanner.nextLine();
