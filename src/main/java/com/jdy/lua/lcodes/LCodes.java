@@ -356,7 +356,7 @@ public class LCodes {
      * 修正 返回一个结果的表达式；
      * 如果表达式不是一个多返回值的结果，就无需处理
      */
-    public void luaK_setOneRet(FuncState fs,ExpDesc e){
+    public static void luaK_setOneRet(FuncState fs,ExpDesc e){
         if(e.getK() == VCALL){
             //函数调用会变成 VNONRELOC,表示函数调用的结果需要存放在固定的寄存器里面
             e.setK(VNONRELOC);
@@ -366,6 +366,196 @@ public class LCodes {
             //表达式的结果可以存放在任意的寄存器里
             e.setK(VRELOC);
         }
+    }
+
+    /**
+     * 确保 表达式 e 不在是一个 variable
+     *
+     * 设置了VRELOC类型的表达式 并没有 给 参数 a 赋值， 表达式的值所存储的寄存器是在 discharge2reg设置的
+     *
+     * 没有处理 跳转指令
+     */
+    public static void luaK_dischargeVars(FuncState fs,ExpDesc e){
+        switch (e.getK()){
+            case VCONST: {
+                const2Exp(const2Val(fs, e), e);
+                break;
+            }
+            /**
+             * local 变量已经存放在寄存器里了
+             */
+            case VLOCAL: {
+                e.setInfo(e.getRidx());
+                e.setK(VNONRELOC);  /* becomes a non-relocatable value */
+                break;
+            }
+            case VUPVAL: {  /* move value to some (pending) register */
+                e.setInfo(luaK_codeABC(fs, OP_GETUPVAL, 0,e.getInfo(), 0));
+                e.setK(VRELOC);
+                break;
+            }
+            case VINDEXUP: {
+                e.setInfo(luaK_codeABC(fs, OP_GETTABUP, 0, e.getTt(), e.getIdx()));
+                e.setK(VRELOC);
+                break;
+            }
+            case VINDEXI: {
+                //释放寄存器，因为寄存器里面的值，已经包含在下面生成的指令里面了
+                freeReg(fs, e.getTt());
+                e.setInfo(luaK_codeABC(fs, OP_GETI, 0, e.getTt(), e.getIdx()));
+                e.setK(VRELOC);
+                break;
+            }
+            case VINDEXSTR: {
+                freeReg(fs, e.getTt());
+                e.setInfo(luaK_codeABC(fs, OP_GETFIELD, 0, e.getTt(), e.getIdx()));
+                e.setK(VRELOC);
+                break;
+            }
+            case VINDEXED: {
+                freeRegs(fs,e.getTt(),e.getIdx());
+                e.setInfo(luaK_codeABC(fs, OP_GETTABLE, 0, e.getTt(),e.getIdx()));
+                e.setK(VRELOC);
+                break;
+            }
+            case VVARARG: case VCALL: {
+                luaK_setOneRet(fs,e);
+                break;
+            }
+            default: break;
+        }
+
+    }
+    /**
+     * 确保表达式的 值存放在 reg寄存器里面，让表达式类型变成 VNONRELOC
+     *
+     * 没有处理 跳转指令
+     */
+    public static void discharge2reg(FuncState fs,ExpDesc e,int reg){
+        //初步对表达式进行调整
+        luaK_dischargeVars(fs,e);
+        switch (e.getK()) {
+            case VNIL: {
+                luaK_Nil(fs, reg, 1);
+                break;
+            }
+            case VFALSE: {
+                luaK_codeABC(fs, OP_LOADFALSE, reg, 0, 0);
+                break;
+            }
+            case VTRUE: {
+                luaK_codeABC(fs, OP_LOADTRUE, reg, 0, 0);
+                break;
+            }
+            case VKSTR: {
+                str2K(fs, e);
+            }  /* FALLTHROUGH */
+            case VK: {
+                luaK_codeK(fs, reg,e.getInfo());
+                break;
+            }
+            case VKFLT: {
+                luaK_Float(fs, reg, e.getNval());
+                break;
+            }
+            case VKINT: {
+                luaK_int(fs, reg, e.getIval());
+                break;
+            }
+            case VRELOC: {
+                Instruction pc = getInstruction(fs, e);
+                setArgA(pc, reg);  /* instruction will put result in 'reg' */
+                break;
+            }
+            case VNONRELOC: {
+                //通过move指令，将值赋值给指定的寄存器
+                if (reg != e.getInfo())
+                    luaK_codeABC(fs, OP_MOVE, reg, e.getInfo(), 0);
+                break;
+            }
+            default: {
+                return;  /* nothing to do... */
+            }
+        }
+        e.setInfo(reg);
+        e.setK(VNONRELOC);
+    }
+
+    /**
+     * 表达式存放到任意一个寄存器里面去
+     *
+     * 没有处理 跳转指令
+     */
+    public static void discharge2AnyReg (FuncState fs,ExpDesc e) {
+        if (e.getK() != VNONRELOC) {  /* no fixed register yet? */
+            luaK_reserveRegs(fs, 1);  /* get a register */
+            discharge2reg(fs, e, fs.getFreereg() - 1);  /* put value there */
+        }
+    }
+
+    public static int code_Loadbool (FuncState fs, int A, OpCode op) {
+        //生成一个跳转标签，可能会有jmp语句跳转到这
+        luaK_GetLabel(fs);
+        return luaK_codeABC(fs, op, A, 0, 0);
+    }
+
+    /**
+     *  不是 OP_TESTSET就会返回true，应该是因为我 OP_TESETSET已经将值存储在了寄存器里，所以不需要再存储了
+     */
+    public static boolean needValue(FuncState fs,int list){
+        for(;list != NO_JUMP;list = getJumpDestination(fs,list)){
+            Instruction i = getJumpCongtrol(fs,list);
+            if(getOpCode(i) != OP_TESTSET){
+                return true;
+            }
+        }
+        return false;
+    }
+    /**
+     * 表达式的值存放到寄存器里面去
+     */
+    public static void exp2Reg(FuncState fs,ExpDesc e,int reg){
+        discharge2reg(fs,e,reg);
+        if(e.getK() == VJMP){
+            luaK_Concat(fs,e,e.getInfo(),true);
+        }
+        if(hasJumps(e)){
+            //整个表达式结束后的位置
+            int finalPos;
+            int pf = NO_JUMP;
+            int pT = NO_JUMP;
+            if(needValue(fs,e.getT()) || needValue(fs,e.getF())){
+                // e如果不是 VJMP类型的，就生成一条jmp指令，用于跳出下面的bool语句
+                /**
+                 * 例如:   c = a > b  and a  表达式包含了布尔表达式也包含了a
+                 *  如果 a > b  则 c = a
+                 *  否则 c = false
+                 *  一个是布尔值，一个是赋值
+                 *  字节码大致如下
+                 * 1  LT a b  [ a > b 就执行3， a < b就执行 5]
+                 * 2  JMP
+                 * 3  MOVE  [执行到这里说明 a > b，此时赋值 c == a，然后跳到7，结束]
+                 * 4   JMP [跳转到 7的位置]
+                 * 5 OP_LFALSESKIP
+                 * 6 OP_LOADTRUE
+                 * 7  结尾
+                 */
+                // 当类似上面注释的情况时， fj会指向一个jmp指令，用于跳过下面的两条语句
+                int fj = e.getK() == VJMP ? NO_JUMP :luaK_Jump(fs);
+                pf = code_Loadbool(fs, reg, OP_LFALSESKIP);  /* skip next inst. */
+                pT = code_Loadbool(fs, reg, OP_LOADTRUE);
+                //如果e 不是一个 test 类型的指令，跳过， 上面生成的指令
+                luaK_patchToHere(fs,fj);
+            }
+            finalPos = luaK_GetLabel(fs);
+            //回填，真假出口， TESTSET 使用作为 target， 其他测试指令使用 pf/pf作为target
+            patchListAux(fs,e.getF(),finalPos,reg,pf);
+            patchListAux(fs,e.getT(),finalPos,reg,pT);
+        }
+        e.setF(NO_JUMP);
+        e.setT(NO_JUMP);
+        e.setInfo(reg);
+        e.setK(VNONRELOC);
     }
 
     /**
