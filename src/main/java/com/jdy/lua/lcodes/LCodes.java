@@ -202,6 +202,11 @@ public class LCodes {
         return addK(fs,v,v);
     }
 
+    public static int nilT(FuncState fs){
+        TValue v = TValue.nilValue();
+        return addK(fs,v,v);
+    }
+
     /**
      * 检查 i 能否存储在 sC 操作数上面
      */
@@ -400,7 +405,7 @@ public class LCodes {
                 break;
             }
             case VINDEXI: {
-                //释放寄存器，因为寄存器里面的值，已经包含在下面生成的指令里面了
+                //释放寄存器，因为寄存器里面的值，已经包含在下面生成的指令里面了,下面的freeReg同理
                 freeReg(fs, e.getTt());
                 e.setInfo(luaK_codeABC(fs, OP_GETI, 0, e.getTt(), e.getIdx()));
                 e.setK(VRELOC);
@@ -557,6 +562,292 @@ public class LCodes {
         e.setInfo(reg);
         e.setK(VNONRELOC);
     }
+
+    /**
+     * 表达式存储到下一个可用的寄存器里面
+     */
+    public static void luaK_exp2nextReg (FuncState fs, ExpDesc e) {
+        luaK_dischargeVars(fs, e);
+        freeExpReg(fs, e);
+        //申请一个free的寄存器
+        luaK_reserveRegs(fs, 1);
+        exp2Reg(fs, e, fs.getFreereg() - 1);
+    }
+
+    /**
+       e存储到 register，返回reg下标
+     */
+    public static int luaK_exp2anyreg (FuncState fs, ExpDesc e) {
+        luaK_dischargeVars(fs, e);
+        if (e.getK() == VNONRELOC) {  /* expression already has a register? */
+            if (!hasJumps(e))  /* no jumps? */
+                return e.getInfo();  /* result is already in a register */
+            //@todo  luaY_nvarstack 函数完成后，再来实现
+//            if (e.getInfo() >= luaY_nvarstack(fs)) {  /* reg. is not a local? */
+//                exp2Reg(fs, e, e.getInfo());  /* put final result in it */
+//                return e.getInfo();
+//            }
+        }
+        luaK_exp2nextReg(fs, e);  /* default: use next available register */
+        return e.getInfo();
+    }
+
+
+    /*
+     ** Ensures final expression result is either in a register
+     ** or in an upvalue.
+     */
+    void luaK_exp2anyregup (FuncState fs, ExpDesc e) {
+        if (e.getK() != VUPVAL || hasJumps(e))
+            luaK_exp2anyreg(fs, e);
+    }
+
+
+    /*
+     ** Ensures final expression result is either in a register
+     ** or it is a constant.
+     */
+    void luaK_exp2val (FuncState fs, ExpDesc e) {
+        if (hasJumps(e))
+            luaK_exp2anyreg(fs, e);
+        else
+            luaK_dischargeVars(fs, e);
+    }
+    /**
+     *  尝试将表达式转成常量， info存储常量下标
+     * */
+    public static boolean luaK_exp2K (FuncState fs, ExpDesc e) {
+        if (!hasJumps(e)) {
+            int info;
+            switch (e.getK()) {
+                case VTRUE: info = boolT(fs); break;
+                case VFALSE: info = boolF(fs); break;
+                case VNIL: info = nilT(fs); break;
+                case VKINT: info = luaK_intK(fs, e.getIval()); break;
+                case VKFLT: info = luaK_Number(fs, e.getNval()); break;
+                case VKSTR: info = stringK(fs, new TString(e.getStrval())); break;
+                case VK: info =e.getInfo(); break;
+                default: return false;  /* not a constant */
+            }
+            if (info <= MAX_INDEX_RK) {  /* does constant fit in 'argC'? */
+               e.setK(VK);  /* make expression a 'K' expression */
+               e.setInfo(info);
+               return true;
+            }
+        }
+        /* else, expression doesn't fit; leave it unchanged */
+        return false;
+    }
+
+    /**
+     * 表达式 的结果 时 一个 常量索引或者寄存器索引
+     */
+    public static int luaK_exp2RK (FuncState fs, ExpDesc e) {
+        if (luaK_exp2K(fs, e))
+            return 1;
+        luaK_exp2anyreg(fs, e);
+        return 0;
+
+    }
+
+
+    public static void codeABRK (FuncState fs, OpCode o, int a, int b,
+                          ExpDesc ec) {
+        int k = luaK_exp2RK(fs, ec);
+        luaK_codeABCk(fs, o, a, b, ec.getInfo(), k);
+    }
+
+    /**
+     *  生成code存储表达式 ex的result 到 variable  var上面
+     */
+    public static void luaK_storevar (FuncState fs,ExpDesc var, ExpDesc ex) {
+        switch (var.getK()) {
+            case VLOCAL: {
+                freeExpReg(fs, ex);
+                //将表达式 ex的值存到 register idx上面
+                exp2Reg(fs, ex, var.getRidx());
+                return;
+            }
+            case VUPVAL: {
+                int e = luaK_exp2anyreg(fs, ex);
+                // var.getInfo()记录了 VUPVAl的下标
+                luaK_codeABC(fs, OP_SETUPVAL, e, var.getInfo(), 0);
+                break;
+            }
+            case VINDEXUP: {
+                //var.getTt()记录了 table，var.getIdx()记录了key的索引
+                codeABRK(fs, OP_SETTABUP, var.getTt(), var.getIdx(), ex);
+                break;
+            }
+            case VINDEXI: {
+                //var.getTt()记录了 table，var.getIdx()记录了key的索引
+                codeABRK(fs, OP_SETI, var.getTt(), var.getIdx(), ex);
+                break;
+            }
+            case VINDEXSTR: {
+                codeABRK(fs, OP_SETFIELD, var.getT(), var.getIdx(), ex);
+                break;
+            }
+            case VINDEXED: {
+                codeABRK(fs, OP_SETTABLE, var.getTt(), var.getIdx(), ex);
+                break;
+            }
+            default: break;  /* invalid var kind to store */
+        }
+        freeExpReg(fs, ex);
+    }
+
+    /**
+     **处理self  指令(convert expression 'e' into 'e:key(e,').
+     *
+     * a有 方法 B
+     *
+     * 定义方式1： 用点分割，需要手动写self，作为参数
+     *   function a.B(self)
+     *   end
+     *   调用时需要手动传a
+     *   a.B(a);
+     * 定义方式2： 用 :分割，自带self参数
+     *  function a:B
+     *
+     *  end
+     *  调用时,不用手动传
+     *  a:B()
+     *
+     */
+    public static void luaK_self (FuncState fs, ExpDesc e, ExpDesc key) {
+        int ereg;
+        luaK_exp2anyreg(fs, e);
+        ereg = e.getInfo();  /* register where 'e' was placed */
+        freeExpReg(fs, e);
+        e.setInfo(fs.getFreereg());/* base register for op_self */
+        e.setK(VNONRELOC);  /* self expression has a fixed register */
+        luaK_reserveRegs(fs, 2);  /* function and 'self' produced by op_self ,self 作为参数传入 */
+        // OP_SELF， 会在R[A] 存放a, R[A+1] 存放方法B
+        codeABRK(fs, OP_SELF, e.getInfo(), ereg, key);
+        freeExpReg(fs, key);
+    }
+
+    /**
+     ** 反转condition 'e' (where 'e' is a comparison).
+     * 将 k反转就能让 跳转条件反转
+     */
+    public static void negateCondition (FuncState fs, ExpDesc e) {
+        Instruction pc = getJumpCongtrol(fs, e.getInfo());
+        setArgk (pc,getArgk(pc) ^ 1);
+    }
+
+    /**
+     *
+     * jump if 'e' is 'cond'
+     *
+     * 如果 e 为true， 且 cond 为true 才会jump
+     * 如果 e 为false， cond 为false 也会jump
+     *
+     * jump 由 e 和 cond共同决定
+     */
+    static int jumponCond (FuncState fs,ExpDesc e, boolean cond) {
+        if (e.getK() == VRELOC) {
+            Instruction ie = getInstruction(fs, e);
+            //如果前个指令为 not， 进行优化，反转cond即可
+            if (getOpCode(ie) == OP_NOT) {
+                removeLastInstruction(fs);  /* remove previous OP_NOT */
+                return condJump(fs, OP_TEST, getArgB(ie), 0, 0, !cond ? 1 : 0);
+            }
+            /* else go through */
+        }
+        discharge2AnyReg(fs, e);
+        freeExpReg(fs, e);
+        return condJump(fs, OP_TESTSET, NO_REG, e.getInfo(), 0, cond ? 1 : 0);
+    }
+
+    /**
+     * goIfTrue，理解为 true时，go through 继续执行， 为false时跳出
+     *  注：每条指令执行时，pc指向下一条指向
+     *  对于下列语句
+     *   if a == b and b == c
+     *     xxx
+ *       else
+     *     xxx
+     *   end
+     *
+     *   Eq a b
+     *   jmp
+     *   Eq b c
+     *   jmp
+     *   true 时执行的内容
+     *   jmp 到结尾
+     *   false 时执行的内容
+     *
+     *如果 Eq a b 为 true，pc++就要接着执行 Eq b c，如果为true，pc++ 执行true时的内容
+     *
+     * 所以 and 场景用 luaK_goIfTrue
+     *
+     * 需要处理 假出口； 真的继续执行即可
+     */
+    public static void luaK_goIfTrue (FuncState fs, ExpDesc e) {
+        int pc;  /* pc of new jump */
+        luaK_dischargeVars(fs, e);
+        switch (e.getK()) {
+            case VJMP: {  /* condition? */
+                //颠倒跳转条件，将标记为k反转即可
+                // 测试语句都是 if(e ~= k) pc++;  eq生成的指令是反过来的，因为k=1，这里进行修正。
+                negateCondition(fs, e);  /* jump when it is false */
+                pc = e.getInfo();  /* save jump position */
+                break;
+            }
+            //如果表达式，是一个常量，不需要跳转指令，直接接着执行
+            case VK: case VKFLT: case VKINT: case VKSTR: case VTRUE: {
+                pc = NO_JUMP;  /* always true; do nothing */
+                break;
+            }
+            default: {
+                //如果是 VTFALSE，则需要直接跳转到 false的执行处
+                pc = jumponCond(fs, e, false);  /* jump when false */
+                break;
+            }
+        }
+        //pc是假出口，连接 e->f 和 pc
+        luaK_Concat(fs,e,pc,false);  /* insert new jump in false list */
+        // 回填真出口到当前位置，真出口 jump到这里
+        luaK_patchToHere(fs,e.getT());  /* true list jumps to here (to go through) */
+        e.setT(NO_JUMP);
+    }
+
+    /**
+     * goIfFalse理解为 false时继续执行，为true时，跳到 true的执行内容
+     * 需要处理 真出口， 假的继续执行
+     */
+
+    public static void luaK_goIfFalse (FuncState fs, ExpDesc e) {
+        int pc;  /* pc of new jump */
+        luaK_dischargeVars(fs, e);
+        switch (e.getK()) {
+            case VJMP: {
+                //本来就是反的，不用修正
+                pc = e.getInfo();  /* already jump if true */
+                break;
+            }
+            case VNIL: case VFALSE: {
+                pc = NO_JUMP;  /* always false; do nothing */
+                break;
+            }
+            default: {
+                pc = jumponCond(fs, e, true);  /* jump if true */
+                break;
+            }
+        }
+        //拼接真出口
+        luaK_Concat(fs,e,pc,true);/* insert new jump in 't' list */
+        //处理假出口
+        luaK_patchToHere(fs, e.getF());  /* false list jumps to here (to go through) */
+        e.setF(NO_JUMP);
+    }
+
+
+
+
+
 
     /**
      * 无效的指令

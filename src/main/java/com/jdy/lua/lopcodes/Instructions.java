@@ -64,6 +64,8 @@ public class Instructions {
      */
     public static int MAX_REGISTER_NUM = MAX_ARG_A;
 
+    public static int MAX_INDEX_RK = MAX_ARG_B;
+
 
     /**
      * 定义一些静态方法
