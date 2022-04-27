@@ -14,6 +14,15 @@ public class TValue extends Value {
     TbcList tbcList;
 
 
+    public void initByTValue(TValue v){
+        if(v != null) {
+            this.setTt(v.getTt());
+            this.setTbcList(v.getTbcList());
+            this.setP(v.getP());
+            this.setN(v.getN());
+            this.setI(v.getI());
+        }
+    }
 
     @Data
     static class TbcList{

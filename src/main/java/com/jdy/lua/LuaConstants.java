@@ -19,6 +19,8 @@ public class LuaConstants {
     public static int LUA_TUSERDATA = 7;
     public static int LUA_THREAD = 8;
     public static int LUA_NUMTYPES = 9;
+    public static int LUA_TFALSE = LUA_TBOOLEAN;
+    public static int LUA_TTRUE = LUA_TBOOLEAN | 1 << 4;
     /**
      * 运算符
      */

@@ -7,7 +7,7 @@ import java.util.Objects;
 
 @Data
 @NoArgsConstructor
-public class Value extends GcObject {
+public class Value extends GcObject implements Cloneable {
     /**
      * light userdata
      */
@@ -33,6 +33,7 @@ public class Value extends GcObject {
         this.n = n;
     }
 
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -48,4 +49,6 @@ public class Value extends GcObject {
     public int hashCode() {
         return Objects.hash(super.hashCode(), p, i, n);
     }
+
+
 }

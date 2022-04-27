@@ -1,5 +1,7 @@
 package com.jdy.lua.lopcodes;
 
+import jdk.nashorn.internal.runtime.regexp.joni.constants.internal.OPCode;
+
 /**
  * 定义字节码中 参数的形式
  */
@@ -16,7 +18,9 @@ public enum OpMode {
     public int getI(){
         return i;
     }
-
+    public static OpMode getOpMode(OpCode opCode){
+        return getOpMode(opCode.getCode());
+    }
     public static OpMode getOpMode(int i){
         for(OpMode o : OpMode.values()){
             if(o.getI() == i){
@@ -118,5 +122,13 @@ public enum OpMode {
 
     public static byte opmode(int mm, int ot, int it, int t, int a, OpMode m){
         return (byte)(((mm) << 7) | ((ot) << 6) | ((it) << 5) | ((t) << 4) | ((a) << 3) | (m.getI()));
+    }
+
+    /**
+     * 是否是 测试指令，测试指令的 第四个bit 为 1
+     */
+    public static boolean isTestOp(OpCode opCode){
+        byte opmode = lua_opmodes[opCode.getCode()];
+        return (opmode & 1 << 4) == 0;
     }
 }

@@ -2,11 +2,12 @@ package com.jdy.lua.lparser;
 
 import com.jdy.lua.lex.LexState;
 import com.jdy.lua.lobjects.Proto;
+import com.jdy.lua.lopcodes.Instruction;
 import lombok.Data;
 
 @Data
 public class FuncState {
-    Proto f;
+    Proto proto;
     FuncState prev;
     LexState lexState;
     BlockCnt blockCnt;
@@ -25,5 +26,13 @@ public class FuncState {
     int freereg;  /* first free register */
     int iwthabs;  /* instructions issued since last absolute line info */
     int needclose;  /* function needs to close upvalues when returning */
+
+    /**
+     * 新增指令
+     */
+    public void addInstruction(Instruction i){
+        proto.getCode().add(i);
+        pc++;
+    }
 
 }

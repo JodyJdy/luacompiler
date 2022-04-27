@@ -22,12 +22,26 @@ public class Proto extends GcObject {
     int lastlinedefined;  /** debug information  */
     List<TValue> k = new ArrayList<>(); /** constants used by the function */
     List<Instruction> code = new ArrayList<>();
-    List<Proto> p = new ArrayList<>(); /** functions defined inside the function */
+    List<Proto> protoList = new ArrayList<>(); /** functions defined inside the function */
     List<UpvalDesc> upvalues = new ArrayList<>(); /**  upvalue information */
-    List<Integer> lineinfo = new ArrayList<>();
+    /**
+     * 存放行号的
+     */
+    List<Integer> lineInfoss = new ArrayList<>();
+    /**
+     * 没有使用到
+     */
     List<AbsLineInfo> absLineInfos = new ArrayList<>();
     List<LocalVar> localVars = new ArrayList<>(); /** information about local variables (debug information) */
     TString source;
     List<GcObject> gcList = new ArrayList<>();
+
+    public void addLineInfo(int i){
+        lineInfoss.add(i);
+    }
+
+    public Instruction getInstruction(int i){
+        return code.get(i);
+    }
 
 }

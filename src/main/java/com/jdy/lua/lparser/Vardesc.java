@@ -15,5 +15,5 @@ public class Vardesc {
     short pidx;  /* index of the variable in the Proto's 'locvars' array */
     //变量名
     String name;  /* variable name */
-    TValue k;
+    TValue k; /* constant value */
 }

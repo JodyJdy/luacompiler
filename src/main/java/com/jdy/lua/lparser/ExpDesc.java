@@ -1,5 +1,8 @@
 package com.jdy.lua.lparser;
 
+import lombok.Data;
+
+@Data
 public class ExpDesc {
     ExpKind k;
     long ival;    /** for VKINT */
