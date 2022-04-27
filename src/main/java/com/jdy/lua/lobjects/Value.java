@@ -11,7 +11,7 @@ public class Value extends GcObject implements Cloneable {
     /**
      * light userdata
      */
-    Object p;
+    Object obj;
     /**
      * 整数
      */
@@ -19,18 +19,18 @@ public class Value extends GcObject implements Cloneable {
     /**
      * 浮点数
      */
-    double n;
+    double f;
 
-    public Value(Object p) {
-        this.p = p;
+    public Value(Object obj) {
+        this.obj = obj;
     }
 
     public Value(long i) {
         this.i = i;
     }
 
-    public Value(double n) {
-        this.n = n;
+    public Value(double f) {
+        this.f = f;
     }
 
 
@@ -41,13 +41,13 @@ public class Value extends GcObject implements Cloneable {
         if (!super.equals(o)) return false;
         Value value = (Value) o;
         return i == value.i &&
-                Double.compare(value.n, n) == 0 &&
-                p.equals(value.p);
+                Double.compare(value.f, f) == 0 &&
+                (obj ==null ||  obj.equals(value.obj));
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(super.hashCode(), p, i, n);
+        return Objects.hash(super.hashCode(), obj, i, f);
     }
 
 

@@ -11,14 +11,16 @@ import java.util.*;
 @Data
 public class Table extends GcObject {
 
-    Map<TableKey,TValue> node = new HashMap<>();
+    Map<TValue,TValue> node = new HashMap<>();
     Table metatable;
     List<GcObject> gcList = new ArrayList<>();
 
-    public TValue get(TableKey key){
-        return node.get(key);
+
+
+    public TValue get(TValue key){
+       return node.get(key);
     }
-    public void put(TableKey key,TValue value){
+    public void put(TValue key,TValue value){
         node.put(key,value);
     }
 
@@ -58,7 +60,10 @@ public class Table extends GcObject {
         }
     }
 
-    public static TableKey createStringKey(String key){
-        return new TableKey(LuaConstants.LUA_TSTRING,new Value(key));
+    public static TValue createStringKey(String key){
+        TValue v = new TValue();
+        v.setValueType(LuaConstants.LUA_TSTRING);
+        v.setObj(key);
+        return v;
     }
 }

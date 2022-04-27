@@ -1,8 +1,7 @@
 package com.jdy.lua.lopcodes;
 
-import jdk.nashorn.internal.runtime.regexp.joni.constants.internal.OPCode;
-
-import static com.jdy.lua.lopcodes.Instructions.*;
+import static com.jdy.lua.lopcodes.Instructions.create_sJ;
+import static com.jdy.lua.lopcodes.Instructions.getArgsJ;
 
 /**
  * 定义指令

@@ -20,7 +20,7 @@ public class LexState {
     Token lookahead;  /* look ahead token  向前看的 token */
     FuncState fs;  /* current function (parser) */
     LuaState L;
-    Table h;  /* to avoid collection/reuse strings  用于收集字符串 */
+    Table h = new Table();  /* to avoid collection/reuse strings  用于收集字符串 */
     DynData dyd;  /* dynamic structures used by the parser */
     String source;  /* current source name */
     String envn;  /* environment variable name */

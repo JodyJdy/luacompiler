@@ -176,7 +176,7 @@ public class Instructions {
     }
 
     public static int getArgsBx(Instruction i){
-        return getArg(i,POS_Bx,SIZE_BX);
+        return getArg(i,POS_Bx,SIZE_BX) - OFFSET_sBx;
     }
 
     public static void  setArgsBx(Instruction i, int v){

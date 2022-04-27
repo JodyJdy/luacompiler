@@ -39,6 +39,9 @@ public class Proto extends GcObject {
     public void addLineInfo(int i){
         lineInfoss.add(i);
     }
+    public Integer getLineInfo(int i){
+        return lineInfoss.get(i);
+    }
 
     public Instruction getInstruction(int i){
         return code.get(i);

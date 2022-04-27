@@ -1,25 +1,30 @@
 package com.jdy.lua.lobjects;
 
 import lombok.Data;
-import lombok.NoArgsConstructor;
+
+import java.util.Objects;
+
+import static com.jdy.lua.LuaConstants.*;
 
 @Data
-@NoArgsConstructor
 public class TValue extends Value {
     /**
      * 数据类型
      */
-    int tt;
+    int valueType;
 
     TbcList tbcList;
 
+    public TValue(){
+
+    }
 
     public void initByTValue(TValue v){
         if(v != null) {
-            this.setTt(v.getTt());
+            this.setValueType(v.getValueType());
             this.setTbcList(v.getTbcList());
-            this.setP(v.getP());
-            this.setN(v.getN());
+            this.setObj(v.getObj());
+            this.setF(v.getF());
             this.setI(v.getI());
         }
     }
@@ -27,9 +32,25 @@ public class TValue extends Value {
     @Data
     static class TbcList{
         Value value;
-        int tt;
+        int dataType;
         int delta;
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            TbcList tbcList = (TbcList) o;
+            return dataType == tbcList.dataType &&
+                    delta == tbcList.delta &&
+                    Objects.equals(value, tbcList.value);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(value, dataType, delta);
+        }
     }
+
 
     public static int novariant(int tt){
         return tt & 0x0F;
@@ -40,7 +61,56 @@ public class TValue extends Value {
     }
 
     public static int ttype(TValue value){
-        return withvariant(value.getTt());
+        return withvariant(value.getValueType());
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        if (!super.equals(o)) return false;
+        TValue tValue = (TValue) o;
+        return valueType == tValue.valueType && (tbcList == null || tbcList.equals(tValue.tbcList));
+
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(super.hashCode(), valueType, tbcList);
+    }
+
+    public static TValue strValue(TString t){
+        TValue v = new TValue();
+        v.setValueType(LUA_TSTRING);
+        v.setObj(t);
+        return v;
+    }
+    public static TValue intValue(long t){
+        TValue v = new TValue();
+        v.setValueType(LUA_TNUMINT);
+        v.setI(t);
+        return v;
+    }
+    public static TValue doubleValue(double d){
+        TValue v = new TValue();
+        v.setValueType(LUA_TNUMFLONT);
+        v.setF(d);
+        return v;
+    }
+    public static TValue falseValue(){
+        TValue v = new TValue();
+        v.setValueType(LUA_TFALSE);
+        return v;
+    }
+    public static TValue trueValue(){
+        TValue v = new TValue();
+        v.setValueType(LUA_TTRUE);
+        return v;
+    }
+
+    public static TValue nilValue(){
+        TValue v = new TValue();
+        v.setValueType(LUA_TNIL);
+        return v;
+    }
 }

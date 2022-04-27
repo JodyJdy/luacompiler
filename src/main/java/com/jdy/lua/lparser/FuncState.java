@@ -34,5 +34,25 @@ public class FuncState {
         proto.getCode().add(i);
         pc++;
     }
+    /**
+     * 移除上一个指令
+     */
+    public void removeLastInstruciton(){
+        proto.getCode().remove(proto.getCode().size() - 1);
+        pc--;
+    }
+
+    /**
+     * free reg --
+     */
+    public void decreFreeReg(){
+        freereg--;
+    }
+    /**
+     * free reg ++
+     */
+    public void incrFreeReg(int n){
+        freereg+=n;
+    }
 
 }
