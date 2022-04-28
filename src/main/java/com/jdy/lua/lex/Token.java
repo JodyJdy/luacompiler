@@ -1,5 +1,8 @@
 package com.jdy.lua.lex;
 
+import lombok.Data;
+
+@Data
 public class Token {
 
     /**

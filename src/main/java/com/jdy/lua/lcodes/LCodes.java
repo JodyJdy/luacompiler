@@ -18,6 +18,7 @@ import static com.jdy.lua.lopcodes.Instructions.getOpCode;
 import static com.jdy.lua.lopcodes.Instructions.*;
 import static com.jdy.lua.lopcodes.OpCode.*;
 import static com.jdy.lua.lparser.ExpKind.*;
+import static com.jdy.lua.lparser.LParser.luaY_nVarsStack;
 import static com.jdy.lua.ltm.TMS.*;
 
 @SuppressWarnings("all")
@@ -121,12 +122,12 @@ public class LCodes {
 
     /**
      * 释放寄存器 reg。  如果它既不是 local变量也不是常量索引
+     * 不会释放 local变量所占用的 寄存器位置
      */
     public static void freeReg (FuncState fs, int reg) {
-        // TODO: 2022/4/27  luaY_nvarstack函数还未实现，需要后面补充
-//        if (reg >= luaY_nvarstack(fs)) {
+        if (reg >= luaY_nVarsStack(fs)) {
           fs.decreFreeReg();
-//        }
+        }
     }
 
     public static void freeRegs (FuncState fs, int r1, int r2) {
@@ -587,11 +588,10 @@ public class LCodes {
         if (e.getK() == VNONRELOC) {  /* expression already has a register? */
             if (!hasJumps(e))  /* no jumps? */
                 return e.getInfo();  /* result is already in a register */
-            //@todo  luaY_nvarstack 函数完成后，再来实现
-//            if (e.getInfo() >= luaY_nvarstack(fs)) {  /* reg. is not a local? */
-//                exp2Reg(fs, e, e.getInfo());  /* put final result in it */
-//                return e.getInfo();
-//            }
+            if (e.getInfo() >= luaY_nVarsStack(fs)) {  /* reg. is not a local? */
+                exp2Reg(fs, e, e.getInfo());  /* put final result in it */
+                return e.getInfo();
+            }
         }
         luaK_exp2nextReg(fs, e);  /* default: use next available register */
         return e.getInfo();

@@ -30,4 +30,8 @@ public class LexState {
      * 作为buffer使用
      */
     List<Integer> buffer = new ArrayList<>();
+
+    public int getCurrTokenNum(){
+        return t.getToken();
+    }
 }

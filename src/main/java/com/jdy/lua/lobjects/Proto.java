@@ -50,4 +50,11 @@ public class Proto extends GcObject {
         code.set(i,ins);
     }
 
+    public void addLocalVar(LocalVar var){
+        localVars.add(var);
+    }
+    public LocalVar getLocalVar(int i){
+        return localVars.get(i);
+    }
+
 }

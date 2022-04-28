@@ -16,4 +16,19 @@ public class DynData {
 
     LabelList gt;  /* list of pending gotos */
     LabelList label;   /* list of active labels */
+
+
+    public Vardesc getVarDesc(int i){
+        return arr.get(i);
+    }
+    public void addVarDesc(Vardesc v){
+        arr.add(v);
+    }
+
+    public void removeNumVarDesc(int num){
+        for(int i=0;i<num;i++){
+            arr.remove(arr.size() - 1);
+        }
+        n-=num;
+    }
 }

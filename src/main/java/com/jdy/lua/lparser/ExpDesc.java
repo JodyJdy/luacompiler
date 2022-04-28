@@ -14,7 +14,7 @@ public class ExpDesc implements Cloneable {
     int tt;  /** table (register or upvalue) */
     /** for local variables */
     int ridx;  /** register holding the variable */
-    short vidx;  /** compiler index (in 'actvar.arr')  */
+    int vidx;  /** compiler index (in 'actvar.arr')  */
     
     /** 真假出口*/
     int t;

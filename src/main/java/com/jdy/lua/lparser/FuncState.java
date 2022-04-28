@@ -19,7 +19,7 @@ public class FuncState {
     int nabslineinfo;  /* number of elements in 'abslineinfo' */
     int firstlocal;  /* index of first local var (in Dyndata array) */
     int firstlabel;  /* index of first label (in 'dyd->label->arr') */
-    short ndebugvars;  /* number of elements in 'f->locvars' */
+    int ndebugvars;  /* number of elements in 'f->locvars' */
     int nactvar;  /* number of active local variables */
     int nups;  /* number of upvalues */
     /*当前函数栈的下一个可用位置*/

@@ -474,7 +474,7 @@ public class Lex {
         }
     }
 
-    public void luaX_Next(LexState l){
+    public static void luaX_Next(LexState l){
         l.lastline = l.linenumber;
         if(l.lookahead.token != TK_EOS.t){
             l.t = l.lookahead;
@@ -484,7 +484,7 @@ public class Lex {
         }
     }
 
-    int luaX_lookahead (LexState ls) {
+    public static int luaX_lookahead (LexState ls) {
         ls.lookahead = new Token();
         ls.lookahead.token = llex(ls, ls.lookahead);
         return ls.lookahead.token;
