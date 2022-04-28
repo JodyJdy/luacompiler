@@ -5,7 +5,7 @@ import lombok.Data;
 @Data
 public class UpvalDesc {
     TString name;
-    int instack;
+    boolean instack;
     int idx;
     int kind;
 }

@@ -57,4 +57,11 @@ public class Proto extends GcObject {
         return localVars.get(i);
     }
 
+    public UpvalDesc getUpValDesc(int i){
+        return upvalues.get(i);
+    }
+    public void addUpValDesc(UpvalDesc desc){
+        upvalues.add(desc);
+    }
+
 }

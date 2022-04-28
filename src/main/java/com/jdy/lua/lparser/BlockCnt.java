@@ -11,7 +11,7 @@ public class BlockCnt {
     int firstlabe;
     int firstgoto;
     int nactvar;
-    int upval;
+    boolean upval;
     boolean isloop;
     boolean insidetbc;
 }

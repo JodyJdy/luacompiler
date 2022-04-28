@@ -8,6 +8,7 @@ import com.jdy.lua.lstate.LuaState;
 
 import java.util.List;
 
+import static com.jdy.lua.lcodes.LCodes.luaK_Indexed;
 import static   com.jdy.lua.lparser.ParserConstants.*;
 import static com.jdy.lua.lcodes.LCodes.NO_JUMP;
 import static com.jdy.lua.lex.Lex.*;
@@ -273,8 +274,128 @@ public class LParser {
      */
     public static int newUpValue(FuncState fs,TString name,ExpDesc v){
         UpvalDesc desc = allocUpValue(fs);
+        // 既然出现了 UpValue，说明函数一定不只一层
         FuncState prev = fs.getPrev();
+        if(v.getK() == VLOCAL){
+            desc.setInstack(true);
+            //记录desc 在 outer 函数中寄存器地址
+            desc.setIdx(v.getIdx());
+            desc.setKind(getLocalVarDesc(prev,v.idx).getKind());
+        } else{
+            desc.setInstack(false);
+            desc.setKind(prev.proto.getUpValDesc(v.info).getKind());
+        }
+        desc.setName(name);
+        //返回UpValDesc的下标
+        return fs.nups-1;
     }
+    /**
+     * 按照名称在函数 fs 查找一个  active local variable,如果找到了初始化表达式
+     */
+    public static int searchVar(FuncState fs,TString n,ExpDesc e){
+        int i;
+        for(i=fs.nactvar - 1;i >=0;i--){
+            Vardesc v = getLocalVarDesc(fs,i);
+            if(v.getName().equals(n.getContents())){
+                //编译时常量
+                if(v.getKind() == RDKCTC){
+                    initExp(e,VCONST,fs.firstlocal + i);
+                } else{
+                    // real var
+                    initVar(fs,e,i);
+                }
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * 标记给定 level的 变量 定义在的 block
+     *  标记这些block，表示有upval
+     */
+    public static void markBlockUpval(FuncState fs,int level){
+        BlockCnt cn = fs.getBlockCnt();
+        while(cn.nactvar > level){
+            cn = cn.previous;
+        }
+        cn.setUpval(true);
+        fs.setNeedclose(true);
+    }
+
+    /**
+     * 标记 当前 Block 有一个 to be closed 变量
+     */
+    public static void markToBeClosed(FuncState fs){
+        BlockCnt cnt =fs.getBlockCnt();
+        cnt.setUpval(true);
+        cnt.setInsidetbc(true);
+        fs.setNeedclose(true);
+
+    }
+    /**
+     * 使用名称 n  查找变量； 如果是一个 upValue 添加到所有中间的函数。 如果是全局变量，设置
+     * var 为 void类型作为标记
+     *  考虑以下场景， val 在 fun1定义  func3 使用， 在func3中是一个 unval， 但是也应该添加到func中。
+     *  fun1 {
+     *      int val;
+     *
+     *      func2{
+     *
+     *          func3{
+     *              print(val);
+     *          }
+     *      }
+     *
+     *  }
+     */
+    public static void singleVarAux(FuncState fs,TString n, ExpDesc e,int base){
+        //如果fs == null,说明是全局变量
+        if(fs == null){
+            initExp(e,VVOID,0);
+            return;
+        }
+        //在当前层级查询
+        int v = searchVar(fs,n,e);
+        //找到
+        if(v >= 0){
+            if(v == VLOCAL.kind && base == 0){
+                //当作upval使用
+                markBlockUpval(fs,e.getVidx());
+            }
+        } else{
+            //尝试在 Upvalues中找
+            int idx = searchUpValue(fs,n);
+            if(idx < 0){
+                //没找到,查找上层
+                singleVarAux(fs.prev,n,e,0);
+                if(e.getK() == VLOCAL || e.getK() == VUPVAL){
+                    idx =newUpValue(fs,n,e);
+                } else{
+                    //当前层级什么都不做
+                    return;
+                }
+                initExp(e,VUPVAL,idx);
+            }
+        }
+    }
+
+    /**
+     * 根据变量 名 查找变量
+     */
+    static void singelVar (LexState ls, ExpDesc var) {
+        TString varname = strCheckName(ls);
+        FuncState  fs = ls.getFs();
+        singleVarAux(fs, varname, var, 1);
+        if (var.getK() == VVOID) {  /* global name? */
+            ExpDesc key = new ExpDesc();
+            //这个意思是指，全局变量存在一个table里面。 需要通过 env[varname]访问
+            // envn本身也是一个全局变量 env[env] = env; 表也存储了自己
+            singleVarAux(fs, new TString(ls.getEnvn()), var, 1);  /* get environment variable */
+            codeStringExp(key, varname);  /* key is variable name */
+            luaK_Indexed(fs, var, key);  /* env[varname] */
+        }
+    }
+
 
 
 }
