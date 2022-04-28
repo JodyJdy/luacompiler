@@ -5,17 +5,22 @@ import com.jdy.lua.lobjects.Proto;
 import com.jdy.lua.lobjects.TString;
 import com.jdy.lua.lobjects.TValue;
 import com.jdy.lua.lopcodes.Instruction;
-import static com.jdy.lua.lopcodes.Instructions.*;
 import com.jdy.lua.lopcodes.OpCode;
 import com.jdy.lua.lopcodes.OpMode;
 import com.jdy.lua.lparser.*;
-
-import static com.jdy.lua.LuaConstants.*;
-import static com.jdy.lua.lopcodes.OpCode.*;
-import static com.jdy.lua.lparser.ExpKind.*;
+import com.jdy.lua.ltm.TMS;
 
 import java.util.List;
 
+import static com.jdy.lua.LuaConstants.*;
+import static com.jdy.lua.lcodes.BinOpr.*;
+import static com.jdy.lua.lopcodes.Instructions.getOpCode;
+import static com.jdy.lua.lopcodes.Instructions.*;
+import static com.jdy.lua.lopcodes.OpCode.*;
+import static com.jdy.lua.lparser.ExpKind.*;
+import static com.jdy.lua.ltm.TMS.*;
+
+@SuppressWarnings("all")
 public class LCodes {
 
     /**
@@ -829,7 +834,7 @@ public class LCodes {
                 break;
             }
             case VNIL: case VFALSE: {
-                pc = NO_JUMP;  /* always false; do nothing */
+                pc = NO_JUMP;  /* always false; do nothing   如果是false，需要继续执行*/
                 break;
             }
             default: {
@@ -843,10 +848,582 @@ public class LCodes {
         luaK_patchToHere(fs, e.getF());  /* false list jumps to here (to go through) */
         e.setF(NO_JUMP);
     }
+    /**
+     * not 运算
+     */
+    public static void codeNot(FuncState fs,ExpDesc e){
+        switch (e.getK()){
+            //nil，false直接反转即可
+            case VNIL:case VFALSE:
+                e.setK(VTRUE);
+            // not 'x' , not 1 ,not 0.5 ,not true
+            case VK:case VKFLT:case VKINT:case VKSTR:case VTRUE:
+                e.setK(VFALSE);
+                break;
+            //jmp语句，反转跳转条件即可
+            case VJMP:
+                negateCondition(fs,e);
+                break;
+            case VRELOC:case VNONRELOC:{
+                //表达式的值存储到寄存器里面
+                discharge2AnyReg(fs,e);
+                freeExpReg(fs,e);
+                e.setInfo(luaK_codeABC(fs,OP_NOT,0,e.getInfo(),0));
+                e.setK(VRELOC);
+
+            }
+            default:break;
+        }
+        //真假出口链表交换
+        int t = e.getT();
+        int f = e.getF();
+        e.setF(t);
+        e.setT(f);
+        //not 中，表达式的值是无用的，将 TESTSET 跳转成 TEST
+        removeValues(fs,e.getF());
+        removeValues(fs,e.getT());
+    }
+
+    /**
+     *返回 e 是不是字符串常量
+     */
+    public static boolean isKstr(FuncState fs,ExpDesc e){
+        Proto proto = fs.getProto();
+        List<TValue> ks = proto.getK();
+        return e.getK() == VK
+                && !hasJumps(e)
+                && e.getInfo() <= MAX_ARG_B
+                && ks.get(e.getInfo()).getValueType() == LUA_TSTRING;
+    }
+    /**
+     * 返回 e 是不是 数字常量
+     */
+    public static boolean luaK_isKint(ExpDesc e){
+        return e.getK() == VKINT && !hasJumps(e);
+    }
+    /**
+     * 检查 e 是不是能放进 参数c的整数
+     */
+    public static boolean isCint(ExpDesc e){
+        return luaK_isKint(e) && e.getIval() <= MAX_ARG_C;
+    }
+
+    /**
+     * 检查 e 是不是能放进 参数c的整数
+     */
+    public static boolean isSCint(ExpDesc e){
+        return luaK_isKint(e) && fitsC(e.getIval());
+    }
+
+    /**
+     * 检查 e 是不是 能放进 sB or sC的 整数/浮点数
+     */
+    public static boolean isScNumber(ExpDesc e,NumChecker checker){
+        long i;
+        if(e.getK() == VKINT){
+            i = e.getIval();
+        } else if(e.getK() == VKFLT){
+            checker.isFloat = 1;
+            i = (long)e.getNval();
+        } else {
+            //不是数字
+            return false;
+        }
+        if(!hasJumps(e) && fitsC(i)){
+            checker.val = int2Sc((int)i);
+            return true;
+        }
+        return false;
+    }
+    /**
+     * 创建表达式 t[k]
+     * t的值需要存放在一个寄存器或者 upvalue
+     * Upvalues的key 应该存放在寄存器中 或者常量表中
+     */
+    public static void luaK_Indexed(FuncState fs,ExpDesc t,ExpDesc k){
+        if(k.getK() == VKSTR){
+            str2K(fs,k);
+        }
+        //upvalue的索引值不是 常量字符串，就将其放到寄存器里面
+        if(t.getK() == VUPVAL && !isKstr(fs,k)){
+            luaK_exp2anyreg(fs,t);
+        }
+        //处理 VUPVal
+        if(t.getK() == VUPVAL){
+            // upvalue index
+            t.setTt(t.getInfo());
+            //索引 upvalue的字面量
+            t.setIdx(k.getInfo());
+        } else{
+            //处理table
+            //table的寄存器索引
+            t.setTt(t.getK() == VLOCAL ? t.getIdx() : t.getInfo());
+            //字符串常量索引table
+            if(isKstr(fs,k)){
+                t.setIdx(k.getInfo());
+                t.setK(VINDEXSTR);
+            } else if(isCint(k)){
+                //整数常量索引table
+                t.setIdx((int)k.getIval());
+                t.setK(VINDEXI);
+            } else{
+                //寄存器索引table
+                t.setIdx((int)k.getIval());
+                t.setK(VINDEXED);
+            }
+        }
+    }
+
+    /**
+     * 校验 操作符 操作数
+     */
+    public static boolean validateOp(int op,TValue v1, TValue v2){
+        if(!isNumber(v1) || !isNumber(v2)){
+            return false;
+        }
+        switch (op){
+            case LUA_OPDIV: case LUA_OPIDIV: case LUA_OPMOD:
+                return intV(v2) != 0;
+        }
+        return true;
+    }
+
+    /**
+     * 常量折叠
+     *   如果成功， e1 存放最终的结果
+     */
+    public static boolean constFolding(FuncState fs,int op,ExpDesc e1,ExpDesc e2){
+        TValue v1 = new TValue(),v2 = new TValue(),res = new TValue();
+        if(!tonumeral(e1,v1) || tonumeral(e2,v2) || !validateOp(op,v1,v2)){
+            return false;
+        }
+        //进行运算
+//        luaO_rawarith(fs->ls->L, op, &v1, &v2, &res);  /* does operation */
+        if(isInteger(res)){
+            e1.setK(VKINT);
+            e1.setIval(res.getI());
+        }else{
+            double d = res.getF();
+            if(d == 0){
+                return false;
+            }
+            e1.setK(VKFLT);
+            e1.setNval(d);
+        }
+        return true;
+    }
+
+    /**
+     * 处理单目运算符，生成code
+     */
+    public static void codeUnaryExpVal(FuncState fs,OpCode op,ExpDesc e,int line){
+        int r = luaK_exp2anyreg(fs,e);
+        freeExpReg(fs,e);
+        e.setInfo(luaK_codeABC(fs,op,0,r,0));
+        e.setK(VRELOC);
+        luaK_fixline(fs,line);
+    }
+
+    /**
+     * 处理 双目运算符 除了 and,or比较运算符 ,生成code
+     */
+    public static void finishBinaryExpVal(FuncState fs, ExpDesc e1, ExpDesc e2, OpCode op, int v2, int flip, int line, OpCode mmop, TMS event){
+        int v1 = luaK_exp2anyreg(fs,e1);
+        int pc = luaK_codeABCk(fs,op,0,v1,v2,0);
+        freeexps(fs,e1,e2);
+        e1.setInfo(pc);
+        e1.setK(VRELOC);
+        luaK_fixline(fs,line);
+        // call metamethod
+        luaK_codeABCk(fs,mmop,v1,v2,event.getT(),flip);
+        luaK_fixline(fs,line);
+    }
+
+    /**
+     处理 双目运算符
+     */
+    static void codeBinaryExpVal (FuncState fs, OpCode op,
+                               ExpDesc e1, ExpDesc e2, int line) {
+        int v2 = luaK_exp2anyreg(fs, e2);  /* both operands are in registers */
+        finishBinaryExpVal(fs, e1, e2, op, v2, 0, line, OP_MMBIN,TMS.getTMS(op.getCode() - (OP_ADD.getCode()) + TMS.TM_ADD.getT()));
+    }
+
+    /**
+     * 生成 立即数的 双目运算 code
+     */
+    public static void codeBinaryImediate(FuncState fs,OpCode op,ExpDesc e1,ExpDesc e2,int flip,int line,TMS event){
+        int v2 = int2Sc((int)e2.getIval());
+        finishBinaryExpVal(fs,e1,e2,op,v2,flip,line,OP_MMBINI,event);
+    }
+
+    /**
+     *  生成 二元操作符，移除第二个操作数，保留原有的value；
+     *  用于 metamethod
+     */
+    public static boolean finishBinaryExpNegating(FuncState fs,ExpDesc e1,ExpDesc e2,OpCode op,int line,TMS event){
+        if(!luaK_isKint(e2)){
+            return false;
+        }
+        int i2 = (int)e2.getIval();
+        if(!(fitsC(i2) && fitsC(-i2))){
+            return false;
+        }
+        finishBinaryExpVal(fs,e1,e2,op,int2Sc(-2),0,line,OP_MMBINI,event);
+        setArgB(fs.getProto().getInstruction(fs.getPc() - 1),int2Sc((i2)));
+        return true;
+    }
+
+    /**
+     * 交换表达式
+     */
+    public static void  swapExps(ExpDesc e1,ExpDesc e2){
+        ExpDesc e1Clone = (ExpDesc)e1.clone();
+        ExpDesc e2Clone = (ExpDesc)e1.clone();
+        e1.setFromExp(e2Clone);
+        e2.setFromExp(e1Clone);
+    }
+
+    /**
+        生成算数运算的code
+      */
+    public static void codeArith(FuncState fs,BinOpr opr,ExpDesc e1,ExpDesc e2,int flip,int line){
+        TMS event = TMS.getTMS(opr.getOp() + TMS.TM_ADD.getT());
+        //常量操作数
+        if(tonumeral(e2,null) && luaK_exp2K(fs,e2)){
+            int v2 =e2.getInfo();
+            // 获取常量运算的 OpCode
+            OpCode op = OpCode.getOpCode(opr.getOp() + OP_ADDK.getCode());
+            finishBinaryExpVal(fs,e1,e2,op,v2,flip,line,OP_MMBINI,event);
+        } else{
+            //获取正常的OpCode
+            OpCode op = OpCode.getOpCode(opr.getOp() + OP_ADD.getCode());
+            if(flip == 1){
+                swapExps(e1,e2);
+            }
+            //使用 标准的运算
+            codeBinaryExpVal(fs,op,e1,e2,line);
+        }
+    }
+
+    /**
+     * 如果第一个操作数是 常量， 交换顺序，优化成常量相关的运算
+     */
+    public static void codeCommutative(FuncState fs,BinOpr opr,ExpDesc e1,ExpDesc e2,int line){
+        int flip = 0;
+        if(tonumeral(e1,null)){
+            swapExps(e1,e2);
+            flip = 1;
+        }
+        //转成立即数运算
+        if(opr == BinOpr.OPR_ADD && isSCint(e2)){
+            codeBinaryImediate(fs,OP_ADDI,e1,e2,flip,line,TMS.TM_ADD);
+        } else{
+            codeArith(fs,opr,e1,e2,flip,line);
+        }
+    }
+
+    /**
+     * 生成位运算指令
+     */
+    public static void codeBitWise(FuncState fs,BinOpr opr,ExpDesc e1,ExpDesc e2,int line){
+        int flip = 0;
+        int v2;
+        OpCode op;
+        //第一个操作数是常量，需要进行交换
+        if(e1.getK() == VKINT && luaK_exp2RK(fs,e1) == 1){
+            swapExps(e1,e2);
+            flip = 1;
+        } else if(!(e2.getK() == VKINT && luaK_exp2RK(fs,e2) == 1)){
+            //没有常量，全存放在寄存器里面
+            op = OpCode.getOpCode(opr.getOp() + OP_ADD.getCode());
+            codeBinaryExpVal(fs,op,e1,e2,line);
+            return;
+        }
+        v2 = e2.getInfo();
+        //至少有一个操作数是常量
+        op = OpCode.getOpCode(opr.getOp() + OP_ADDK.getCode());
+        finishBinaryExpVal(fs,e1,e2,op,v2,flip,line,OP_MMBINK,TMS.getTMS(opr.getOp() + TMS.TM_ADD.getT()));
+    }
+
+    /**
+     * 生成比较运算的code， 当使用了 立即数作为操作数，isfloat标识是不是浮点数
+
+     */
+    public static void codeOrder(FuncState fs,OpCode op,ExpDesc e1,ExpDesc e2){
+        int r1,r2;
+         NumChecker checker = new NumChecker();
+        if(isScNumber(e2,checker)){
+            r1 = luaK_exp2anyreg(fs,e1);
+            r2 = checker.val;
+            op = OpCode.getOpCode(op.getCode() - OP_LT.getCode() + OP_LTI.getCode());
+        } else if(isScNumber(e2,checker)){
+            /* 反转运算顺序 (A < B) to (B > A) and (A <= B) to (B >= A) */
+            r1 = luaK_exp2anyreg(fs,e2);
+            r2 = checker.val;
+            op = (op == OP_LT) ? OP_GTI : OP_GEI;
+        } else{
+            //无立即数，运算数都在寄存器里面
+            r1 = luaK_exp2anyreg(fs,e1);
+            r2 = luaK_exp2anyreg(fs,e2);
+        }
+        freeexps(fs,e1,e2);
+        e1.setInfo(condJump(fs,op,r1,r2,checker.isFloat,1));
+        e1.setK(VJMP);
+    }
+
+    /**
+     * 生成 == ~= 的code，
+     * e1 已经存放在了 R/K中 by ‘luaK_infix'
+     */
+    public static void codeEq(FuncState fs,BinOpr opr,ExpDesc e1,ExpDesc e2){
+        int r1,r2;
+        NumChecker checker  = new NumChecker();
+        OpCode op;
+        if(e1.getK() != VNONRELOC){
+            swapExps(e1,e2);
+        }
+        //第一个参数要放在寄存器里面（可能已经放在里面了）
+        r1 = luaK_exp2anyreg(fs,e1);
+        if(isScNumber(e1,checker)){
+            op = OP_EQI;
+            //立即数比较
+            r2 = checker.val;
+        } else if(luaK_exp2RK(fs,e2) == 1){
+            op = OP_EQK;
+            //常量比较
+            r2 = e2.getInfo();
+        } else{
+            op = OP_EQ;
+            r2 = luaK_exp2anyreg(fs,e2);
+        }
+        freeexps(fs,e1,e2);
+        e1.setInfo(condJump(fs,op,r1,r2,checker.isFloat,opr == OPR_EQ ? 1 : 0));
+        e1.setK(VJMP);
+    }
+
+    /**
+     * 处理 前缀 但操作符
+     * @param fs
+     * @param op
+     * @param expDesc
+     * @param line
+     */
+    public static void luaK_Prefix(FuncState fs,UnOpr op,ExpDesc expDesc,int line){
+        ExpDesc ef = new ExpDesc();
+        ef.setK(VKINT);
+        luaK_dischargeVars(fs,expDesc);
+        switch (op){
+            case OPR_MINUS:case OPR_BNOT:
+                //ef作为一个假参数， 尝试常量 折叠
+                if(constFolding(fs,op.getOp() + LUA_OPUNM,expDesc,ef)){
+                    break;
+                }
+            case OPR_LEN:
+                codeUnaryExpVal(fs,OpCode.getOpCode(op.getOp() + OP_UNM.getCode()),expDesc,line);
+                break;
+            case OPR_NOT:
+                codeNot(fs,expDesc);
+                break;
+            default:break;
+        }
+    }
+
+    /**
+     * 读取第二个操作数之前 处理第一个i操作数
+     * @param fs
+     * @param line
+     */
+    public static void luaK_Infix(FuncState fs,BinOpr op,ExpDesc v) {
+        //处理表达式的值，保证不再是一个variable
+        luaK_dischargeVars(fs, v);
+        switch (op) {
+            case OPR_AND: {
+                luaK_goIfTrue(fs, v);  /* go ahead only if 'v' is true */
+                break;
+            }
+            case OPR_OR: {
+                luaK_goIfFalse(fs, v);  /* go ahead only if 'v' is false */
+                break;
+            }
+            case OPR_CONCAT: {
+                luaK_exp2nextReg(fs, v);  /* operand must be on the stack */
+                break;
+            }
+            case OPR_ADD:
+            case OPR_SUB:
+            case OPR_MUL:
+            case OPR_DIV:
+            case OPR_IDIV:
+            case OPR_MOD:
+            case OPR_POW:
+            case OPR_BAND:
+            case OPR_BOR:
+            case OPR_BXOR:
+            case OPR_SHL:
+            case OPR_SHR: {
+                if (!tonumeral(v, null))
+                    luaK_exp2anyreg(fs, v);
+                /* else keep numeral, which may be folded with 2nd operand */
+                break;
+            }
+            case OPR_EQ:
+            case OPR_NE: {
+                if (!tonumeral(v, null))
+                    luaK_exp2RK(fs, v);
+                /* else keep numeral, which may be an immediate operand */
+                break;
+            }
+            case OPR_LT:
+            case OPR_LE:
+            case OPR_GT:
+            case OPR_GE: {
+                if (!isScNumber(v, new NumChecker()))
+                    luaK_exp2anyreg(fs, v);
+                /* else keep numeral, which may be an immediate operand */
+                break;
+            }
+            default:break;
+        }
+    }
+
+
+
+    /**
+      Create code for '(e1 .. e2)'.
+      For '(e1 .. e2.1 .. e2.2)' (which is '(e1 .. (e2.1 .. e2.2))',
+
+     * 连接符号是 右连接的
+     */
+    static void codeconcat (FuncState fs, ExpDesc e1, ExpDesc e2, int line) {
+        Instruction ie2 = previousInstruction(fs);
+        //获取前一个指令，如果也是连接，进行优化
+        if (getOpCode(ie2) == OP_CONCAT) {  /* is 'e2' a concatenation? */
+            // argB表示了连接的范围
+            int n = getArgB(ie2);  /* # of elements concatenated in 'e2' */
+            freeExpReg(fs, e2);
+            setArgA(ie2,e1.getInfo());  /* correct first element ('e1') */
+            //多连接一个
+            setArgB(ie2, n + 1);  /* will concatenate one more element */
+        }
+        else {  /* 'e2' is not a concatenation */
+            //单个连接
+            luaK_codeABC(fs, OP_CONCAT, e1.getInfo(), 2, 0);  /* new concat opcode */
+            freeExpReg(fs, e2);
+            luaK_fixline(fs, line);
+        }
+    }
+
+    /**
+     *  读取 完两个 操作数后，进行处理
+     * @param fs
+     * @param line
+     */
+    public static void luaK_posFix(FuncState fs,BinOpr opr,ExpDesc e1,ExpDesc e2,int line){
+        luaK_dischargeVars(fs, e2);
+        if (opr.foldBinaryOp() && constFolding(fs, opr.getOp() + LUA_OPADD, e1, e2))
+            return;  /* done by folding */
+        switch (opr) {
+            case OPR_AND: {
+                luaK_Concat(fs,e2,e1.getF(),false);
+                e1.setFromExp(e2);
+                break;
+            }
+            case OPR_OR: {
+                luaK_Concat(fs, e2, e1.getT(),true);
+                e1.setFromExp(e2);
+                break;
+            }
+            case OPR_CONCAT: {  /* e1 .. e2 */
+                luaK_exp2nextReg(fs, e2);
+                codeconcat(fs, e1, e2, line);
+                break;
+            }
+            case OPR_ADD: case OPR_MUL: {
+                codeCommutative(fs, opr, e1, e2, line);
+                break;
+            }
+            case OPR_SUB: {
+                if (finishBinaryExpNegating(fs, e1, e2, OP_ADDI, line, TM_SUB))
+                    break; /* coded as (r1 + -I) */
+                /* ELSE */
+            }  /* FALLTHROUGH */
+            case OPR_DIV: case OPR_IDIV: case OPR_MOD: case OPR_POW: {
+                codeArith(fs, opr, e1, e2, 0, line);
+                break;
+            }
+            case OPR_BAND: case OPR_BOR: case OPR_BXOR: {
+                codeBitWise(fs, opr, e1, e2, line);
+                break;
+            }
+            case OPR_SHL: {
+                if (isSCint(e1)) {
+                    swapExps(e1, e2);
+                    codeBinaryImediate(fs, OP_SHLI, e1, e2, 1, line, TM_SHL);  /* I << r2 */
+                }
+                else if (finishBinaryExpNegating(fs, e1, e2, OP_SHRI, line, TM_SHL)) {
+                    /* coded as (r1 >> -I) */;
+                }
+                else  /* regular case (two registers) */
+                    codeBinaryExpVal(fs, OP_SHL, e1, e2, line);
+                break;
+            }
+            case OPR_SHR: {
+                if (isSCint(e2))
+                    codeBinaryImediate(fs, OP_SHRI, e1, e2, 0, line, TM_SHR);  /* r1 >> I */
+                else  /* regular case (two registers) */
+                    codeBinaryExpVal(fs, OP_SHR, e1, e2, line);
+                break;
+            }
+            case OPR_EQ: case OPR_NE: {
+                codeEq(fs, opr, e1, e2);
+                break;
+            }
+            case OPR_LT: case OPR_LE: {
+                OpCode op = OpCode.getOpCode(opr.getOp() - OPR_EQ.getOp());
+                codeOrder(fs, op, e1, e2);
+                break;
+            }
+            case OPR_GT: case OPR_GE: {
+                /* '(a > b)' <=> '(b < a)';  '(a >= b)' <=> '(b <= a)' */
+                OpCode op = OpCode.getOpCode(opr.getOp() - (OPR_NE.getOp()) + OP_EQ.getCode());
+                swapExps(e1, e2);
+                codeOrder(fs, op, e1, e2);
+                break;
+            }
+            default: break;
+        }
+    }
 
 
 
 
+
+
+
+    public static void luaK_fixline (FuncState fs, int line) {
+        removeLastLineInfo(fs);
+        saveLineInfo(fs, line);
+    }
+
+
+    /**
+     * 浮点数，无小数部分
+     */
+    public static boolean floatNumNoPoint(double d){
+        return (long)d == (long)Math.floor(d);
+    }
+    public static boolean isInteger(TValue v1){
+        return v1.getValueType() == LUA_TNUMINT;
+    }
+    public static boolean isNumber(TValue v1){
+       return v1.getValueType() == LUA_TNUMFLONT || v1.getValueType() == LUA_TNUMBER || v1.getValueType() == LUA_TNUMINT;
+    }
+    public static int intV(TValue v1){
+        if(v1.getValueType() == LUA_TNUMFLONT){
+            return (int)Math.floor(v1.getF());
+        }
+        return (int)v1.getI();
+    }
 
 
     /**
@@ -1055,10 +1632,107 @@ public class LCodes {
         return luaK_code(fs,create_sJ(o.getCode(),j,k));
     }
 
+    /**
+     * 设置 Table的尺寸 这里进行了简化 不去处理
+     * @param fs
+     * @param pc
+     * @param ra
+     * @param asize
+     * @param hsize
+     */
+    public static void luaK_setTableSize(FuncState fs,int pc, int ra,int asize,int hsize){
+        Instruction inst = fs.getProto().getInstruction(pc);
+        fs.getProto().setInstruction(pc,create_ABCK(OP_NEWTABLE.getCode(),ra,0,0,0));
+        fs.getProto().setInstruction(pc+1,create_Ax(OP_EXTRAARG.getCode(),0));
+    }
+
+    /**
+     * setList
+     *   base是 存放 talbe 的寄存器
+     *   nelems 是 #table 加上 现在要存放到table里面的内容
+     *   tostore  存放到table元素的数量
+     *
+     * @param args
+     */
+    public static void luaK_setList(FuncState fs,int base,int nelems,int toStore){
+        if(toStore == LUA_MULTRET){
+            toStore = 0;
+        }
+        if(nelems <+ MAX_ARG_C){
+            luaK_codeABC(fs,OP_SETLIST,base,toStore,nelems);
+        } else{
+            //长度很长时，需要两条指令表示
+            int extra = nelems / (MAX_ARG_C + 1);
+            nelems %= (MAX_ARG_C + 1);
+            luaK_codeABCk(fs,OP_SETLIST,base,toStore,nelems,1);
+            codeExtraArg(fs,extra);
+        }
+        //释放寄存器
+        fs.setFreereg(base + 1);
+    }
+
+    /**
+     * 返回 最终的跳转结果
+     * @param args
+     */
+    public static int finalTarget(List<Instruction> codes,int i){
+        int count;
+        for(count = 0;count < 100; count++){
+            Instruction pc = codes.get(i);
+            if(getOpCode(pc) != OP_JMP){
+                break;
+            } else{
+                i+= getArgsJ(pc) + 1;
+            }
+        }
+
+        return i;
+    }
+
+    /**
+     * 最后遍历一次函数的 代码 ，做一个 窥孔优化的调整
+     * @param args
+     */
+    public static void luaK_Finish(FuncState fs){
+        int i;
+        Proto proto = fs.getProto();
+        for(i=0;i<fs.getPc();i++){
+            Instruction pc =proto.getInstruction(i);
+            switch (getOpCode(pc)){
+                case OP_RETURN0:case OP_RETURN1:{
+                    //无需额外操作
+                    if(!(fs.isNeedclose() || proto.isVararg())){
+                        break;
+                    }
+                    setOpCode(pc,OP_RETURN);
+                }
+
+                case OP_RETURN: case OP_TAILCALL: {
+                    if (fs.isNeedclose())
+                        setArgk(pc, 1);  /* signal that it needs to close */
+                    if (proto.isVararg())
+                        setArgC(pc, proto.getNumparams() + 1);  /* signal that it is vararg */
+                    break;
+                }
+                case OP_JMP: {
+                    int target = finalTarget(proto.getCode(), i);
+                    fixJump(fs, i, target);
+                    break;
+                }
+                default:break;
+            }
+        }
+    }
+
 
     public static void main(String[] args) {
 
-        byte b;
+        ExpDesc expDesc = new ExpDesc();
+        expDesc.setK(VK);
+        expDesc.setIval(1L);
+
+        ExpDesc e2 = (ExpDesc)expDesc.clone();
+        System.out.println();
 
     }
 

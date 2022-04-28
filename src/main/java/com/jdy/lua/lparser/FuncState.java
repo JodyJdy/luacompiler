@@ -25,7 +25,7 @@ public class FuncState {
     /*当前函数栈的下一个可用位置*/
     int freereg;  /* first free register */
     int iwthabs;  /* instructions issued since last absolute line info */
-    int needclose;  /* function needs to close upvalues when returning */
+    boolean needclose;  /* function needs to close upvalues when returning */
 
     /**
      * 新增指令

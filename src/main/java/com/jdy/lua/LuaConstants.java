@@ -49,4 +49,7 @@ public class LuaConstants {
     public static final int LUA_OPBNOT = 13;
 
 
+    public static final int LUA_MULTRET = -1;
+
+
 }

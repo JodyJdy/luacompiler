@@ -30,4 +30,14 @@ public enum BinOpr {
         }
         return null;
     }
+    public int getOp(){
+        return op;
+    }
+
+    /**
+     * 是否是算数运算符， 算数运算符号，可以 常量折叠
+     */
+    public boolean foldBinaryOp(){
+        return this.getOp() <= OPR_SHR.getOp();
+    }
 }

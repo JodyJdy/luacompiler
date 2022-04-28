@@ -19,4 +19,8 @@ public enum UnOpr {
         }
         return null;
     }
+
+    public int getOp(){
+        return op;
+    }
 }

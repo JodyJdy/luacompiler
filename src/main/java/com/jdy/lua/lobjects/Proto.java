@@ -9,7 +9,7 @@ import java.util.List;
 @Data
 public class Proto extends GcObject {
     int numparams;
-    int is_vararg;
+    boolean isVararg;
     int maxstacksize;
     int sizeupvalues;  /** size of 'upvalues' */
     int sizek;  /** size of 'k' */
@@ -45,6 +45,9 @@ public class Proto extends GcObject {
 
     public Instruction getInstruction(int i){
         return code.get(i);
+    }
+    public void setInstruction(int i,Instruction ins){
+        code.set(i,ins);
     }
 
 }
