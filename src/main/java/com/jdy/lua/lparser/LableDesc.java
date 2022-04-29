@@ -8,5 +8,5 @@ public class LableDesc {
     int pc;  /** position in code */
     int line;  /** line where it appeared */
     int nactvar;  /** number of active variables in that position */
-    int close;  /** goto that escapes upvalues */
+    boolean close;  /** goto that escapes upvalues */
 }

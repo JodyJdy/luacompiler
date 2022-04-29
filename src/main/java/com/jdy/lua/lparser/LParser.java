@@ -4,6 +4,7 @@ import com.jdy.lua.lex.Lex;
 import com.jdy.lua.lex.LexState;
 import com.jdy.lua.lex.Reserved;
 import com.jdy.lua.lobjects.*;
+import com.jdy.lua.lopcodes.OpCode;
 import com.jdy.lua.lstate.LuaState;
 
 import java.util.List;
@@ -467,7 +468,7 @@ public class LParser {
         desc.name = name.getContents();
         desc.line=line;
         desc.nactvar = ls.getFs().getNactvar();
-        desc.close = 0;
+        desc.close = false;
         desc.pc = pc;
         l.n++;
         l.getArr().add(desc);
@@ -476,6 +477,85 @@ public class LParser {
     public static int newGotoEntry(LexState ls,TString name,int line,int pc){
         return newLabelEntry(ls,ls.getDyd().getGt(),name,line,pc);
     }
+    /**
+     * 解决 之前的jump，检查新的label是否有匹配的goto， solve他们，return true表示有goto 需要
+     * close upvalues
+     */
+    public static boolean solveGotos(LexState ls,LableDesc lb){
+        LabelList gl = ls.getDyd().getGt();
+        //获取当前 block的第一个goto
+        int i =ls.getFs().getBlockCnt().getFirstgoto();
+        boolean needClose = false;
+        while(i < gl.getN()){
+            LableDesc desc = gl.getArr().get(i);
+            if(desc.getName().equals(lb.getName())) {
+                needClose = needClose || desc.isClose();
+                solveGoto(ls,i,lb);
+            }else{
+                i++;
+            }
+        }
+       return needClose;
+    }
+    /**
+     * 创建一个新的label，行号为line， last用来表示 label是否是 block里面最后一个 无操作数的 statement。
+     * 解决所有的 pending goto 到 这个新的label。 如果需要 close upvalues，就添加一个close instruction
+     */
+    public static boolean createLabbel(LexState ls, TString name,int line,boolean last){
+        FuncState fs = ls.getFs();
+        LabelList ll = ls.getDyd().getLabel();
+        int l  =newLabelEntry(ls,ll,name,line,luaK_GetLabel(fs));
+        LableDesc desc = ll.getArr().get(l);
+        // blockcnt.nactvar表示 block外部活跃的 变量
+        if(last){
+            desc.nactvar = fs.blockCnt.nactvar;
+        }
+        if(solveGotos(ls,desc)){
+            //need close,函数close掉，需要关闭无用的 closure
+            luaK_codeABC(fs, OpCode.OP_CLOSE,luaY_nVarsStack(fs),0,0);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     *调整 pending goto 到 block的外部
+     */
+     public static void moveGotosOut(FuncState fs,BlockCnt bl){
+         int i;
+         LabelList gl = fs.getLexState().getDyd().getGt();
+         // 修正 pending gotos 到 当前的block
+         for(i = bl.getFirstgoto();i < gl.getN();i++){
+             LableDesc gt = gl.getArr().get(i);
+             //如果 label处的活跃变量大于block外部的， 可能需要执行close
+             if(regLevel(fs,gt.getNactvar()) > regLevel(fs,bl.getNactvar())){
+                 gt.close = gt.close || bl.upval;
+             }
+             gt.nactvar = bl.nactvar;
+         }
+     }
+    /**
+     * 进入 block 需要做的操作
+     */
+    public static void enterBlock(FuncState fs,BlockCnt bl,boolean inLoop){
+        //
+    }
+    /**
+     * 离开block需要进行的操作
+     */
+    public static void leaveBlock(FuncState fs){
+
+    }
+
+
+    /**
+     * 添加一个 prototype
+      */
+    public static Proto addPrototype(LexState ls){
+        Proto clp;
+        return null;
+    }
+
     /**
      * 上个表达式是否有多个返回值
      */

@@ -27,7 +27,9 @@ public class Test {
 
     public static void func2(){
         Formatter formatter = new Formatter();
+        {}
         formatter.format("sldfjsd %d %c",1,'c');
+        int i;
         System.out.println(formatter.toString());
     }
     public static void func3() throws FileNotFoundException {
@@ -37,7 +39,8 @@ public class Test {
         Lex.next(lexState);
         while(lexState.getCurrent() != Lex.EOZ){
             int token = Lex.llex(lexState,lexState.getT());
-            Reserved r = Reserved.getReserved(token);
+            Reserved reserved = Reserved.getReserved(token);
+            Reserved r = reserved;
             if(r != null){
                 System.out.println(r);
             } else{
