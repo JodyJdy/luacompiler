@@ -14,8 +14,8 @@ public class DynData {
     int n;
     int size;
 
-    LabelList gt;  /* list of pending gotos */
-    LabelList label;   /* list of active labels */
+    LabelList gt = new LabelList();  /* list of pending gotos */
+    LabelList label = new LabelList();   /* list of active labels */
 
 
     public Vardesc getVarDesc(int i){

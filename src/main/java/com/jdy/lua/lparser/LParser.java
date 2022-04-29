@@ -8,9 +8,8 @@ import com.jdy.lua.lstate.LuaState;
 
 import java.util.List;
 
-import static com.jdy.lua.lcodes.LCodes.luaK_Indexed;
+import static com.jdy.lua.lcodes.LCodes.*;
 import static   com.jdy.lua.lparser.ParserConstants.*;
-import static com.jdy.lua.lcodes.LCodes.NO_JUMP;
 import static com.jdy.lua.lex.Lex.*;
 import static com.jdy.lua.lex.Reserved.*;
 import static com.jdy.lua.lparser.ExpKind.*;
@@ -397,5 +396,91 @@ public class LParser {
     }
 
 
+    /**
+     * 调整表达式返回值的数量
+     * 有这种场景：
+     * loca a,b,c,d = 1,2
+     * 那么 c,d的值为nil
+     */
+    public static void adjustAssign(LexState ls,int nvars,int nexps,ExpDesc e){
+       FuncState fs = ls.getFs();
+        //说明需要额外的值
+        int need = nvars - nexps;
+        //最后一个表达式有多个返回值
+        if(hasMultiRet(e)){
+            int extra = need + 1;
+            if(extra < 0){
+                extra = 0;
+            }
+            luaK_setReturns(fs,e,extra);
+        }else{
+           if(e.getK() != VVOID){
+               luaK_exp2nextReg(fs,e);
+               // 变量数据多余表达式数据，填nil
+               if(need > 0){
+                  luaK_Nil(ls.getFs(),fs.getFreereg(),need);
+               }
+           }
+        }
+        if(need > 0 ){
+            //申请寄存器
+            luaK_reserveRegs(fs,need);
+        }else {
+            fs.freereg+= need;
+        }
+    }
+    /**
+     * 处理 索引为g 的goto指令，跳转到label，并且将其移除掉
+     */
+   public static void solveGoto(LexState ls,int g,LableDesc label){
+      int i;
+      LabelList gotolist = ls.getDyd().getGt();
+      //需要解决的goto
+      LableDesc gt = gotolist.getArr().get(g);
+      luaK_patchList(ls.getFs(),gt.getPc(),label.pc);
+      //移除该条goto，从 pending list
+       ls.getDyd().getArr().remove(g);
+       gotolist.n--;
+   }
+    /**
+     * 查找一个 活跃的label
+      */
+    public static LableDesc findLabel(LexState ls, TString name){
+        int i;
+        DynData dyd = ls.getDyd();
+        FuncState fs = ls.getFs();
+        //在当前函数里面查找
+        for(i = fs.getFirstlabel(); i <dyd.getLabel().getN();i++){
+            LableDesc lb = dyd.getLabel().getArr().get(i);
+            if(lb.name.equals(name.getContents())){
+                return lb;
+            }
+        }
+        return null;
+    }
+    /**
+     * 添加一个 新的 label/goto 到相关的 list
+     */
+    public static int newLabelEntry(LexState ls,LabelList l,TString name,int line,int pc){
+        int n = l.getN();
+        LableDesc desc = new LableDesc();
+        desc.name = name.getContents();
+        desc.line=line;
+        desc.nactvar = ls.getFs().getNactvar();
+        desc.close = 0;
+        desc.pc = pc;
+        l.n++;
+        l.getArr().add(desc);
+        return n;
+    }
+    public static int newGotoEntry(LexState ls,TString name,int line,int pc){
+        return newLabelEntry(ls,ls.getDyd().getGt(),name,line,pc);
+    }
+    /**
+     * 上个表达式是否有多个返回值
+     */
+    public static boolean hasMultiRet(ExpDesc e){
+        return e.getK() == VCALL || e.getK() == VVARARG;
+    }
 
 }
