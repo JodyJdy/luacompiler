@@ -9,4 +9,8 @@ public class ParserConstants {
     public static int RDKTOCLOSE  = 2;  /* to-be-closed */
     public static int RDKCTC  = 3; /* compile-time constant */
 
+
+    public static final int FIELDS_PER_FLUSH = 50;
+
+    public static final int LUA_MULTRET= -1;
 }

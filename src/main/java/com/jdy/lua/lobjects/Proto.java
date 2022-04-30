@@ -1,6 +1,7 @@
 package com.jdy.lua.lobjects;
 
 import com.jdy.lua.lopcodes.Instruction;
+import com.jdy.lua.lstate.LuaState;
 import lombok.Data;
 
 import java.util.ArrayList;
@@ -33,7 +34,7 @@ public class Proto extends GcObject {
      */
     List<AbsLineInfo> absLineInfos = new ArrayList<>();
     List<LocalVar> localVars = new ArrayList<>(); /** information about local variables (debug information) */
-    TString source;
+    String source;
     List<GcObject> gcList = new ArrayList<>();
 
     public void addLineInfo(int i){
@@ -62,6 +63,12 @@ public class Proto extends GcObject {
     }
     public void addUpValDesc(UpvalDesc desc){
         upvalues.add(desc);
+    }
+
+
+    public static Proto newProto(LuaState l){
+        Proto p = new Proto();
+        return p;
     }
 
 }

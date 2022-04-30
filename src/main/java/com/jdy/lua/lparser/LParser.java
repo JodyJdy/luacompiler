@@ -3,10 +3,14 @@ package com.jdy.lua.lparser;
 import com.jdy.lua.lex.Lex;
 import com.jdy.lua.lex.LexState;
 import com.jdy.lua.lex.Reserved;
+import com.jdy.lua.lex.Token;
 import com.jdy.lua.lobjects.*;
+import com.jdy.lua.lopcodes.Instruction;
 import com.jdy.lua.lopcodes.OpCode;
 import com.jdy.lua.lstate.LuaState;
+import com.jdy.lua.lstring.LString;
 
+import java.rmi.dgc.Lease;
 import java.util.List;
 
 import static com.jdy.lua.lcodes.LCodes.*;
@@ -542,7 +546,11 @@ public class LParser {
         bl.isloop = inLoop;
         bl.nactvar = fs.nactvar;
         bl.firstgoto=fs.lexState.getDyd().getGt().getN();
-        bl.upval = 0;
+        bl.upval = false;
+        bl.insidetbc = (fs.blockCnt != null && fs.blockCnt.insidetbc);
+        //block是一个链表
+        bl.previous = fs.blockCnt;
+        fs.blockCnt = bl;
 
     }
     /**
@@ -550,6 +558,29 @@ public class LParser {
      */
     public static void leaveBlock(FuncState fs){
 
+        BlockCnt bl = fs.blockCnt;
+        LexState ls = fs.getLexState();
+        boolean hasClose = false;
+        int stkLevel = regLevel(fs,bl.nactvar);
+        if(bl.isloop){
+            hasClose = createLabbel(ls, LString.newStr(ls.getL(),"break"),0,false);
+        }
+       if(!hasClose && bl.previous != null && bl.upval){
+           luaK_codeABC(fs,OpCode.OP_CLOSE,stkLevel,0,0);
+       }
+       //还原当前的block
+      fs.blockCnt = bl.previous;
+       //移除block里面定义的变量
+      removeVars(fs,bl.nactvar);
+      fs.freereg = stkLevel;
+      //处理goto
+      if(bl.previous !=null){
+         moveGotosOut(fs,bl);
+      } else{
+          if(bl.firstgoto < ls.getDyd().getGt().getN()){
+              System.err.println("pending goto  in outer block");
+          }
+      }
     }
 
 
@@ -558,14 +589,301 @@ public class LParser {
       */
     public static Proto addPrototype(LexState ls){
         Proto clp;
-        return null;
+        LuaState l = ls.getL();
+        FuncState fs = ls.getFs();
+        Proto f = fs.getProto();
+        clp = Proto.newProto(l);
+        f.getProtoList().add(clp);
+        fs.np++;
+        return clp;
     }
+    /**
+     * 在 父函数里面生成指令创建 新的闭包
+      */
+    public static void codeClosure(LexState ls,ExpDesc e){
+        FuncState fs = ls.getFs().getPrev();
+        initExp(e,VRELOC,luaK_codeABx(fs,OpCode.OP_CLOSE,0,fs.np-1));
+        luaK_exp2anyreg(fs,e);
+    }
+    /**
+     * 开启函数
+     */
+    public static void openFunc(LexState ls,FuncState fs,BlockCnt bl){
+        Proto f = fs.getProto();
+        fs.prev = ls.getFs();
+        fs.lexState = ls;
+        ls.setFs(fs);
+        fs.pc = 0;
+        fs.previousline = f.getLinedefined();
+        fs.firstlocal = ls.getDyd().getN();
+        fs.firstlabel = ls.getDyd().getLabel().n;
+        f.setSource(ls.getSource());
+        //前两个寄存器总是有效的
+        f.setMaxstacksize(2);
+        enterBlock(fs,bl,false);
 
+    }
+    /**
+     * 关闭 func
+     */
+    public static void closeFunc(LexState ls){
+        LuaState l = ls.getL();
+        FuncState fs = ls.getFs();
+        Proto f =fs.getProto();
+        //最后一条生成一条return
+        luaK_Ret(fs,luaY_nVarsStack(fs),0);
+        leaveBlock(fs);
+        luaK_Finish(fs);
+        //重新设置 lex 的 funstate
+        ls.setFs(fs.prev);
+    }
     /**
      * 上个表达式是否有多个返回值
      */
     public static boolean hasMultiRet(ExpDesc e){
         return e.getK() == VCALL || e.getK() == VVARARG;
     }
+
+    /**
+     * 语法规则
+     *
+     *  {} 里面的内容表示可选， [] 里面的内容表示会出现0或者多次
+     */
+    /**
+     * 语句
+     */
+    public static void statement(LexState ls){
+
+    }
+    /**
+     * 表达式
+     */
+
+    public static void expr(LexState ls,ExpDesc v){
+
+    }
+
+    /**
+     * 检查当前token 是不是 block 的 follow set
+     * ’until' 关闭 了语法层面上的block， 但是没有关闭 scope，是分开处理的
+     * 如果不是 block 的follow set， 代表可能要处理一个新的block1
+     */
+    public static boolean blockFollow(LexState ls,boolean withUntil){
+        switch (Reserved.getReserved(ls.getCurrTokenNum())){
+            case TK_ELSE: case TK_ELSEIF:
+            case TK_END: case TK_EOS:
+                return true;
+            case TK_UNTIL:
+                return withUntil;
+            default:
+                return false;
+
+        }
+    }
+    /**
+     * 语句列表
+     *    statlist -> {   stat [ ';' ]        }
+      */
+    public static void statList(LexState ls){
+        while(!blockFollow(ls,true)){
+            if(ls.getCurrTokenNum() == TK_RETURN.getT()){
+                statement(ls);
+                //return作为最后一个语句
+                return;
+            }
+        }
+    }
+    /**
+     * field 都是表相关的
+     * fieldsel ->  ['.'| ':'] NAME
+     *
+     * e代表 table
+     * NAME是 表的索引
+     */
+    public static void fieldSel(LexState ls, ExpDesc e){
+        FuncState fs = ls.getFs();
+        ExpDesc key = new ExpDesc();
+        luaK_exp2anyreg(fs,e);
+        //跳过 . / :
+        luaX_Next(ls);
+        codeNameExp(ls,e);
+        luaK_Indexed(fs,e,key);
+    }
+
+    /**
+     * 表的索引
+     *  index -> '[' expr ']'
+     */
+    public static void yIndex(LexState ls, ExpDesc v) {
+        //跳过 '['
+        luaX_Next(ls);
+        expr(ls, v);
+        luaK_exp2val(ls.getFs(),v);
+        check_next1(ls,']');
+    }
+    /**
+     * 初始化表时，字段赋值的处理
+     *
+     * a={ b=1 , ['b']=1 }
+     * recField ->  (NAME |  '[' EXP ']' )= EXP */
+    public static void recField(LexState ls,TableConstructor cons){
+        FuncState fs = ls.getFs();
+        int reg = ls.getFs().freereg;
+        ExpDesc tab = new ExpDesc(),key = new ExpDesc(), val = new ExpDesc();
+        if(ls.getCurrTokenNum() == TK_NAME.getT()){
+            codeNameExp(ls,key);
+        } else{
+            yIndex(ls,key);
+        }
+        cons.nh++;
+        check_next1(ls,'=');
+        tab = cons.getT();
+        luaK_Indexed(fs,tab,key);
+        expr(ls,val);
+        luaK_storevar(fs,tab,val);
+        //还原寄存器
+        fs.freereg = reg;
+    }
+
+    /**
+     * 结束 列表字段的处理 将 字段内容存放到寄存器里面去，
+     */
+    public static void closeListField(FuncState fs, TableConstructor cons){
+        //表没有初始化的数据
+        if(cons.getV().getK() ==VVOID){
+            return;
+        }
+        //将表达式的内容存放到寄存器里面
+        luaK_exp2nextReg(fs,cons.getV());
+        cons.getV().setK(VVOID);
+        if(cons.getToStore() == FIELDS_PER_FLUSH){
+            luaK_setList(fs,cons.getT().getInfo(),cons.getNa(),cons.getToStore());
+            //存储元素
+            cons.na+=cons.toStore;
+            cons.toStore = 0;
+        }
+    }
+    /***
+     * 表初始化时最后一个字段的添加
+     */
+    public static void lastListField(FuncState fs,TableConstructor cc){
+        if(cc.toStore == 0){
+            return;
+        }
+        if(hasMultiRet(cc.getV())){
+            luaK_setReturns(fs,cc.getV(),LUA_MULTRET);
+            luaK_setList(fs,cc.getT().getInfo(),cc.na,LUA_MULTRET);
+            //最后一个表达式返回元素数量未知，没有进行技术
+            cc.na--;
+
+        } else{
+            if(cc.getV().getK() == VVOID){
+                luaK_exp2nextReg(fs,cc.getV());
+            }
+            luaK_setList(fs,cc.getT().getInfo(),cc.na,cc.toStore);
+        }
+        //记录已经存储的item数量
+        cc.na+=cc.toStore;
+    }
+
+    /**
+     * a={1,2,3,['a']=1, b=2}  1,2,3就是 listfield， ['a']=1 ,b=2是 recfield
+     *
+     * listfield -> exp
+     * @param cc
+     */
+    public static void listField(LexState ls,TableConstructor cc){
+        expr(ls,cc.getV());
+        cc.toStore++;
+    }
+    /**
+     * field
+     *
+     * field->  listfield | recField
+     */
+    public static void field(LexState ls, TableConstructor cc){
+        switch (Reserved.getReserved(ls.getCurrTokenNum())){
+            case TK_NAME:
+                if(luaX_lookahead(ls) != '=' ){
+                    listField(ls,cc);
+                } else{
+                    recField(ls,cc);
+                }
+                break;
+            default:
+                //单字符token
+                if('[' == ls.getCurrTokenNum()){
+                    recField(ls,cc);
+                } else{
+                    listField(ls,cc);
+                }
+        }
+    }
+
+    /**
+     * 表的 构造
+     * seq作为元素的分割符
+     * constructor -> '{' [ field { sep field } [sep] ] '}'
+     *      sep -> ',' | ';'
+     */
+    public static void constructor(LexState ls,ExpDesc t){
+        FuncState fs = ls.getFs();
+        int line = ls.getLinenumber();
+        int pc = luaK_codeABC(fs,OpCode.OP_NEWTABLE,0,0,0);
+        TableConstructor cc = new TableConstructor();
+        //额外参数的空间
+        luaK_code(fs,new Instruction(0));
+        cc.na=cc.nh=cc.toStore = 0;
+        cc.t=t;
+        initExp(t,VNONRELOC,fs.freereg);
+        //申请一个寄存器
+        luaK_reserveRegs(fs,1);
+        //还没有进行value的读取，先进行初始化
+        initExp(cc.getV(),VVOID,0);
+        //表的开头符号
+        check_next1(ls,'{');
+        do{
+           //读取到表的末尾
+            if(ls.getCurrTokenNum() =='}'){
+                break;
+            }
+            //将field存如寄存器
+            closeListField(fs,cc);
+            //读取一个field
+            field(ls,cc);
+        }while(testNext(ls,',') || testNext(ls,';'));
+
+        checkMatch(ls,'}','{',line);
+        lastListField(fs,cc);
+        //设置表的尺寸
+        luaK_setTableSize(fs,pc,t.info,cc.na,cc.nh);
+    }
+
+    /**
+     * 设置 可变参数
+     */
+    public static void setVararg(FuncState fs,int nParams){
+        fs.getProto().setVararg(true);
+        luaK_codeABC(fs,OpCode.OP_VARARGPREP,nParams,0,0);
+    }
+
+    /**
+     * 处理参数列表
+     * parList =  [   {NAME ','} (NAME | '...')]
+     */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 }
