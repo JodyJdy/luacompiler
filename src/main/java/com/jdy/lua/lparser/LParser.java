@@ -538,7 +538,12 @@ public class LParser {
      * 进入 block 需要做的操作
      */
     public static void enterBlock(FuncState fs,BlockCnt bl,boolean inLoop){
-        //
+        //记录block是否在循环里面
+        bl.isloop = inLoop;
+        bl.nactvar = fs.nactvar;
+        bl.firstgoto=fs.lexState.getDyd().getGt().getN();
+        bl.upval = 0;
+
     }
     /**
      * 离开block需要进行的操作
