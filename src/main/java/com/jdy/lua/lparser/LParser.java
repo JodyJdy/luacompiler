@@ -103,7 +103,7 @@ public class LParser {
     public static int regsisterLocalVar(LexState ls,FuncState fs,String varName){
         Proto proto = fs.getProto();
         //注册前，本地变量的数量
-        int oldSize = proto.getSizelocvars();
+        int oldSize = proto.getLocaVarSize();
         LocalVar localVar = new LocalVar();
         localVar.setName(varName);
         localVar.setStartpc(fs.pc);
@@ -117,10 +117,11 @@ public class LParser {
         LuaState l = ls.getL();
         FuncState fs = ls.getFs();
         DynData dyd = ls.getDyd();
-        Vardesc vardesc = dyd.getVarDesc(dyd.n++);
+        Vardesc vardesc = new Vardesc();
         vardesc.setKind(VDKREG);
         vardesc.setName(name);
-        return dyd.n - 1 - fs.firstlocal;
+        dyd.addVarDesc(vardesc);
+        return dyd.getActiveLocVarSize() - 1 - fs.firstlocal;
     }
     /**
      * 获取 Vardesc
@@ -447,7 +448,6 @@ public class LParser {
       luaK_patchList(ls.getFs(),gt.getPc(),label.pc);
       //移除该条goto，从 pending list
        ls.getDyd().getArr().remove(g);
-       gotolist.n--;
    }
     /**
      * 查找一个 活跃的label
@@ -457,7 +457,7 @@ public class LParser {
         DynData dyd = ls.getDyd();
         FuncState fs = ls.getFs();
         //在当前函数里面查找
-        for(i = fs.getFirstlabel(); i <dyd.getLabel().getN();i++){
+        for(i = fs.getFirstlabel(); i <dyd.getLabel().getSize();i++){
             LabelDesc lb = dyd.getLabel().getArr().get(i);
             if(lb.name.equals(name)){
                 return lb;
@@ -469,16 +469,14 @@ public class LParser {
      * 添加一个 新的 label/goto 到相关的 list
      */
     public static int newLabelEntry(LexState ls,LabelList l,String name,int line,int pc){
-        int n = l.getN();
         LabelDesc desc = new LabelDesc();
         desc.name = name;
         desc.line=line;
         desc.nactvar = ls.getFs().getNactvar();
         desc.close = false;
         desc.pc = pc;
-        l.n++;
         l.getArr().add(desc);
-        return n;
+        return l.getSize();
     }
     public static int newGotoEntry(LexState ls,String name,int line,int pc){
         return newLabelEntry(ls,ls.getDyd().getGt(),name,line,pc);
@@ -492,7 +490,7 @@ public class LParser {
         //获取当前 block的第一个goto
         int i =ls.getFs().getBlockCnt().getFirstgoto();
         boolean needClose = false;
-        while(i < gl.getN()){
+        while(i < gl.getSize()){
             LabelDesc desc = gl.getArr().get(i);
             if(desc.getName().equals(lb.getName())) {
                 needClose = needClose || desc.isClose();
@@ -531,7 +529,7 @@ public class LParser {
          int i;
          LabelList gl = fs.getLexState().getDyd().getGt();
          // 修正 pending gotos 到 当前的block
-         for(i = bl.getFirstgoto();i < gl.getN();i++){
+         for(i = bl.getFirstgoto();i < gl.getSize();i++){
              LabelDesc gt = gl.getArr().get(i);
              //如果 label处的活跃变量大于block外部的， 可能需要执行close
              if(regLevel(fs,gt.getNactvar()) > regLevel(fs,bl.getNactvar())){
@@ -547,7 +545,7 @@ public class LParser {
         //记录block是否在循环里面
         bl.isloop = inLoop;
         bl.nactvar = fs.nactvar;
-        bl.firstgoto=fs.lexState.getDyd().getGt().getN();
+        bl.firstgoto=fs.lexState.getDyd().getGt().getSize();
         bl.upval = false;
         bl.insidetbc = (fs.blockCnt != null && fs.blockCnt.insidetbc);
         //block是一个链表
@@ -579,7 +577,7 @@ public class LParser {
       if(bl.previous !=null){
          moveGotosOut(fs,bl);
       } else{
-          if(bl.firstgoto < ls.getDyd().getGt().getN()){
+          if(bl.firstgoto < ls.getDyd().getGt().getSize()){
               System.err.println("pending goto  in outer block");
           }
       }
@@ -617,8 +615,9 @@ public class LParser {
         ls.setFs(fs);
         fs.pc = 0;
         fs.previousline = f.getLinedefined();
-        fs.firstlocal = ls.getDyd().getN();
-        fs.firstlabel = ls.getDyd().getLabel().n;
+        DynData dyd = ls.getDyd();
+        fs.firstlocal = dyd.getActiveLocVarSize();
+        fs.firstlabel = dyd.getLabel().getSize();
         f.setSource(ls.getSource());
         //前两个寄存器总是有效的
         f.setMaxstacksize(2);

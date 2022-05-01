@@ -7,7 +7,7 @@ public enum ExpKind {
 
 
 
-    /** expdesc作为列表中最后一个表达式时， 表示哦那个*/
+    /** expdesc作为列表中最后一个表达式时， 表示空的*/
     VVOID(0),  /** when 'expdesc' describes the last expression of a list,
              this kind means an empty list (so, no expression) */
     //一些常量

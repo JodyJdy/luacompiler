@@ -5,13 +5,16 @@ import lombok.Data;
 import java.util.ArrayList;
 import java.util.List;
 
-
+/**
+ * 解析器使用的动态数据
+ *   arr存放了所有运时解析到的所有变量
+ *   每一个 FuncState拥有的变量是 DynData的一部分。
+ */
 @Data
 public class DynData {
 
     /** list of all active local variables */
     List<Vardesc> arr = new ArrayList<>();
-    int n;
     int size;
 
     LabelList gt = new LabelList();  /* list of pending gotos */
@@ -29,6 +32,9 @@ public class DynData {
         for(int i=0;i<num;i++){
             arr.remove(arr.size() - 1);
         }
-        n-=num;
+    }
+
+    public int getActiveLocVarSize(){
+        return arr.size();
     }
 }

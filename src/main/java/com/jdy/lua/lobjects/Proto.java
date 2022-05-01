@@ -12,13 +12,6 @@ public class Proto extends GcObject {
     int numparams;
     boolean isVararg;
     int maxstacksize;
-    int sizeupvalues;  /** size of 'upvalues' */
-    int sizek;  /** size of 'k' */
-    int sizecode;
-    int sizelineinfo;
-    int sizep;  /** size of 'p' */
-    int sizelocvars;
-    int sizeabslineinfo;  /** size of 'abslineinfo' */
     int linedefined;  /** debug information  */
     int lastlinedefined;  /** debug information  */
     List<TValue> k = new ArrayList<>(); /** constants used by the function */
@@ -62,7 +55,9 @@ public class Proto extends GcObject {
         upvalues.add(desc);
     }
 
-
+    public int getLocaVarSize(){
+        return localVars.size();
+    }
     public static Proto newProto(LuaState l){
         Proto p = new Proto();
         return p;

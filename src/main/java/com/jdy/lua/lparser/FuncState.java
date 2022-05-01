@@ -16,9 +16,14 @@ public class FuncState {
     int previousline;  /* last line that was saved in 'lineinfo' */
     int nk;  /* number of elements in 'k' */
     int np;  /* number of elements in 'p' */
-    int nabslineinfo;  /* number of elements in 'abslineinfo' */
-    int firstlocal;  /* index of first local var (in Dyndata array) */
-    int firstlabel;  /* index of first label (in 'dyd->label->arr') */
+    /**
+     * FuncState中第一个 local var在Dyndata中的下标
+     */
+    int firstlocal;
+    /**
+     * FuncState中第一个label 在 DynData中的下标
+     */
+    int firstlabel;
     int ndebugvars;  /* number of elements in 'f->locvars' */
     int nactvar;  /* number of active local variables */
     int nups;  /* number of upvalues */
