@@ -1,19 +1,23 @@
 package com.jdy.lua.lparser;
 
+import com.jdy.lua.lcodes.BinOpr;
+import com.jdy.lua.lcodes.LCodes;
+import com.jdy.lua.lcodes.UnOpr;
 import com.jdy.lua.lex.Lex;
 import com.jdy.lua.lex.LexState;
 import com.jdy.lua.lex.Reserved;
-import com.jdy.lua.lex.Token;
 import com.jdy.lua.lobjects.*;
 import com.jdy.lua.lopcodes.Instruction;
+import com.jdy.lua.lopcodes.Instructions;
 import com.jdy.lua.lopcodes.OpCode;
 import com.jdy.lua.lstate.LuaState;
 import com.jdy.lua.lstring.LString;
 
-import java.rmi.dgc.Lease;
 import java.util.List;
 
+import static com.jdy.lua.lcodes.BinOpr.*;
 import static com.jdy.lua.lcodes.LCodes.*;
+import static com.jdy.lua.lopcodes.OpCode.*;
 import static   com.jdy.lua.lparser.ParserConstants.*;
 import static com.jdy.lua.lex.Lex.*;
 import static com.jdy.lua.lex.Reserved.*;
@@ -437,11 +441,11 @@ public class LParser {
     /**
      * 处理 索引为g 的goto指令，跳转到label，并且将其移除掉
      */
-   public static void solveGoto(LexState ls,int g,LableDesc label){
+   public static void solveGoto(LexState ls, int g, LabelDesc label){
       int i;
       LabelList gotolist = ls.getDyd().getGt();
       //需要解决的goto
-      LableDesc gt = gotolist.getArr().get(g);
+      LabelDesc gt = gotolist.getArr().get(g);
       luaK_patchList(ls.getFs(),gt.getPc(),label.pc);
       //移除该条goto，从 pending list
        ls.getDyd().getArr().remove(g);
@@ -450,13 +454,13 @@ public class LParser {
     /**
      * 查找一个 活跃的label
       */
-    public static LableDesc findLabel(LexState ls, TString name){
+    public static LabelDesc findLabel(LexState ls, TString name){
         int i;
         DynData dyd = ls.getDyd();
         FuncState fs = ls.getFs();
         //在当前函数里面查找
         for(i = fs.getFirstlabel(); i <dyd.getLabel().getN();i++){
-            LableDesc lb = dyd.getLabel().getArr().get(i);
+            LabelDesc lb = dyd.getLabel().getArr().get(i);
             if(lb.name.equals(name.getContents())){
                 return lb;
             }
@@ -468,7 +472,7 @@ public class LParser {
      */
     public static int newLabelEntry(LexState ls,LabelList l,TString name,int line,int pc){
         int n = l.getN();
-        LableDesc desc = new LableDesc();
+        LabelDesc desc = new LabelDesc();
         desc.name = name.getContents();
         desc.line=line;
         desc.nactvar = ls.getFs().getNactvar();
@@ -485,13 +489,13 @@ public class LParser {
      * 解决 之前的jump，检查新的label是否有匹配的goto， solve他们，return true表示有goto 需要
      * close upvalues
      */
-    public static boolean solveGotos(LexState ls,LableDesc lb){
+    public static boolean solveGotos(LexState ls, LabelDesc lb){
         LabelList gl = ls.getDyd().getGt();
         //获取当前 block的第一个goto
         int i =ls.getFs().getBlockCnt().getFirstgoto();
         boolean needClose = false;
         while(i < gl.getN()){
-            LableDesc desc = gl.getArr().get(i);
+            LabelDesc desc = gl.getArr().get(i);
             if(desc.getName().equals(lb.getName())) {
                 needClose = needClose || desc.isClose();
                 solveGoto(ls,i,lb);
@@ -509,7 +513,7 @@ public class LParser {
         FuncState fs = ls.getFs();
         LabelList ll = ls.getDyd().getLabel();
         int l  =newLabelEntry(ls,ll,name,line,luaK_GetLabel(fs));
-        LableDesc desc = ll.getArr().get(l);
+        LabelDesc desc = ll.getArr().get(l);
         // blockcnt.nactvar表示 block外部活跃的 变量
         if(last){
             desc.nactvar = fs.blockCnt.nactvar;
@@ -530,7 +534,7 @@ public class LParser {
          LabelList gl = fs.getLexState().getDyd().getGt();
          // 修正 pending gotos 到 当前的block
          for(i = bl.getFirstgoto();i < gl.getN();i++){
-             LableDesc gt = gl.getArr().get(i);
+             LabelDesc gt = gl.getArr().get(i);
              //如果 label处的活跃变量大于block外部的， 可能需要执行close
              if(regLevel(fs,gt.getNactvar()) > regLevel(fs,bl.getNactvar())){
                  gt.close = gt.close || bl.upval;
@@ -653,14 +657,79 @@ public class LParser {
      * 语句
      */
     public static void statement(LexState ls){
+        int line = ls.getLinenumber();
+        switch (Reserved.getReserved(ls.getCurrTokenNum())){
 
+            case TK_IF: {  /* stat -> ifstat */
+                ifStat(ls, line);
+                break;
+            }
+            case TK_WHILE: {  /* stat -> whilestat */
+                whileStat(ls, line);
+                break;
+            }
+            case TK_DO: {  /* stat -> DO block END */
+                luaX_Next(ls);  /* skip DO */
+                block(ls);
+                checkMatch(ls, TK_END.getT(), TK_DO.getT(), line);
+                break;
+            }
+            case TK_FOR: {  /* stat -> forstat */
+                forStat(ls, line);
+                break;
+            }
+            case TK_REPEAT: {  /* stat -> repeatstat */
+                repeatStat(ls, line);
+                break;
+            }
+            case TK_FUNCTION: {  /* stat -> funcstat */
+                funcStat(ls, line);
+                break;
+            }
+            case TK_LOCAL: {  /* stat -> localstat */
+                luaX_Next(ls);  /* skip LOCAL */
+                if (testNext(ls, TK_FUNCTION.getT()))  /* local function? */
+                    localFunc(ls);
+                else
+                    localStat(ls);
+                break;
+            }
+            case TK_DBCOLON: {  /* stat -> label */
+                luaX_Next(ls);  /* skip double colon */
+                labelStat(ls, strCheckName(ls), line);
+                break;
+            }
+            case TK_RETURN: {  /* stat -> retstat */
+                luaX_Next(ls);  /* skip RETURN */
+                retStat(ls);
+                break;
+            }
+            case TK_BREAK: {  /* stat -> breakstat */
+                breakStat(ls);
+                break;
+            }
+            case TK_GOTO: {  /* stat -> 'goto' NAME */
+                luaX_Next(ls);  /* skip 'goto' */
+                gotoStat(ls);
+                break;
+            }
+            default:
+                if(';' == ls.getCurrTokenNum()){
+                    luaX_Next(ls);
+                    break;
+                }
+                exprStat(ls);
+                break;
+        }
+        //调整后寄存器数量
+        ls.getFs().freereg = luaY_nVarsStack(ls.getFs());
     }
     /**
      * 表达式
      */
 
     public static void expr(LexState ls,ExpDesc v){
-
+        subExpr(ls,v,0);
     }
 
     /**
@@ -802,7 +871,8 @@ public class LParser {
      * field->  listfield | recField
      */
     public static void field(LexState ls, TableConstructor cc){
-        switch (Reserved.getReserved(ls.getCurrTokenNum())){
+        int cur = ls.getCurrTokenNum();
+        switch (Reserved.getReserved(cur)){
             case TK_NAME:
                 if(luaX_lookahead(ls) != '=' ){
                     listField(ls,cc);
@@ -812,7 +882,7 @@ public class LParser {
                 break;
             default:
                 //单字符token
-                if('[' == ls.getCurrTokenNum()){
+                if('[' == cur){
                     recField(ls,cc);
                 } else{
                     listField(ls,cc);
@@ -868,22 +938,1012 @@ public class LParser {
     }
 
     /**
-     * 处理参数列表
+     * 处理参数列表， parameter 是函数定义的参数
      * parList =  [   {NAME ','} (NAME | '...')]
      */
 
+    public static  void parList(LexState ls){
+        FuncState fs = ls.getFs();
+        Proto f = fs.getProto();
+        int nparams = 0;
+        boolean isvarArg = false;
+        if(ls.getT().getToken() != ')'){
+
+            do{
+                switch (Reserved.getReserved(ls.getCurrTokenNum())){
+
+                    case TK_NAME:
+                        newLocalVar(ls,strCheckName(ls));
+                        nparams++;
+                    case TK_DOTS:
+                        luaX_Next(ls);
+                        isvarArg = true;
+                        break;
+                    default:
+                        System.err.println("name or ...  expected");
+                }
+
+            }while (!isvarArg && testNext(ls,','));
+        }
+        //调整本地变量，所有的函数参数都被当成一个local变量
+        adjustLocalVars(ls,nparams);
+        f.setNumparams(fs.nactvar);
+        if(isvarArg){
+            setVararg(fs,f.getNumparams());
+        }
+    }
+
+    /**
+     * 解析 函数体
+     * method 代表是对象的方法
+     *
+     * body ->  '(' parlist ')' block END
+     */
+    public static void body(LexState ls,ExpDesc e, boolean isMethod,int line){
+        //遇到一个新的函数
+        FuncState newFs = new FuncState();
+        BlockCnt bl = new BlockCnt();
+        newFs.setProto(addPrototype(ls));
+        //设置函数所在的行
+        newFs.getProto().setLinedefined(line);
+        openFunc(ls,newFs,bl);
+        check_next1(ls,'(');
+        //如果是method，会加上self作为method的参数
+        if(isMethod){
+            newLocalVar(ls,new TString("self"));
+        }
+        parList(ls);
+        check_next1(ls,')');
+        statList(ls);
+        //设置最后一行的位置
+        newFs.getProto().setLastlinedefined(ls.getLinenumber());
+        checkMatch(ls,TK_END.getT(),TK_FUNCTION.getT(),line);
+        codeClosure(ls,e);
+        closeFunc(ls);
+    }
+
+    /**
+     * 表达式列表
+     * explist ->  expr { ',' expr }
+     */
+    public static int expList(LexState ls,ExpDesc v){
+        //表达式的数量
+        int n= 1;
+        expr(ls,v);
+        while(testNext(ls,',')){
+           luaK_exp2nextReg(ls.getFs(),v);
+           expr(ls,v);
+           n++;
+        }
+        return n;
+    }
 
 
+    /**
+     * args是函数调用的参数
+     * funcargs ->  '(' [explit] ')'
+     * funcargs -> "xxxx"     lua支持  print "hello" 这种参数
+     * funcargs -> constructor  函数名 加 表构造函数
+     */
+    public static void funcArgs(LexState ls,ExpDesc f,int line){
+
+       FuncState fs = ls.getFs();
+       ExpDesc args = new ExpDesc();
+       int base = 0, nparams=0;
+       int cur = ls.getCurrTokenNum();
+       switch (cur){
+           case '(':
+               luaX_Next(ls);
+               //args 为空
+               if(ls.getCurrTokenNum() ==')'){
+                   args.k = VVOID;
+               } else{
+                   expList(ls,args);
+               }
+               checkMatch(ls,')','(',line);
+               break;
+           case '{':
+               constructor(ls,args);
+               break;
+           default:
+               if(cur == TK_STRING.getT()){
+                   codeStringExp(args,new TString(ls.getT().getS()));
+                   luaX_Next(ls);
+               } else{
+                   System.err.println("缺少函数参数");
+               }
+
+       }
+       base = f.getInfo();
+       if(hasMultiRet(args)){
+           nparams = LUA_MULTRET;
+       } else{
+           if(args.getK() != VVOID){
+               luaK_exp2nextReg(fs,args);
+           }
+           nparams = fs.freereg-(base+1);
+       }
+       initExp(f,VCALL,luaK_codeABC(fs,OpCode.OP_CALL,base,nparams+1,2));
+       luaK_fixline(fs,line);
+       //移除函数 和参数占用的寄存器
+        fs.freereg = base + 1;
+    }
+    /**
+     * 表达式解析
+     */
+    /**
+     * primaryexp -> NAME | '(' expr ')'
+     * @param ls
+     * @param v
+     */
+    public static void primaryExp(LexState ls,ExpDesc v){
+
+        int tkNum = ls.getCurrTokenNum();
+        if(tkNum == '('){
+
+            int line = ls.getLinenumber();
+            luaX_Next(ls);
+            expr(ls,v);
+            checkMatch(ls,')','(',line);
+            luaK_dischargeVars(ls.getFs(),v);
+            return;
+
+        } else if(tkNum == TK_NAME.getT()){
+            singelVar(ls,v);
+            return;
+        }else{
+            System.err.println("unexpected synbol");
+        }
+    }
+    /**
+     * 后缀表达式
+     * suffixedExp -> primaryexp { '.' NAME | '[' exp ']' | ':' NAME funcargs | funcargs}
+     */
+
+    public static void suffixedExp(LexState ls, ExpDesc v){
+        FuncState fs = ls.getFs();
+        int line = ls.getLinenumber();
+        primaryExp(ls,v);
+        for(;;){
+          switch (ls.getCurrTokenNum()){
+              case '.':
+                  fieldSel(ls,v);
+                  break;
+              case '[': {
+                  ExpDesc key = new ExpDesc();
+                  luaK_exp2anyregup(fs, v);
+                  yIndex(ls, key);
+                  luaK_Indexed(fs, v, key);
+                  break;
+              }
+              case ':': {
+                  ExpDesc key = new ExpDesc();
+                  luaX_Next(ls);
+                  codeNameExp(ls,key);
+                  luaK_self(fs,v,key);
+                  funcArgs(ls,v,line);
+                  break;
+              }
+              case '(': case '{':
+                  luaK_exp2nextReg(fs,v);
+                  funcArgs(ls,v,line);
+                  break;
+              default:
+                  if(ls.getCurrTokenNum() == TK_STRING.getT()){
+                      luaK_exp2nextReg(fs,v);
+                      funcArgs(ls,v,line);
+                  }
+
+          }
+        }
+    }
+
+    /**
+     *
+     * simpleexp -> FLT | INT | STRING | NIL | TRUE | FALSE | ... | constructor | FUNCTION body
+     *  | suffixedexp
+     */
+    public static void simpleExp(LexState ls,ExpDesc v){
+        switch (Reserved.getReserved(ls.getCurrTokenNum())){
+            case TK_FLT:
+                initExp(v,VKFLT,0);
+                v.setNval(ls.getT().getR());
+                break;
+            case TK_INT:
+                initExp(v,VKINT,0);
+                v.setIval(ls.getT().getI());
+                break;
+            case TK_STRING: {
+                codeStringExp(v, new TString(ls.getT().getS()));
+                break;
+            }
+            case TK_NIL: {
+                initExp(v, VNIL, 0);
+                break;
+            }
+            case TK_TRUE: {
+                initExp(v, VTRUE, 0);
+                break;
+            }
+            case TK_FALSE: {
+                initExp(v, VFALSE, 0);
+                break;
+            }
+            case TK_DOTS: {  /* vararg */
+                FuncState fs = ls.getFs();
+
+                initExp(v, VVARARG, luaK_codeABC(fs, OP_VARARG, 0, 0, 1));
+                break;
+            }
+
+            case TK_FUNCTION: {
+                luaX_Next(ls);
+                body(ls, v, false , ls.getLinenumber());
+                return;
+            }
+            default: {
+                if(ls.getCurrTokenNum() == '{'){
+                    constructor(ls, v);
+                    return;
+                }
+                suffixedExp(ls, v);
+                return;
+            }
+
+        }
+        luaX_Next(ls);
+    }
+
+    public static UnOpr getUnopr(int op){
+        switch (op){
+            case '-':return UnOpr.OPR_MINUS;
+            case '~': return UnOpr.OPR_BNOT;
+            case '#': return UnOpr.OPR_LEN;
+            default:
+                if(op == TK_NOT.getT()){
+                    return UnOpr.OPR_NOT;
+                }
+                return UnOpr.OPR_NOUNOPR;
+        }
+    }
+
+    public static BinOpr getBinopr(int op){
+        switch (op){
+            case '+':return BinOpr.OPR_ADD;
+            case '-': return OPR_SUB;
+            case '*': return OPR_MUL;
+            case '%': return OPR_MOD;
+            case '^': return OPR_POW;
+            case '/': return OPR_DIV;
+            case '&': return OPR_BAND;
+            case '|': return OPR_BOR;
+            case '~': return OPR_BXOR;
+            case '<': return OPR_LT;
+            case '>': return OPR_GT;
+            default:
+                switch (Reserved.getReserved(op)){
+                    case TK_IDIV: return OPR_IDIV;
+                    case TK_SHL: return OPR_SHL;
+                    case TK_SHR: return OPR_SHR;
+                    case TK_CONCAT: return OPR_CONCAT;
+                    case TK_NE: return OPR_NE;
+                    case TK_EQ: return OPR_EQ;
+                    case TK_LE: return OPR_LE;
+                    case TK_GE: return OPR_GE;
+                    case TK_AND: return OPR_AND;
+                    case TK_OR: return OPR_OR;
+                    default:return OPR_NOBINOPR;
+                }
+        }
+    }
+
+    /**
+     *  2元运算符优先表。  没有使用递归的形式，隐含出运算符优先级，使用优先级表的方式
+     *
+     *  数值表示优先级高底。 如果 数组的第一个元素和第二个元素值不一样 表面该运算符
+     *  是左结合或者右结合的
+     */
+    public static int[][] priority ={
+            {10, 10}, {10, 10},           /* '+' '-' */
+            {11, 11}, {11, 11},           /* '*' '%' */
+            {14, 13},                  /* '^' (right associative) */
+            {11, 11}, {11, 11},           /* '/' '//' */
+            {6, 6}, {4, 4}, {5, 5},   /* '&' '|' '~' */
+            {7, 7}, {7, 7},           /* '<<' '>>' */
+            {9, 8},                   /* '..' (right associative) */
+            {3, 3}, {3, 3}, {3, 3},   /* ==, <, <= */
+            {3, 3}, {3, 3}, {3, 3},   /* ~=, >, >= */
+            {2, 2}, {1, 1}            /* and, or */
+    };
+    /**
+     * 单运算符的优先级
+     */
+    public static int UNARY_PRIORITY = 12;
+
+    /**
+     * 子表达式
+     *
+     * subexpr ->  (simpleexp | unop subexpr) { binopr subexpr  }
+     *  binop 是优先级比limit要高的操作符， 遇到优先级高的操作符就继续读取
+     */
+    public static BinOpr subExpr(LexState ls,ExpDesc v,int limit){
+        BinOpr op;
+        UnOpr uop;
+        uop = getUnopr(ls.getCurrTokenNum());
+        if(uop != UnOpr.OPR_NOUNOPR){
+            int line = ls.getLinenumber();
+            luaX_Next(ls);
+            subExpr(ls,v,UNARY_PRIORITY);
+            luaK_Prefix(ls.getFs(),uop,v,line);
+        } else{
+            simpleExp(ls,v);
+        }
+        op = getBinopr(ls.getCurrTokenNum());
+        while(op != OPR_NOBINOPR && priority[op.getOp()][0] > limit){
+            ExpDesc v2 = new ExpDesc();
+            BinOpr nextOp;
+            int line = ls.getLinenumber();
+            luaX_Next(ls);
+            luaK_Infix(ls.getFs(),op,v);
+            //读取优先级更高的子表达式
+            nextOp = subExpr(ls,v2,priority[op.getOp()][1]);
+            luaK_posFix(ls.getFs(),op,v,v2,line);
+            op = nextOp;
+        }
+        return op;
+    }
+
+    /**
+     * 语句的 语法规则
+     *
+     *
+     */
+
+    /**
+     * block -> statlist
+     * @param ls
+     */
+    public static void block(LexState ls){
+        FuncState fs = ls.getFs();
+        BlockCnt bl = new BlockCnt();
+        enterBlock(fs,bl,false);
+        statList(ls);
+        leaveBlock(fs);
+    }
+    public static boolean isIndexed(ExpKind e){
+        return e.kind>=VINDEXED.kind && e.kind <= VINDEXSTR.kind;
+    }
+    /**
+     * 检查冲突
+     *
+     * 赋值表达式的结构是：
+     *
+     *  a,b,c,d = ....的， 左侧可以有多个操作数
+     *
+     *  对于
+     *
+     *    a[xx],a = x,y
+     *
+     *    对a赋值后，a的值为y， a[xx] 的a应该使用赋值后的，
+     *
+     *    还有
+     *      a[b],b=x,y
+     *      的情况，也需要对b进行一次拷贝
+     *
+     *      VINDEXED的 索引用寄存器下标表示，赋值过程中会有
+     *        a[b],b=x,y的情况
+     *
+     *      VINDEXUP，VINDEXDI,VINDEXDSTR 的索引 要么是常量数组，要么就是值本身。
+     *      在赋值过程中不会发生改变。因为不可能有
+     *         a['123'],'123' =x,y 的情况
+     *
+     *
+     *
+     */
+    public static void checkConflict(LexState ls,LeftAssignVars lh,ExpDesc v){
+        FuncState fs = ls.getFs();
+        //如果需要拷贝值，放在extra寄存器里面
+        int extra = fs.freereg;
+        boolean conflict = false;
+        for(;lh != null;lh =lh.prev){
+            //前几个表达式是给表赋值
+            if(isIndexed(lh.v.getK())){
+                //table是一个 upvalue，其索引使用的是 "常量"，
+                if(lh.v.getK() == VINDEXUP){
+                    //tt代表之前赋值用到的table
+                    // tt == v.getinfo 表示之前用的table 和 现在 v中的变量
+                    //是同一个，有冲突。
+                    if(v.getK() == VUPVAL && lh.v.getTt() == v.getInfo()){
+                        // 表示lh中使用的table 是 当前被赋值的变量
+                        conflict = true;
+                        //使用拷贝的内容 去赋值
+                        lh.v.setK(VINDEXSTR);
+                        lh.v.setTt(extra);
+                    }
+                } else{
+                    //table 放在寄存器里面
+                    // a[b],a=x,y
+                    if(v.getK() == VLOCAL && lh.v.getTt() == v.getIdx()){
+                        //表示lh中使用的table是当前被赋值的变量
+                        conflict =true;
+                        lh.v.setTt(extra);
+                    }
+                    // a[b],b=x,y的情形，需要实现拷贝b
+                    //VINDEXED比较特殊，索引可以是寄存器下标
+                    //而寄存器里面的值是会发生改变的
+                    //如果有冲突，需要拷贝一份副本
+                    if(lh.v.getK()==VINDEXED && v.getK() == VLOCAL
+                        && lh.v.getIdx() == v.getIdx()){
+                        conflict = true;
+                        lh.v.setIdx(extra);
+                    }
+                }
+            }
+        }
+
+        if(conflict){
+            //拷贝 upvalue 或者local,到extra的位置
+            if(v.getK() == VLOCAL){
+                luaK_codeABC(fs,OP_MOVE,extra,v.getRidx(),0);
+            }else{
+                luaK_codeABC(fs,OP_GETUPVAL,extra,v.getInfo(),0);
+            }
+
+            luaK_reserveRegs(fs,1);
+        }
+    }
 
 
+    /**
+     *
+     * 解析有多个赋值变量的语句
+     *
+     * 第一个赋值的内容，已经在外部被解析过了
+     *
+     * assignment -> suffixedexp restassign
+     *
+     * restassin -> ',' suffixedexp restassign | '=' explist
+     */
+    public static void restAssign(LexState ls,LeftAssignVars lh,int nvars){
+        ExpDesc e = new ExpDesc();
+        //只读的变量不能赋值
+        checkReadOnly(ls,lh.v);
+        if(testNext(ls,',')){
+            //a,b,c,d=x,x,x 说名还有左侧的赋值变量还没有读完
+            LeftAssignVars nv = new LeftAssignVars();
+            nv.prev = lh;
+            suffixedExp(ls,nv.v);
+            //检查冲突
+            if(!isIndexed(nv.v.getK())){
+                checkConflict(ls,lh,nv.v);
+            }
+            restAssign(ls,nv,nvars+1);
+        } else{
+            // 读取到了 =， 接着处理等于号后面的多个表达式
+            check_next1(ls,'=');
+            //返回表达式的数量
+            int nextps = expList(ls,e);
+            if(nextps != nvars){
+                adjustAssign(ls,nvars,nextps,e);
+            } else{
+                luaK_setOneRet(ls.getFs(),e);
+                luaK_storevar(ls.getFs(),lh.v,e);
+                return;
+            }
+
+        }
+
+        initExp(e,VNONRELOC,ls.getFs().freereg-1);
+        luaK_storevar(ls.getFs(),lh.v,e);
+    }
+
+    /**
+     * 条件跳转
+     * cond -> exp
+     */
+    public static int cond(LexState ls){
+        ExpDesc v = new ExpDesc();
+        expr(ls,v);
+        if(v.k == null){
+            v.k = VFALSE;
+        }
+        luaK_goIfTrue(ls.getFs(),v);
+        return v.getF();
+    }
+    /**
+     * goto语句
+     */
+    public static void gotoStat(LexState ls){
+        FuncState fs = ls.getFs();
+        int line = ls.getLinenumber();
+        TString name = strCheckName(ls);
+        LabelDesc lb = findLabel(ls,name);
+        if(lb == null){
+            //label还没有定义，直接jump，等label被定义后再处理
+            newGotoEntry(ls,name,line,luaK_Jump(fs));
+        } else{
+            //label是存在的,向后跳
+            int lbLevel = regLevel(fs,lb.nactvar);
+            //跳到的位置，变量少于现在的，如果有upval，需要进行关闭
+            /**
+             * 如下面的指令所示，跳到label xx时，要关闭upval类型的变量 a,b
+             * label xx
+             * upval a
+             * upval b
+             * jump xx
+             */
+            if(luaY_nVarsStack(fs) > lbLevel){
+                luaK_codeABC(fs,OP_CLOSE,lbLevel,0,0);
+            }
+            //创建一个jump，跳到label
+            luaK_patchList(fs,luaK_Jump(fs),lb.pc);
+        }
+    }
+    /**
+     * break
+     */
+    public static void breakStat(LexState ls){
+        int line = ls.getLinenumber();
+        luaX_Next(ls);
+        newGotoEntry(ls,LString.newStr(ls.getL(),"break"),line,luaK_Jump(ls.getFs()));
+    }
+
+    /**
+     * 检查label是不是已经被定义过了
+     */
+    public static void checkRepeated(LexState ls,TString name){
+        LabelDesc lb = findLabel(ls,name);
+        if(lb != null){
+            System.err.println("label is already defined");
+        }
+    }
+    /**
+     * 定义label
+     * label ->  '::' NMAE '::"
+     */
+    public static void labelStat(LexState ls,TString name,int line){
+        checkNext(ls,TK_DBCOLON.getT());
+        while(ls.getCurrent() == ';'|| ls.getT().getToken() == TK_DBCOLON.getT()){
+            statement(ls);
+        }
+        checkRepeated(ls,name);
+        createLabbel(ls,name,line,blockFollow(ls,false));
+
+    }
+    /**
+     * while
+     *
+     * whilestat -> WHILE cond DO block END
+     */
+    public static void whileStat(LexState ls,int line){
+        FuncState fs = ls.getFs();
+        int whileInit;
+        int condExit;
+        BlockCnt bl = new BlockCnt();
+        luaX_Next(ls);
+        whileInit =luaK_GetLabel(fs);
+        condExit = cond(ls);
+        enterBlock(fs,bl,true);
+        checkNext(ls,TK_DO.getT());
+        block(ls);
+        luaK_JumpTo(fs,whileInit);
+        checkMatch(ls,TK_END.getT(),TK_WHILE.getT(),line);
+        leaveBlock(fs);
+        luaK_patchToHere(fs,condExit);
+    }
+    /**
+     * repeat -> REPEAT block  UNTIL cond
+     */
+    public static void repeatStat(LexState ls, int line){
+        int condExit;
+        FuncState fs = ls.getFs();
+        int repeatInit = luaK_GetLabel(fs);
+        BlockCnt bl1=new BlockCnt(),bl2 =new BlockCnt();
+        enterBlock(fs,bl1,true);
+        enterBlock(fs,bl2,false);
+        luaX_Next(ls);
+        statList(ls);
+        checkMatch(ls,TK_UNTIL.getT(),TK_REPEAT.getT(),line);
+        condExit = cond(ls);
+        leaveBlock(fs);
+        if(bl2.upval){
+            int exit = luaK_Jump(fs);
+            luaK_patchToHere(fs,condExit);
+            luaK_codeABC(fs,OP_CLOSE,regLevel(fs,bl2.nactvar),0,0);
+            condExit = luaK_Jump(fs);
+            luaK_patchToHere(fs,exit);
+        }
+        luaK_patchList(fs,condExit,repeatInit);
+        leaveBlock(fs);
+    }
+    /**
+     * 读取一个 表达式，将结果放到下个 stack slot
+     */
+    public static void exp1(LexState ls){
+        ExpDesc e = new ExpDesc();
+        expr(ls,e);
+        luaK_exp2nextReg(ls.getFs(),e);
+    }
+    /**
+     * 修正jump指令的跳转位置
+     */
+    public static void fixForJump(FuncState fs,int pc,int dest,boolean back){
+        Instruction jmp = fs.getProto().getInstruction(pc);
+        int offset = dest - (pc+1);
+        if(back){
+            offset = -offset;
+        }
+        Instructions.setArgsBx(jmp,offset);
+    }
+
+    /**
+     * for循环
+     * forBody -> DO block
+     */
+    //整数for循环
+    public static OpCode[] forpreg = {OP_FORPREP,OP_TFORPREP};
+    //泛型 for循环
+    public static OpCode[] forloop = {OP_FORLOOP,OP_TFORLOOP};
+
+    public static void forBody(LexState ls,int base,int line,int nvars,int isgen){
+        BlockCnt bl = new BlockCnt();
+        FuncState fs = ls.getFs();
+        int prep,endfor;
+        checkNext(ls,TK_DO.getT());
+        prep = luaK_codeABx(fs,forpreg[isgen],base,0);
+        enterBlock(fs,bl,false);
+        adjustLocalVars(ls,nvars);
+        luaK_reserveRegs(fs,nvars);
+        block(ls);
+        leaveBlock(fs);
+        fixForJump(fs,prep,luaK_GetLabel(fs),false);
+        if(isgen == 1){
+            luaK_codeABC(fs,OP_TFORCALL,base,0,nvars);
+            luaK_fixline(fs,line);
+        }
+        endfor = luaK_codeABC(fs,forloop[isgen],base,0,nvars);
+        fixForJump(fs,endfor,prep+1,true);
+        luaK_fixline(fs,line);
+    }
+
+    /**
+     * fornum -> NAME = exp,exp[,exp] forbody
+     * @param ls
+     * @param varname
+     * @param line
+     */
+    public static void fornum(LexState ls, TString varname,int line){
+        FuncState fs = ls.getFs();
+        int base = fs.getFreereg();
+        newLocalVar(ls,new TString("(for state)"));
+        newLocalVar(ls,new TString("(for state)"));
+        newLocalVar(ls,new TString("(for state)"));
+        newLocalVar(ls,varname);
+        checkNext(ls,'=');
+        //循环初始值
+        exp1(ls);
+        checkNext(ls,',');
+        exp1(ls);
+        if(testNext(ls,',')){
+            exp1(ls);
+        } else{
+            //默认步长1
+            luaK_int(fs,fs.freereg,1);
+            luaK_reserveRegs(fs,1);
+        }
+        //3个控制循环的变量
+        adjustLocalVars(ls,3);
+        forBody(ls,base,line,1,0);
+
+    }
+    /**
+     * 泛型for循环
+     * forlist -> NAME {, NAME} IN explsit forbody
+     */
+    public static void forList(LexState ls,TString indexName){
+        FuncState fs = ls.getFs();
+        ExpDesc e = new ExpDesc();
+        int nvars = 5;  /* gen, state, control, toclose, 'indexname' */
+        int line;
+        int base = fs.getFreereg();
+        /* create control variables */
+        newLocalVar(ls, new TString("(for state)"));
+        newLocalVar(ls, new TString("(for state)"));
+        newLocalVar(ls, new TString("(for state)"));
+        newLocalVar(ls, new TString("(for state)"));
+        newLocalVar(ls, indexName);
+        while (testNext(ls, ',')) {
+            newLocalVar(ls, strCheckName(ls));
+            nvars++;
+        }
+        checkNext(ls, TK_IN.getT());
+        line = ls.getLinenumber();
+        adjustAssign(ls, 4, expList(ls,e), e);
+        adjustLocalVars(ls, 4);  /* control variables */
+        markToBeClosed(fs);  /* last control var. must be closed */
+        luaK_checkStack(fs, 3);  /* extra space to call generator */
+        forBody(ls, base, line, nvars - 4, 1);
+    }
+    /**
+     * for语句
+     * forstat -> FOR (fornum | forlist) END
+     */
+    public static void forStat(LexState ls,int line){
+        FuncState fs = ls.getFs();
+        TString varname;
+        BlockCnt bl = new BlockCnt();
+        enterBlock(fs,bl,true);
+        luaX_Next(ls);
+        varname = strCheckName(ls);
+        switch (ls.getCurrTokenNum()){
+            case '=':fornum(ls,varname,line);break;
+            case ',':forList(ls,varname);break;
+            default:if(ls.getCurrTokenNum() == TK_IN.getT()){
+                forList(ls,varname);break;
+            }
+                System.err.println("语法错误");
+        }
+        checkMatch(ls,TK_END.getT(),TK_FOR.getT(),line);
+        leaveBlock(fs);
+    }
+
+    /**
+     * test_then_block -> [IF| ELSEIF] cond THEN block
+     * @param ls
+     * @param excapeList
+     * @return
+     */
+    public static int testThenBlock(LexState ls, ExpDesc escapeList){
+        BlockCnt bl = new BlockCnt();
+        FuncState fs = ls.getFs();
+        ExpDesc v = new ExpDesc();
+        //如果condition是错的，用于跳过 then后面的内容
+        int jumpFalse = 0;
+        luaX_Next(ls);
+        expr(ls,v);
+        checkNext(ls,TK_THEN.getT());
+        // if xx then break
+        if(ls.getCurrTokenNum() == TK_BREAK.getT()){
+            int line = ls.getLinenumber();
+            luaK_goIfFalse(fs,v);
+            luaX_Next(ls);
+            enterBlock(fs,bl,false);
+            newGotoEntry(ls,LString.newStr(ls.getL(),"break"),line,v.t);
+            while(testNext(ls,';'));
+            if(blockFollow(ls,false)){
+                leaveBlock(fs);
+                return jumpFalse;
+            } else{
+                //if conditon is false, skip then
+                jumpFalse = luaK_Jump(fs);
+            }
+        } else{
+            luaK_goIfTrue(fs,v);
+            enterBlock(fs,bl,false);
+            jumpFalse = v.getF();
+        }
+        //then part
+        statList(ls);
+        leaveBlock(fs);
+        if(ls.getCurrTokenNum()== TK_ELSE.getT() || ls.getCurrTokenNum() == TK_ELSEIF.getT()){
+            luaK_Concat(fs,escapeList,luaK_Jump(fs),true);
+        }
+
+        luaK_patchToHere(fs,jumpFalse);
 
 
+        return 0;
+    }
+
+    /**
+     * if语句
+     * /* ifstat -> IF cond THEN block {ELSEIF cond THEN block} [ELSE block] END
+     * @param ls
+     * @param line
+     */
+    public static void ifStat(LexState ls,int line){
+        FuncState fs = ls.getFs();
+
+        //仅仅用来存储 一个 整数
+        ExpDesc escapeList = new ExpDesc();
+        escapeList.setT(NO_JUMP);
+        testThenBlock(ls,escapeList);
+        while(ls.getCurrTokenNum() == TK_ELSEIF.getT()){
+            testThenBlock(ls,escapeList);
+        }
+        if(testNext(ls,TK_ELSE.getT())){
+            block(ls);
+        }
+        checkMatch(ls,TK_END.getT(),TK_IF.getT(),line);
+        luaK_patchToHere(fs,escapeList.getT());
+    }
+    public static void localFunc(LexState ls){
+        ExpDesc b = new ExpDesc();
+        FuncState fs = ls.getFs();
+        int fvar = fs.getNactvar();
+        newLocalVar(ls,strCheckName(ls));
+        //函数名作为一个参数
+        adjustLocalVars(ls,1);
+        body(ls,b,false,ls.getLinenumber());
+        localDebugInfo(fs,fvar).setStartpc(fs.pc);
+
+    }
+    /**
+     * 获取一个 local的属性 例如 const, close
+     * ATTRIB -> ['<' Name '>']
+     */
+    public static int getLocalAttribute(LexState ls){
+        if(testNext(ls,'<')){
+            String attr = strCheckName(ls).getContents();
+            checkNext(ls,'>');
+            if("const".equals(attr)){
+                return RDKCONST;
+            } else if("close".equals(attr)){
+                return RDKTOCLOSE;
+            } else{
+                System.err.println("unknow attribute");
+            }
+
+        }
+
+        return VDKREG;
+    }
+
+    public static void checkToClose(FuncState fs,int level){
+        if(level !=1){
+            markToBeClosed(fs);
+            luaK_codeABC(fs,OP_TBC,regLevel(fs,level),0,0);
+        }
+    }
+
+    /**
+     * stat -> LOCAL NAME ATTRIB { ',' NAME ATTRIB } ['=' explist]
+     * @param ls
+     */
+    public static void localStat(LexState ls){
+        FuncState fs = ls.getFs();
+        // to-be-closed 变量的下标
+        int toclose = -1;
+        //最后一个变量
+        Vardesc var;
+        int vidx,kind,nvars=0,nextexps;
+        ExpDesc e  = new ExpDesc();
+        do{
+            vidx = newLocalVar(ls,strCheckName(ls));
+            kind = getLocalAttribute(ls);
+            getLocalVarDesc(fs,vidx).kind =kind;
+            if(kind == RDKTOCLOSE){
+                if(toclose != -1){
+                    System.err.println("error");
+                }
+                toclose = fs.nactvar +nvars;
+            }
+            nvars++;
+        } while(testNext(ls,','));
+        if(testNext(ls,'=')){
+            nextexps = expList(ls,e);
+        } else{
+            e.setK(VVOID);
+            nextexps = 0;
+        }
+        //获取最后一个变量
+        var = getLocalVarDesc(fs,vidx);
+        if(nvars == nextexps && var.getKind() == RDKCONST && luaK_Exp2Const(fs,e,var.getK())){
+            var.kind = RDKCTC;
+            adjustLocalVars(ls,nvars -1 );
+            fs.nactvar++;
+        } else{
+            adjustAssign(ls,nvars,nextexps,e);
+            adjustLocalVars(ls,nvars);
+        }
+        checkToClose(fs,toclose);
+    }
+
+    /**
+     *
+     *  /* funcname -> NAME {fieldsel} [':' NAME]
+     */
+    public static boolean funcname(LexState ls,ExpDesc v){
+        boolean isMethod =false;
+        singelVar(ls,v);
+        while(ls.getCurrTokenNum() =='.'){
+            fieldSel(ls,v);
+        }
+        if(ls.getCurrTokenNum() == ':'){
+            isMethod = true;
+            fieldSel(ls,v);
+        }
+
+        return isMethod;
+    }
+
+    /**
+     * funcstat -> FUNCTION  funname body
+     */
+    public static void funcStat(LexState ls, int line){
+        boolean isMethod;
+        ExpDesc v = new ExpDesc(),b = new ExpDesc();
+        luaX_Next(ls);
+        isMethod = funcname(ls,v);
+        body(ls,b,isMethod,line);
+        checkReadOnly(ls,v);
+        luaK_storevar(ls.getFs(),v,b);
+        luaK_fixline(ls.getFs(),line);
+    }
+
+    /** stat -> func | assignment */
+    public static void exprStat(LexState ls){
+        FuncState fs = ls.getFs();
+        LeftAssignVars v = new LeftAssignVars();
+        suffixedExp(ls,v.v);
+        //赋值表达式
+        if(ls.getCurrTokenNum() =='=' || ls.getCurrTokenNum() == ','){
+            v.prev = null;
+            restAssign(ls,v,1);
+
+        } else{
+            Instruction ins = getInstruction(fs,v.v);
+            Instructions.setArgC(ins,1);
+
+        }
+    }
+    /** stat -> RETURN [explist] [';'] */
+    public static void retStat(LexState ls){
+       FuncState fs = ls.getFs();
+       ExpDesc e = new ExpDesc();
+       //返回值数量
+       int nret;
+       //返回值存放的第一个 slot
+       int first = luaY_nVarsStack(fs);
+       if(blockFollow(ls,true) || ls.getCurrTokenNum() == ';'){
+           nret = 0;
+       } else{
+           nret = expList(ls,e);
+           if(hasMultiRet(e)){
+               luaK_setReturns(fs,e,LUA_MULTRET);
+               if(e.getK() == VCALL && nret == 1 && !fs.getBlockCnt().insidetbc){
+                   Instructions.setOpCode(getInstruction(fs,e),OP_TAILCALL);
+               }
+               nret = LUA_MULTRET;
+           } else{
+               //只有一个返回值
+               if(nret == 1){
+                    first = luaK_exp2anyreg(fs,e);
+               } else{
+                   luaK_exp2nextReg(fs,e);
+               }
+           }
+       }
+       luaK_Ret(fs,first,nret);
+       testNext(ls,';');
+    }
+
+    /**
+     * main func
+     */
+    public static void mainfunc(LexState ls,FuncState fs){
+        BlockCnt bl = new BlockCnt();
+        UpvalDesc env;
+        openFunc(ls,fs,bl);
+        setVararg(fs,0);
+        env = allocUpValue(fs);
+        env.setInstack(true);
+        env.setIdx(0);
+        env.setKind(VDKREG);
+        env.setName(new TString(ls.getEnvn()));
+        // read first token
+        luaX_Next(ls);
+        statList(ls);
+        check(ls,TK_EOS);
+        closeFunc(ls);
+
+    }
+
+    public Closure luaY_Parser(LuaState l,DynData dyd,String name,int firstchar){
 
 
-
-
-
-
+        return null;
+    }
 
 
 }

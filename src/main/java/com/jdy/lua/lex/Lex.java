@@ -152,7 +152,13 @@ public class Lex {
         }
         return false;
     }
-
+    public static boolean checkNext(LexState ls,int token){
+        if(ls.getT().getToken() == token){
+            luaX_Next(ls);
+            return true;
+        }
+        return false;
+    }
     public static boolean check_next2(LexState ls, String str) {
         if (ls.current == str.charAt(0) || ls.current == str.charAt(1)) {
             saveAndNext(ls);

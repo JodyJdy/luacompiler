@@ -3,7 +3,7 @@ package com.jdy.lua.lparser;
 import lombok.Data;
 
 @Data
-public class LableDesc {
+public class LabelDesc {
     String name;
     int pc;  /** position in code */
     int line;  /** line where it appeared */

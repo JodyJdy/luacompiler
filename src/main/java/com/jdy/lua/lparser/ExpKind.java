@@ -34,7 +34,7 @@ public enum ExpKind {
                 ind.idx = key's R index */
     VINDEXUP(13),  /** indexed upvalue;
                 ind.t = table upvalue;
-                ind.idx = key's K index */
+                ind.idx = key's K index  */
     VINDEXI(14), /** indexed variable with constant integer;
                 ind.t = table register;
                 ind.idx = key's value */

@@ -602,7 +602,7 @@ public class LCodes {
      ** Ensures final expression result is either in a register
      ** or in an upvalue.
      */
-    void luaK_exp2anyregup (FuncState fs, ExpDesc e) {
+   public static void luaK_exp2anyregup (FuncState fs, ExpDesc e) {
         if (e.getK() != VUPVAL || hasJumps(e))
             luaK_exp2anyreg(fs, e);
     }
@@ -665,7 +665,7 @@ public class LCodes {
     /**
      *  生成code存储表达式 ex的result 到   var上面
      *   对于t[a] = x
-     *   来说  t[a]就行 var;  x 就是ex
+     *   来说  t[a]就是 var;  x 就是ex
      */
     public static void luaK_storevar (FuncState fs,ExpDesc var, ExpDesc ex) {
         switch (var.getK()) {
@@ -1505,6 +1505,12 @@ public class LCodes {
      */
     public static int luaK_Jump(FuncState fs){
         return codesJ(fs,OP_JMP,NO_JUMP,0);
+    }
+    /**
+     * 跳到指定的位置
+     */
+    public static void  luaK_JumpTo(FuncState fs,int t){
+        luaK_patchList(fs,luaK_Jump(fs),t);
     }
     /**
      * 创建一个 return 指令

@@ -7,6 +7,6 @@ import java.util.List;
 
 @Data
 public class LabelList {
-    List<LableDesc> arr = new ArrayList<>();  /* array */
+    List<LabelDesc> arr = new ArrayList<>();  /* array */
     int n;  /* number of entries in use */
 }
