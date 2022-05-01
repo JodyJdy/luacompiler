@@ -79,7 +79,7 @@ public class TValue extends Value {
         return Objects.hash(super.hashCode(), valueType, tbcList);
     }
 
-    public static TValue strValue(TString t){
+    public static TValue strValue(String t){
         TValue v = new TValue();
         v.setValueType(LUA_TSTRING);
         v.setObj(t);

@@ -1,7 +1,5 @@
 package com.jdy.lua.lopcodes;
 
-import jdk.nashorn.internal.runtime.regexp.joni.constants.internal.OPCode;
-
 /**
  * 定义字节码中 参数的形式
  */

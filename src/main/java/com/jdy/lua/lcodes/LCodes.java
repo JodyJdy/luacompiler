@@ -2,7 +2,6 @@ package com.jdy.lua.lcodes;
 
 import com.jdy.lua.lex.LexState;
 import com.jdy.lua.lobjects.Proto;
-import com.jdy.lua.lobjects.TString;
 import com.jdy.lua.lobjects.TValue;
 import com.jdy.lua.lopcodes.Instruction;
 import com.jdy.lua.lopcodes.OpCode;
@@ -13,7 +12,8 @@ import com.jdy.lua.ltm.TMS;
 import java.util.List;
 
 import static com.jdy.lua.LuaConstants.*;
-import static com.jdy.lua.lcodes.BinOpr.*;
+import static com.jdy.lua.lcodes.BinOpr.OPR_EQ;
+import static com.jdy.lua.lcodes.BinOpr.OPR_NE;
 import static com.jdy.lua.lopcodes.Instructions.getOpCode;
 import static com.jdy.lua.lopcodes.Instructions.*;
 import static com.jdy.lua.lopcodes.OpCode.*;
@@ -183,7 +183,7 @@ public class LCodes {
         return k;
     }
 
-    public static int stringK(FuncState fs, TString t){
+    public static int stringK(FuncState fs, String t){
         TValue v = TValue.strValue(t);
         return addK(fs,v,v);
     }
@@ -360,7 +360,7 @@ public class LCodes {
      * info存储，字符串常量的下标
      */
     public static void str2K(FuncState fs, ExpDesc e){
-        e.setInfo(stringK(fs,new TString(e.getStrval())));
+        e.setInfo(stringK(fs,e.getStrval()));
         e.setK(VK);
     }
     /**
@@ -630,7 +630,7 @@ public class LCodes {
                 case VNIL: info = nilT(fs); break;
                 case VKINT: info = luaK_intK(fs, e.getIval()); break;
                 case VKFLT: info = luaK_Number(fs, e.getNval()); break;
-                case VKSTR: info = stringK(fs, new TString(e.getStrval())); break;
+                case VKSTR: info = stringK(fs, e.getStrval()); break;
                 case VK: info =e.getInfo(); break;
                 default: return false;  /* not a constant */
             }

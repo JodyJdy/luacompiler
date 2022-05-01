@@ -29,10 +29,7 @@ public class Proto extends GcObject {
      * 存放行号的
      */
     List<Integer> lineInfoss = new ArrayList<>();
-    /**
-     * 没有使用到
-     */
-    List<AbsLineInfo> absLineInfos = new ArrayList<>();
+  ;
     List<LocalVar> localVars = new ArrayList<>(); /** information about local variables (debug information) */
     String source;
     List<GcObject> gcList = new ArrayList<>();

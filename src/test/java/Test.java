@@ -1,16 +1,13 @@
-import com.jdy.lua.lctype.LCtype;
 import com.jdy.lua.lex.Lex;
 import com.jdy.lua.lex.LexState;
-import com.jdy.lua.lex.Reserved;
 import com.jdy.lua.lex.Token;
+import com.jdy.lua.lex.TokenEnum;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.util.Formatter;
 import java.util.Scanner;
-
-import static com.jdy.lua.lex.Reserved.TK_EOS;
 
 public class Test {
     public static void main(String[] args) throws Exception {
@@ -38,14 +35,8 @@ public class Test {
         lexState.setReader(new FileInputStream(new File("src/test/b.lua")));
         Lex.next(lexState);
         while(lexState.getCurrent() != Lex.EOZ){
-            int token = Lex.llex(lexState,lexState.getT());
-            Reserved reserved = Reserved.getReserved(token);
-            Reserved r = reserved;
-            if(r != null){
-                System.out.println(r);
-            } else{
-                System.out.println((char)token);
-            }
+            TokenEnum token = Lex.llex(lexState,lexState.getT());
+            System.out.println(token);
         }
 
         System.out.println();

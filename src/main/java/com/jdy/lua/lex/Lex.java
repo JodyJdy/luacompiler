@@ -1,11 +1,7 @@
 package com.jdy.lua.lex;
 
-import com.jdy.lua.lctype.LCtype;
-import com.jdy.lua.lobjects.TString;
 import com.jdy.lua.lstate.LuaState;
 import com.jdy.lua.lstring.LString;
-
-import static com.jdy.lua.lex.LexContants.*;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -13,8 +9,7 @@ import java.util.Formatter;
 import java.util.List;
 
 import static com.jdy.lua.lctype.LCtype.*;
-
-import static com.jdy.lua.lex.Reserved.*;
+import static com.jdy.lua.lex.TokenEnum.*;
 
 public class Lex {
 
@@ -25,10 +20,7 @@ public class Lex {
 
     public static String LUA_ENV = "_ENV";
 
-    /**
-     * while 以及之前的字符串 保留到 字符串常量表中
-     */
-    public static int NUM_RESERVED = Reserved.values().length;
+
 
     /**
      * 保留词
@@ -44,27 +36,18 @@ public class Lex {
     };
 
     void luaX_Init(LuaState luaState) {
-        TString e = LString.newStr(luaState, LUA_ENV);
-        //gc部分代码，先不处理
-        //处理保留的关键字
-        for (int i = 0; i < NUM_RESERVED; i++) {
-            TString s = LString.newStr(luaState, luaX_tokens[i]);
-            s.setExtra(i + 1);
-        }
+
 
     }
 
     void luaX_SetInput(LuaState l, LexState lexState, String source, int firstChar) {
-        lexState.t.token = 0;
         lexState.L = l;
         lexState.current = firstChar;
-        lexState.lookahead.token = TK_EOS.t;
         lexState.fs = null;
         lexState.linenumber = 1;
         lexState.lastline = 1;
         lexState.source = source;
-        lexState.envn = LString.newStr(lexState.L, LUA_ENV).getContents();
-
+        lexState.envn = LString.newStr(lexState.L, LUA_ENV);
     }
 
 
@@ -79,20 +62,20 @@ public class Lex {
         }
     }
 
-    public static boolean currIsNewLine(LexState lexState) {
+    private static boolean currIsNewLine(LexState lexState) {
         return lexState.current == '\n' || lexState.current == '\r';
     }
 
-    public static void saveAndNext(LexState lexState) {
+    private static void saveAndNext(LexState lexState) {
         lexState.buffer.add(lexState.current);
         next(lexState);
     }
 
-    public static void save(LexState lexState, int c) {
+    private static void save(LexState lexState, int c) {
         lexState.buffer.add(c);
     }
 
-    public static String buffer2Str(LexState lexState, int start, int len) {
+    private static String buffer2Str(LexState lexState, int start, int len) {
 
         StringBuilder sb = new StringBuilder();
         for (int i = start; i < start + len; i++) {
@@ -103,7 +86,7 @@ public class Lex {
 
     }
 
-    public static void bufferRemove(LexState lexState, int n) {
+    private static void bufferRemove(LexState lexState, int n) {
         List<Integer> lex = lexState.buffer;
         int i = 0;
         while (i < n) {
@@ -112,31 +95,22 @@ public class Lex {
         }
     }
 
-    public static void resetBuffer(LexState lexState) {
+    private static void resetBuffer(LexState lexState) {
         lexState.buffer = new ArrayList<>();
     }
 
-    public static String luaXToken2Str(LexState lexState, int token) {
+    public static String luaXToken2Str(LexState lexState, TokenEnum token) {
 
-        if (token < FIRST_RESERVED) {
-            if (LCtype.isPrint(token)) {
-                return format("'%c'", token);
-            }
-            return format("'<\\%d>'", token);
-        } else {
-            String str = luaX_tokens[token - FIRST_RESERVED];
-            if (token < TK_EOS.t) {
-                return format("'%s'", str);
-            }
-            return str;
-        }
+
+        return format("'%s'", token.getStr());
+
 
     }
 
     /**
      * 增加行号
      */
-    public static void incLineNumber(LexState ls) {
+    private static void incLineNumber(LexState ls) {
         int old = ls.current;
         next(ls);
         if (currIsNewLine(ls) && ls.current != old) {
@@ -152,14 +126,14 @@ public class Lex {
         }
         return false;
     }
-    public static boolean checkNext(LexState ls,int token){
-        if(ls.getT().getToken() == token){
+    public static boolean checkNext(LexState ls,TokenEnum token){
+        if(ls.getCurTokenEnum() == token){
             luaX_Next(ls);
             return true;
         }
         return false;
     }
-    public static boolean check_next2(LexState ls, String str) {
+    private static boolean check_next2(LexState ls, String str) {
         if (ls.current == str.charAt(0) || ls.current == str.charAt(1)) {
             saveAndNext(ls);
             return true;
@@ -171,7 +145,7 @@ public class Lex {
      * 读取数字
      */
 
-    public static int read_numeral(LexState ls, Token token) {
+    private static TokenEnum read_numeral(LexState ls, Token token) {
         char first = (char) ls.current;
         saveAndNext(ls);
         boolean isHex = false;
@@ -227,10 +201,10 @@ public class Lex {
         }
         if (isFloat) {
             token.r = val + valf;
-            return TK_FLT.t;
+            return FLOAT;
         } else {
             token.i = val;
-            return TK_INT.t;
+            return INT;
         }
     }
 
@@ -239,7 +213,7 @@ public class Lex {
      * <p>
      * 跳过开头的符号， 或者结尾的符号
      */
-    public static int skipSeq(LexState ls) {
+    private static int skipSeq(LexState ls) {
         int count = 0;
         int s = ls.current;
         saveAndNext(ls);
@@ -253,13 +227,11 @@ public class Lex {
     /**
      * seq代表序列开头的部分，开头和结尾要保持一致
      */
-    public static void readLongString(LexState ls, Token token, int seq) {
-        int line = ls.linenumber;
+    private static void readLongString(LexState ls, Token token, int seq) {
         saveAndNext(ls);
         if (currIsNewLine(ls)) {
             incLineNumber(ls);
         }
-        boolean loop = true;
 
         endLoop:
         for (; ; ) {
@@ -299,7 +271,7 @@ public class Lex {
     /**
      * del means delimeter
      */
-    public static void readString(LexState ls, int del, Token token) {
+    private static void readString(LexState ls, int del, Token token) {
         //save delimeter
         saveAndNext(ls);
         while (ls.current != del) {
@@ -355,7 +327,7 @@ public class Lex {
     }
 
 
-    public static int llex(LexState ls,Token token){
+    public static TokenEnum llex(LexState ls,Token token){
         resetBuffer(ls);
         for(;;){
             switch (ls.current){
@@ -371,7 +343,7 @@ public class Lex {
                 //可能是操作符，也可能是注释
                 case '-':{
                     next(ls);
-                    if (ls.current != '-') return '-';
+                    if (ls.current != '-') return SUB;
                     //注释
                     next(ls);
                     //长注释
@@ -395,58 +367,58 @@ public class Lex {
                     int seq = skipSeq(ls);
                     if(seq >=2){
                         readLongString(ls,token,seq);
-                        return TK_STRING.t;
+                        return STRING;
                     } else if(seq == 0){
                         System.err.println("invalid long string delimiter");
                     }
                     // 普通 [ 符号
-                    return '[';
+                    return MID_LEFT;
                 }
 
                 case '=': {
                     next(ls);
-                    if (check_next1(ls, '=')) return TK_EQ.t;  /* '==' */
-                    else return '=';
+                    if (check_next1(ls, '=')) return EQ;  /* '==' */
+                    else return ASSIGN;
                 }
                 case '<': {
                     next(ls);
-                    if (check_next1(ls, '=')) return TK_LE.t;  /* '<=' */
-                    else if (check_next1(ls, '<')) return TK_SHL.t;  /* '<<' */
-                    else return '<';
+                    if (check_next1(ls, '=')) return LE;  /* '<=' */
+                    else if (check_next1(ls, '<')) return LSHIFT;  /* '<<' */
+                    else return LT;
                 }
                 case '>': {
                     next(ls);
-                    if (check_next1(ls, '=')) return TK_GE.t;  /* '>=' */
-                    else if (check_next1(ls, '>')) return TK_SHR.t;  /* '>>' */
-                    else return '>';
+                    if (check_next1(ls, '=')) return GE;  /* '>=' */
+                    else if (check_next1(ls, '>')) return RSHIFT;  /* '>>' */
+                    else return GT;
                 }
                 case '/': {
                     next(ls);
-                    if (check_next1(ls, '/')) return TK_IDIV.t;  /* '//' */
-                    else return '/';
+                    if (check_next1(ls, '/')) return IDIV;  /* '//' */
+                    else return DIV;
                 }
                 case '~': {
                     next(ls);
-                    if (check_next1(ls, '=')) return TK_NE.t;  /* '~=' */
-                    else return '~';
+                    if (check_next1(ls, '=')) return NE;  /* '~=' */
+                    else return BITXOR;
                 }
                 case ':': {
                     next(ls);
-                    if (check_next1(ls, ':')) return TK_DBCOLON.t;  /* '::' */
-                    else return ':';
+                    if (check_next1(ls, ':')) return DOU_COLON;  /* '::' */
+                    else return COLON;
                 }
                 case '"': case '\'': {  /* short literal strings */
                     readString(ls, ls.current, token);
-                    return TK_STRING.t;
+                    return STRING;
                 }
                 case '.': {  /* '.', '..', '...', or number */
                     saveAndNext(ls);
                     if (check_next1(ls, '.')) {
                         if (check_next1(ls, '.'))
-                            return TK_DOTS.t;  /* '...' */
-                        else return TK_CONCAT.t;   /* '..' */
+                            return VARARG;  /* '...' */
+                        else return CAT;   /* '..' */
                     }
-                    else if (!isDigit(ls.current)) return '.';
+                    else if (!isDigit(ls.current)) return DOT;
                     else return read_numeral(ls, token);
                 }
                 case '0': case '1': case '2': case '3': case '4':
@@ -454,7 +426,7 @@ public class Lex {
                     return read_numeral(ls, token);
                 }
                 case EOZ: {
-                    return TK_EOS.t;
+                    return EOF;
                 }
                 /** identifier or reserved word? */
                 default:{
@@ -462,42 +434,41 @@ public class Lex {
                         do{
                             saveAndNext(ls);
                         }while (isalNum(ls.current));
-
-                        String s = buffer2Str(ls,0,ls.buffer.size());
-                        token.s = s;
+                        token.s = buffer2Str(ls,0,ls.buffer.size());
                         //判断是否是保留词汇
-                        Reserved r = Reserved.isReserved(s);
+                         TokenEnum r = TokenEnum.reservedToken(token.s);
                         if(r != null){
-                            return r.t;
+                           return r;
                         }
-                        return TK_NAME.t;
+                        return NAME;
                     }
                     int c = ls.current;
                     next(ls);
-                    return c;
+                    return TokenEnum.getTokenEnum((char)c);
                 }
             }
         }
     }
 
     public static void luaX_Next(LexState l){
-        l.lastline = l.linenumber;
-        if(l.lookahead.token != TK_EOS.t){
-            l.t = l.lookahead;
+        l.setLastline(l.getLinenumber());
+        if(l.getCurTokenEnum()!= EOF){
+            l.setT(l.getLookahead());
         } else{
-            l.t = new Token();
-            l.t.token = llex(l,l.t);
+            l.setT(new Token());
+            l.setCurTokenEnum(llex(l,l.getT()));
         }
     }
 
-    public static int luaX_lookahead (LexState ls) {
-        ls.lookahead = new Token();
-        ls.lookahead.token = llex(ls, ls.lookahead);
-        return ls.lookahead.token;
+    public static TokenEnum luaX_lookahead (LexState ls) {
+        Token nextToken = new Token();
+        ls.setLookahead(nextToken);
+        ls.setNextTokenEnum(llex(ls, nextToken));
+        return ls.getNextTokenEnum();
     }
 
 
-    public static String format(String fom, Object args) {
+    private static String format(String fom, Object args) {
         return new Formatter().format(fom, args).toString();
     }
 }

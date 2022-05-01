@@ -1,12 +1,13 @@
 package com.jdy.lua.lparser;
 
 import com.jdy.lua.lcodes.BinOpr;
-import com.jdy.lua.lcodes.LCodes;
 import com.jdy.lua.lcodes.UnOpr;
-import com.jdy.lua.lex.Lex;
 import com.jdy.lua.lex.LexState;
-import com.jdy.lua.lex.Reserved;
-import com.jdy.lua.lobjects.*;
+import com.jdy.lua.lex.TokenEnum;
+import com.jdy.lua.lobjects.Closure;
+import com.jdy.lua.lobjects.LocalVar;
+import com.jdy.lua.lobjects.Proto;
+import com.jdy.lua.lobjects.UpvalDesc;
 import com.jdy.lua.lopcodes.Instruction;
 import com.jdy.lua.lopcodes.Instructions;
 import com.jdy.lua.lopcodes.OpCode;
@@ -17,11 +18,11 @@ import java.util.List;
 
 import static com.jdy.lua.lcodes.BinOpr.*;
 import static com.jdy.lua.lcodes.LCodes.*;
-import static com.jdy.lua.lopcodes.OpCode.*;
-import static   com.jdy.lua.lparser.ParserConstants.*;
 import static com.jdy.lua.lex.Lex.*;
-import static com.jdy.lua.lex.Reserved.*;
+import static com.jdy.lua.lex.TokenEnum.*;
+import static com.jdy.lua.lopcodes.OpCode.*;
 import static com.jdy.lua.lparser.ExpKind.*;
+import static com.jdy.lua.lparser.ParserConstants.*;
 @SuppressWarnings("all")
 public class LParser {
 
@@ -31,8 +32,8 @@ public class LParser {
      * @param c
      * @return
      */
-    static boolean testNext (LexState ls, int c) {
-        if (ls.getCurrTokenNum() == c) {
+    static boolean testNext (LexState ls, TokenEnum c) {
+        if (ls.getCurTokenEnum() == c) {
             luaX_Next(ls);
             return true;
         }
@@ -44,12 +45,9 @@ public class LParser {
      * @param ls
      * @param c
      */
-    static void check (LexState ls, int c) {
-        if (ls.getCurrTokenNum() != c)
+    static void check (LexState ls,TokenEnum c) {
+        if (ls.getCurTokenEnum() != c)
             System.err.println("expecd:"+luaXToken2Str(ls,c));;
-    }
-    static void check (LexState ls, Reserved c) {
-        check(ls,c.getT());
     }
 
     /**
@@ -60,7 +58,7 @@ public class LParser {
      * @param who
      * @param where
      */
-    public static void checkMatch(LexState ls, int what, int who, int where){
+    public static void checkMatch(LexState ls, TokenEnum what, TokenEnum who, int where){
         if(!testNext(ls,what)){
             System.out.println("错误");
         }
@@ -69,11 +67,11 @@ public class LParser {
     /**
      * 获取一个 TK_NAME
      */
-    public static TString strCheckName(LexState ls){
-        check(ls,TK_NAME);
+    public static String strCheckName(LexState ls){
+        check(ls,NAME);
         String str = ls.getT().getS();
         luaX_Next(ls);
-        return new TString(str);
+        return str;
     }
     /**
      * 初始化 exp
@@ -87,11 +85,11 @@ public class LParser {
     /**
      * 初始化 exp，字符串作为内容
      */
-    public static void codeStringExp(ExpDesc e, TString s){
+    public static void codeStringExp(ExpDesc e, String  s){
         e.setF(NO_JUMP);
         e.setT(NO_JUMP);
         e.setK(VKSTR);
-        e.setStrval(s.getContents());
+        e.setStrval(s);
     }
     /**
      * 初始化exp Name 作为内容
@@ -102,7 +100,7 @@ public class LParser {
     /**
      * 注册一个本地变量到 Proto上面
      */
-    public static int regsisterLocalVar(LexState ls,FuncState fs,TString varName){
+    public static int regsisterLocalVar(LexState ls,FuncState fs,String varName){
         Proto proto = fs.getProto();
         //注册前，本地变量的数量
         int oldSize = proto.getSizelocvars();
@@ -115,13 +113,13 @@ public class LParser {
     /**
      * 创建一个新的 本地 变量 返回在函数中的索引
      */
-    public static int newLocalVar(LexState ls,TString name){
+    public static int newLocalVar(LexState ls,String  name){
         LuaState l = ls.getL();
         FuncState fs = ls.getFs();
         DynData dyd = ls.getDyd();
         Vardesc vardesc = dyd.getVarDesc(dyd.n++);
         vardesc.setKind(VDKREG);
-        vardesc.setName(name.getContents());
+        vardesc.setName(name);
         return dyd.n - 1 - fs.firstlocal;
     }
     /**
@@ -232,7 +230,7 @@ public class LParser {
             //初始化寄存器索引和 Proto 中的VarDesc的索引。
             // 变量在 Proto中的索引 和 在 寄存器中的索引 不一定一致，因为Proto有多层.
             var.ridx = regLevel++;
-            var.pidx = regsisterLocalVar(ls,fs,new TString(var.name));
+            var.pidx = regsisterLocalVar(ls,fs,var.name);
         }
     }
     /**
@@ -255,7 +253,7 @@ public class LParser {
     /**
      * 在函数 fs中 serarch UPValues ， 按照给定的名称 name
      */
-    public static int searchUpValue(FuncState fs,TString name){
+    public static int searchUpValue(FuncState fs,String name){
         int i;
         List<UpvalDesc> vals = fs.getProto().getUpvalues();
         for(i=0;i<fs.nups;i++){
@@ -280,7 +278,7 @@ public class LParser {
     /**
      * 新建一个 UpValue，并设置初始值
      */
-    public static int newUpValue(FuncState fs,TString name,ExpDesc v){
+    public static int newUpValue(FuncState fs,String name,ExpDesc v){
         UpvalDesc desc = allocUpValue(fs);
         // 既然出现了 UpValue，说明函数一定不只一层
         FuncState prev = fs.getPrev();
@@ -300,11 +298,11 @@ public class LParser {
     /**
      * 按照名称在函数 fs 查找一个  active local variable,如果找到了初始化表达式
      */
-    public static int searchVar(FuncState fs,TString n,ExpDesc e){
+    public static int searchVar(FuncState fs,String  n,ExpDesc e){
         int i;
         for(i=fs.nactvar - 1;i >=0;i--){
             Vardesc v = getLocalVarDesc(fs,i);
-            if(v.getName().equals(n.getContents())){
+            if(v.getName().equals(n)){
                 //编译时常量
                 if(v.getKind() == RDKCTC){
                     initExp(e,VCONST,fs.firstlocal + i);
@@ -356,7 +354,7 @@ public class LParser {
      *
      *  }
      */
-    public static void singleVarAux(FuncState fs,TString n, ExpDesc e,int base){
+    public static void singleVarAux(FuncState fs,String  n, ExpDesc e,int base){
         //如果fs == null,说明是全局变量
         if(fs == null){
             initExp(e,VVOID,0);
@@ -391,14 +389,14 @@ public class LParser {
      * 根据变量 名 查找变量
      */
     static void singelVar (LexState ls, ExpDesc var) {
-        TString varname = strCheckName(ls);
+        String varname = strCheckName(ls);
         FuncState  fs = ls.getFs();
         singleVarAux(fs, varname, var, 1);
         if (var.getK() == VVOID) {  /* global name? */
             ExpDesc key = new ExpDesc();
             //这个意思是指，全局变量存在一个table里面。 需要通过 env[varname]访问
             // envn本身也是一个全局变量 env[env] = env; 表也存储了自己
-            singleVarAux(fs, new TString(ls.getEnvn()), var, 1);  /* get environment variable */
+            singleVarAux(fs, ls.getEnvn(), var, 1);  /* get environment variable */
             codeStringExp(key, varname);  /* key is variable name */
             luaK_Indexed(fs, var, key);  /* env[varname] */
         }
@@ -454,14 +452,14 @@ public class LParser {
     /**
      * 查找一个 活跃的label
       */
-    public static LabelDesc findLabel(LexState ls, TString name){
+    public static LabelDesc findLabel(LexState ls, String  name){
         int i;
         DynData dyd = ls.getDyd();
         FuncState fs = ls.getFs();
         //在当前函数里面查找
         for(i = fs.getFirstlabel(); i <dyd.getLabel().getN();i++){
             LabelDesc lb = dyd.getLabel().getArr().get(i);
-            if(lb.name.equals(name.getContents())){
+            if(lb.name.equals(name)){
                 return lb;
             }
         }
@@ -470,10 +468,10 @@ public class LParser {
     /**
      * 添加一个 新的 label/goto 到相关的 list
      */
-    public static int newLabelEntry(LexState ls,LabelList l,TString name,int line,int pc){
+    public static int newLabelEntry(LexState ls,LabelList l,String name,int line,int pc){
         int n = l.getN();
         LabelDesc desc = new LabelDesc();
-        desc.name = name.getContents();
+        desc.name = name;
         desc.line=line;
         desc.nactvar = ls.getFs().getNactvar();
         desc.close = false;
@@ -482,7 +480,7 @@ public class LParser {
         l.getArr().add(desc);
         return n;
     }
-    public static int newGotoEntry(LexState ls,TString name,int line,int pc){
+    public static int newGotoEntry(LexState ls,String name,int line,int pc){
         return newLabelEntry(ls,ls.getDyd().getGt(),name,line,pc);
     }
     /**
@@ -509,7 +507,7 @@ public class LParser {
      * 创建一个新的label，行号为line， last用来表示 label是否是 block里面最后一个 无操作数的 statement。
      * 解决所有的 pending goto 到 这个新的label。 如果需要 close upvalues，就添加一个close instruction
      */
-    public static boolean createLabbel(LexState ls, TString name,int line,boolean last){
+    public static boolean createLabbel(LexState ls, String name,int line,boolean last){
         FuncState fs = ls.getFs();
         LabelList ll = ls.getDyd().getLabel();
         int l  =newLabelEntry(ls,ll,name,line,luaK_GetLabel(fs));
@@ -658,66 +656,66 @@ public class LParser {
      */
     public static void statement(LexState ls){
         int line = ls.getLinenumber();
-        switch (Reserved.getReserved(ls.getCurrTokenNum())){
+        switch (ls.getCurTokenEnum()){
 
-            case TK_IF: {  /* stat -> ifstat */
+            case IF: {  /* stat -> ifstat */
                 ifStat(ls, line);
                 break;
             }
-            case TK_WHILE: {  /* stat -> whilestat */
+            case WHILE: {  /* stat -> whilestat */
                 whileStat(ls, line);
                 break;
             }
-            case TK_DO: {  /* stat -> DO block END */
+            case DO: {  /* stat -> DO block END */
                 luaX_Next(ls);  /* skip DO */
                 block(ls);
-                checkMatch(ls, TK_END.getT(), TK_DO.getT(), line);
+                checkMatch(ls, END, DO, line);
                 break;
             }
-            case TK_FOR: {  /* stat -> forstat */
+            case FOR: {  /* stat -> forstat */
                 forStat(ls, line);
                 break;
             }
-            case TK_REPEAT: {  /* stat -> repeatstat */
+            case REPEAT: {  /* stat -> repeatstat */
                 repeatStat(ls, line);
                 break;
             }
-            case TK_FUNCTION: {  /* stat -> funcstat */
+            case FUNCTION: {  /* stat -> funcstat */
                 funcStat(ls, line);
                 break;
             }
-            case TK_LOCAL: {  /* stat -> localstat */
+            case LOCAL: {  /* stat -> localstat */
                 luaX_Next(ls);  /* skip LOCAL */
-                if (testNext(ls, TK_FUNCTION.getT()))  /* local function? */
+                if (testNext(ls, FUNCTION))  /* local function? */
                     localFunc(ls);
                 else
                     localStat(ls);
                 break;
             }
-            case TK_DBCOLON: {  /* stat -> label */
+            case DOU_COLON: {  /* stat -> label */
                 luaX_Next(ls);  /* skip double colon */
                 labelStat(ls, strCheckName(ls), line);
                 break;
             }
-            case TK_RETURN: {  /* stat -> retstat */
+            case RETURN: {  /* stat -> retstat */
                 luaX_Next(ls);  /* skip RETURN */
                 retStat(ls);
                 break;
             }
-            case TK_BREAK: {  /* stat -> breakstat */
+            case BREAK: {  /* stat -> breakstat */
                 breakStat(ls);
                 break;
             }
-            case TK_GOTO: {  /* stat -> 'goto' NAME */
+            case GOTO: {  /* stat -> 'goto' NAME */
                 luaX_Next(ls);  /* skip 'goto' */
                 gotoStat(ls);
                 break;
             }
+            case SEMICON:{
+                luaX_Next(ls);
+                break;
+            }
             default:
-                if(';' == ls.getCurrTokenNum()){
-                    luaX_Next(ls);
-                    break;
-                }
                 exprStat(ls);
                 break;
         }
@@ -738,11 +736,11 @@ public class LParser {
      * 如果不是 block 的follow set， 代表可能要处理一个新的block1
      */
     public static boolean blockFollow(LexState ls,boolean withUntil){
-        switch (Reserved.getReserved(ls.getCurrTokenNum())){
-            case TK_ELSE: case TK_ELSEIF:
-            case TK_END: case TK_EOS:
+        switch (ls.getCurTokenEnum()){
+            case ELSE: case ELSEIF:
+            case END: case EOF:
                 return true;
-            case TK_UNTIL:
+            case UNTIL:
                 return withUntil;
             default:
                 return false;
@@ -755,7 +753,7 @@ public class LParser {
       */
     public static void statList(LexState ls){
         while(!blockFollow(ls,true)){
-            if(ls.getCurrTokenNum() == TK_RETURN.getT()){
+            if(ls.getCurTokenEnum() == RETURN){
                 statement(ls);
                 //return作为最后一个语句
                 return;
@@ -799,7 +797,7 @@ public class LParser {
         FuncState fs = ls.getFs();
         int reg = ls.getFs().freereg;
         ExpDesc tab = new ExpDesc(),key = new ExpDesc(), val = new ExpDesc();
-        if(ls.getCurrTokenNum() == TK_NAME.getT()){
+        if(ls.getCurTokenEnum() == NAME){
             codeNameExp(ls,key);
         } else{
             yIndex(ls,key);
@@ -871,22 +869,20 @@ public class LParser {
      * field->  listfield | recField
      */
     public static void field(LexState ls, TableConstructor cc){
-        int cur = ls.getCurrTokenNum();
-        switch (Reserved.getReserved(cur)){
-            case TK_NAME:
-                if(luaX_lookahead(ls) != '=' ){
+
+        switch (ls.getCurTokenEnum()){
+            case NAME:
+                if(luaX_lookahead(ls) != ASSIGN){
                     listField(ls,cc);
                 } else{
                     recField(ls,cc);
                 }
                 break;
+            case MID_LEFT:
+                recField(ls,cc);
+                break;
             default:
-                //单字符token
-                if('[' == cur){
-                    recField(ls,cc);
-                } else{
-                    listField(ls,cc);
-                }
+                listField(ls,cc);
         }
     }
 
@@ -914,16 +910,16 @@ public class LParser {
         check_next1(ls,'{');
         do{
            //读取到表的末尾
-            if(ls.getCurrTokenNum() =='}'){
+            if(ls.getCurTokenEnum() == BIG_RIGHT){
                 break;
             }
             //将field存如寄存器
             closeListField(fs,cc);
             //读取一个field
             field(ls,cc);
-        }while(testNext(ls,',') || testNext(ls,';'));
+        }while(testNext(ls,COMMA) || testNext(ls,SEMICON));
 
-        checkMatch(ls,'}','{',line);
+        checkMatch(ls,BIG_RIGHT,BIG_LEFT,line);
         lastListField(fs,cc);
         //设置表的尺寸
         luaK_setTableSize(fs,pc,t.info,cc.na,cc.nh);
@@ -947,15 +943,13 @@ public class LParser {
         Proto f = fs.getProto();
         int nparams = 0;
         boolean isvarArg = false;
-        if(ls.getT().getToken() != ')'){
-
+        if(ls.getCurTokenEnum() != SMALL_RIGHT){
             do{
-                switch (Reserved.getReserved(ls.getCurrTokenNum())){
-
-                    case TK_NAME:
+                switch (ls.getCurTokenEnum()){
+                    case NAME:
                         newLocalVar(ls,strCheckName(ls));
                         nparams++;
-                    case TK_DOTS:
+                    case VARARG:
                         luaX_Next(ls);
                         isvarArg = true;
                         break;
@@ -963,7 +957,7 @@ public class LParser {
                         System.err.println("name or ...  expected");
                 }
 
-            }while (!isvarArg && testNext(ls,','));
+            }while (!isvarArg && testNext(ls,COMMA));
         }
         //调整本地变量，所有的函数参数都被当成一个local变量
         adjustLocalVars(ls,nparams);
@@ -990,14 +984,14 @@ public class LParser {
         check_next1(ls,'(');
         //如果是method，会加上self作为method的参数
         if(isMethod){
-            newLocalVar(ls,new TString("self"));
+            newLocalVar(ls,"self");
         }
         parList(ls);
         check_next1(ls,')');
         statList(ls);
         //设置最后一行的位置
         newFs.getProto().setLastlinedefined(ls.getLinenumber());
-        checkMatch(ls,TK_END.getT(),TK_FUNCTION.getT(),line);
+        checkMatch(ls,END,FUNCTION,line);
         codeClosure(ls,e);
         closeFunc(ls);
     }
@@ -1010,7 +1004,7 @@ public class LParser {
         //表达式的数量
         int n= 1;
         expr(ls,v);
-        while(testNext(ls,',')){
+        while(testNext(ls,COMMA)){
            luaK_exp2nextReg(ls.getFs(),v);
            expr(ls,v);
            n++;
@@ -1030,28 +1024,27 @@ public class LParser {
        FuncState fs = ls.getFs();
        ExpDesc args = new ExpDesc();
        int base = 0, nparams=0;
-       int cur = ls.getCurrTokenNum();
-       switch (cur){
-           case '(':
+
+       switch (ls.getCurTokenEnum()){
+           case SMALL_LEFT:
                luaX_Next(ls);
                //args 为空
-               if(ls.getCurrTokenNum() ==')'){
+               if(ls.getCurTokenEnum() == SMALL_RIGHT){
                    args.k = VVOID;
                } else{
                    expList(ls,args);
                }
-               checkMatch(ls,')','(',line);
+               checkMatch(ls,SMALL_RIGHT,SMALL_LEFT,line);
                break;
-           case '{':
+           case BIG_LEFT:
                constructor(ls,args);
                break;
+           case STRING:
+               codeStringExp(args,ls.getT().getS());
+               luaX_Next(ls);
+               break;
            default:
-               if(cur == TK_STRING.getT()){
-                   codeStringExp(args,new TString(ls.getT().getS()));
-                   luaX_Next(ls);
-               } else{
-                   System.err.println("缺少函数参数");
-               }
+               System.err.println("缺少函数参数");
 
        }
        base = f.getInfo();
@@ -1078,19 +1071,15 @@ public class LParser {
      */
     public static void primaryExp(LexState ls,ExpDesc v){
 
-        int tkNum = ls.getCurrTokenNum();
-        if(tkNum == '('){
-
+        TokenEnum tkNum = ls.getCurTokenEnum();
+        if(tkNum ==SMALL_LEFT){
             int line = ls.getLinenumber();
             luaX_Next(ls);
             expr(ls,v);
-            checkMatch(ls,')','(',line);
+            checkMatch(ls,SMALL_RIGHT,SMALL_LEFT,line);
             luaK_dischargeVars(ls.getFs(),v);
-            return;
-
-        } else if(tkNum == TK_NAME.getT()){
+        } else if(tkNum == NAME){
             singelVar(ls,v);
-            return;
         }else{
             System.err.println("unexpected synbol");
         }
@@ -1105,18 +1094,18 @@ public class LParser {
         int line = ls.getLinenumber();
         primaryExp(ls,v);
         for(;;){
-          switch (ls.getCurrTokenNum()){
-              case '.':
+          switch (ls.getCurTokenEnum()){
+              case DOT:
                   fieldSel(ls,v);
                   break;
-              case '[': {
+              case MID_LEFT: {
                   ExpDesc key = new ExpDesc();
                   luaK_exp2anyregup(fs, v);
                   yIndex(ls, key);
                   luaK_Indexed(fs, v, key);
                   break;
               }
-              case ':': {
+              case COLON: {
                   ExpDesc key = new ExpDesc();
                   luaX_Next(ls);
                   codeNameExp(ls,key);
@@ -1124,16 +1113,17 @@ public class LParser {
                   funcArgs(ls,v,line);
                   break;
               }
-              case '(': case '{':
+              case SMALL_LEFT: case BIG_LEFT:
                   luaK_exp2nextReg(fs,v);
                   funcArgs(ls,v,line);
                   break;
-              default:
-                  if(ls.getCurrTokenNum() == TK_STRING.getT()){
-                      luaK_exp2nextReg(fs,v);
-                      funcArgs(ls,v,line);
-                  }
+              case STRING:
+                  luaK_exp2nextReg(fs,v);
+                  funcArgs(ls,v,line);
+                  break;
 
+              default:
+                  break;
           }
         }
     }
@@ -1144,48 +1134,46 @@ public class LParser {
      *  | suffixedexp
      */
     public static void simpleExp(LexState ls,ExpDesc v){
-        switch (Reserved.getReserved(ls.getCurrTokenNum())){
-            case TK_FLT:
+        switch (ls.getCurTokenEnum()){
+            case BIG_LEFT:
+                constructor(ls, v);
+                return;
+            case FLOAT:
                 initExp(v,VKFLT,0);
                 v.setNval(ls.getT().getR());
                 break;
-            case TK_INT:
+            case INT:
                 initExp(v,VKINT,0);
                 v.setIval(ls.getT().getI());
                 break;
-            case TK_STRING: {
-                codeStringExp(v, new TString(ls.getT().getS()));
+            case STRING: {
+                codeStringExp(v,ls.getT().getS());
                 break;
             }
-            case TK_NIL: {
+            case NIL: {
                 initExp(v, VNIL, 0);
                 break;
             }
-            case TK_TRUE: {
+            case TRUE: {
                 initExp(v, VTRUE, 0);
                 break;
             }
-            case TK_FALSE: {
+            case FALSE: {
                 initExp(v, VFALSE, 0);
                 break;
             }
-            case TK_DOTS: {  /* vararg */
+            case VARARG: {  /* vararg */
                 FuncState fs = ls.getFs();
-
                 initExp(v, VVARARG, luaK_codeABC(fs, OP_VARARG, 0, 0, 1));
                 break;
             }
 
-            case TK_FUNCTION: {
+            case FUNCTION: {
                 luaX_Next(ls);
                 body(ls, v, false , ls.getLinenumber());
                 return;
             }
             default: {
-                if(ls.getCurrTokenNum() == '{'){
-                    constructor(ls, v);
-                    return;
-                }
                 suffixedExp(ls, v);
                 return;
             }
@@ -1194,46 +1182,42 @@ public class LParser {
         luaX_Next(ls);
     }
 
-    public static UnOpr getUnopr(int op){
+    public static UnOpr getUnopr(TokenEnum op){
         switch (op){
-            case '-':return UnOpr.OPR_MINUS;
-            case '~': return UnOpr.OPR_BNOT;
-            case '#': return UnOpr.OPR_LEN;
+            case SUB:return UnOpr.OPR_MINUS;
+            case BITXOR: return UnOpr.OPR_BNOT;
+            case LEN: return UnOpr.OPR_LEN;
+            case NOT:return UnOpr.OPR_NOT;
             default:
-                if(op == TK_NOT.getT()){
-                    return UnOpr.OPR_NOT;
-                }
                 return UnOpr.OPR_NOUNOPR;
         }
     }
 
-    public static BinOpr getBinopr(int op){
+    public static BinOpr getBinopr(TokenEnum op){
         switch (op){
-            case '+':return BinOpr.OPR_ADD;
-            case '-': return OPR_SUB;
-            case '*': return OPR_MUL;
-            case '%': return OPR_MOD;
-            case '^': return OPR_POW;
-            case '/': return OPR_DIV;
-            case '&': return OPR_BAND;
-            case '|': return OPR_BOR;
-            case '~': return OPR_BXOR;
-            case '<': return OPR_LT;
-            case '>': return OPR_GT;
+            case ADD:return BinOpr.OPR_ADD;
+            case SUB: return OPR_SUB;
+            case MUL: return OPR_MUL;
+            case MOD: return OPR_MOD;
+            case POW: return OPR_POW;
+            case DIV: return OPR_DIV;
+            case BITAND: return OPR_BAND;
+            case BITOR: return OPR_BOR;
+            case BITXOR: return OPR_BXOR;
+            case LT: return OPR_LT;
+            case GT: return OPR_GT;
+            case IDIV: return OPR_IDIV;
+            case LSHIFT: return OPR_SHL;
+            case RSHIFT: return OPR_SHR;
+            case CAT: return OPR_CONCAT;
+            case NE: return OPR_NE;
+            case EQ: return OPR_EQ;
+            case LE: return OPR_LE;
+            case GE: return OPR_GE;
+            case AND: return OPR_AND;
+            case OR: return OPR_OR;
             default:
-                switch (Reserved.getReserved(op)){
-                    case TK_IDIV: return OPR_IDIV;
-                    case TK_SHL: return OPR_SHL;
-                    case TK_SHR: return OPR_SHR;
-                    case TK_CONCAT: return OPR_CONCAT;
-                    case TK_NE: return OPR_NE;
-                    case TK_EQ: return OPR_EQ;
-                    case TK_LE: return OPR_LE;
-                    case TK_GE: return OPR_GE;
-                    case TK_AND: return OPR_AND;
-                    case TK_OR: return OPR_OR;
-                    default:return OPR_NOBINOPR;
-                }
+                return OPR_NOBINOPR;
         }
     }
 
@@ -1269,7 +1253,7 @@ public class LParser {
     public static BinOpr subExpr(LexState ls,ExpDesc v,int limit){
         BinOpr op;
         UnOpr uop;
-        uop = getUnopr(ls.getCurrTokenNum());
+        uop = getUnopr(ls.getCurTokenEnum());
         if(uop != UnOpr.OPR_NOUNOPR){
             int line = ls.getLinenumber();
             luaX_Next(ls);
@@ -1278,7 +1262,7 @@ public class LParser {
         } else{
             simpleExp(ls,v);
         }
-        op = getBinopr(ls.getCurrTokenNum());
+        op = getBinopr(ls.getCurTokenEnum());
         while(op != OPR_NOBINOPR && priority[op.getOp()][0] > limit){
             ExpDesc v2 = new ExpDesc();
             BinOpr nextOp;
@@ -1408,7 +1392,7 @@ public class LParser {
         ExpDesc e = new ExpDesc();
         //只读的变量不能赋值
         checkReadOnly(ls,lh.v);
-        if(testNext(ls,',')){
+        if(testNext(ls,COMMA)){
             //a,b,c,d=x,x,x 说名还有左侧的赋值变量还没有读完
             LeftAssignVars nv = new LeftAssignVars();
             nv.prev = lh;
@@ -1456,7 +1440,7 @@ public class LParser {
     public static void gotoStat(LexState ls){
         FuncState fs = ls.getFs();
         int line = ls.getLinenumber();
-        TString name = strCheckName(ls);
+        String name = strCheckName(ls);
         LabelDesc lb = findLabel(ls,name);
         if(lb == null){
             //label还没有定义，直接jump，等label被定义后再处理
@@ -1491,7 +1475,7 @@ public class LParser {
     /**
      * 检查label是不是已经被定义过了
      */
-    public static void checkRepeated(LexState ls,TString name){
+    public static void checkRepeated(LexState ls,String name){
         LabelDesc lb = findLabel(ls,name);
         if(lb != null){
             System.err.println("label is already defined");
@@ -1501,9 +1485,9 @@ public class LParser {
      * 定义label
      * label ->  '::' NMAE '::"
      */
-    public static void labelStat(LexState ls,TString name,int line){
-        checkNext(ls,TK_DBCOLON.getT());
-        while(ls.getCurrent() == ';'|| ls.getT().getToken() == TK_DBCOLON.getT()){
+    public static void labelStat(LexState ls,String name,int line){
+        checkNext(ls,DOU_COLON);
+        while(ls.getCurrent() == ';'||ls.getCurTokenEnum() == DOU_COLON){
             statement(ls);
         }
         checkRepeated(ls,name);
@@ -1524,10 +1508,10 @@ public class LParser {
         whileInit =luaK_GetLabel(fs);
         condExit = cond(ls);
         enterBlock(fs,bl,true);
-        checkNext(ls,TK_DO.getT());
+        checkNext(ls,DO);
         block(ls);
         luaK_JumpTo(fs,whileInit);
-        checkMatch(ls,TK_END.getT(),TK_WHILE.getT(),line);
+        checkMatch(ls,END,WHILE,line);
         leaveBlock(fs);
         luaK_patchToHere(fs,condExit);
     }
@@ -1543,7 +1527,7 @@ public class LParser {
         enterBlock(fs,bl2,false);
         luaX_Next(ls);
         statList(ls);
-        checkMatch(ls,TK_UNTIL.getT(),TK_REPEAT.getT(),line);
+        checkMatch(ls,UNTIL,REPEAT,line);
         condExit = cond(ls);
         leaveBlock(fs);
         if(bl2.upval){
@@ -1589,7 +1573,7 @@ public class LParser {
         BlockCnt bl = new BlockCnt();
         FuncState fs = ls.getFs();
         int prep,endfor;
-        checkNext(ls,TK_DO.getT());
+        checkNext(ls,DO);
         prep = luaK_codeABx(fs,forpreg[isgen],base,0);
         enterBlock(fs,bl,false);
         adjustLocalVars(ls,nvars);
@@ -1612,19 +1596,19 @@ public class LParser {
      * @param varname
      * @param line
      */
-    public static void fornum(LexState ls, TString varname,int line){
+    public static void fornum(LexState ls, String  varname,int line){
         FuncState fs = ls.getFs();
         int base = fs.getFreereg();
-        newLocalVar(ls,new TString("(for state)"));
-        newLocalVar(ls,new TString("(for state)"));
-        newLocalVar(ls,new TString("(for state)"));
+        newLocalVar(ls,"(for state)");
+        newLocalVar(ls,"(for state)");
+        newLocalVar(ls,"(for state)");
         newLocalVar(ls,varname);
-        checkNext(ls,'=');
+        checkNext(ls,ASSIGN);
         //循环初始值
         exp1(ls);
-        checkNext(ls,',');
+        checkNext(ls,COMMA);
         exp1(ls);
-        if(testNext(ls,',')){
+        if(testNext(ls,COMMA)){
             exp1(ls);
         } else{
             //默认步长1
@@ -1640,23 +1624,23 @@ public class LParser {
      * 泛型for循环
      * forlist -> NAME {, NAME} IN explsit forbody
      */
-    public static void forList(LexState ls,TString indexName){
+    public static void forList(LexState ls,String indexName){
         FuncState fs = ls.getFs();
         ExpDesc e = new ExpDesc();
         int nvars = 5;  /* gen, state, control, toclose, 'indexname' */
         int line;
         int base = fs.getFreereg();
         /* create control variables */
-        newLocalVar(ls, new TString("(for state)"));
-        newLocalVar(ls, new TString("(for state)"));
-        newLocalVar(ls, new TString("(for state)"));
-        newLocalVar(ls, new TString("(for state)"));
+        newLocalVar(ls,"(for state)");
+        newLocalVar(ls,"(for state)");
+        newLocalVar(ls,"(for state)");
+        newLocalVar(ls,"(for state)");
         newLocalVar(ls, indexName);
-        while (testNext(ls, ',')) {
+        while (testNext(ls, COMMA)) {
             newLocalVar(ls, strCheckName(ls));
             nvars++;
         }
-        checkNext(ls, TK_IN.getT());
+        checkNext(ls, IN);
         line = ls.getLinenumber();
         adjustAssign(ls, 4, expList(ls,e), e);
         adjustLocalVars(ls, 4);  /* control variables */
@@ -1670,20 +1654,21 @@ public class LParser {
      */
     public static void forStat(LexState ls,int line){
         FuncState fs = ls.getFs();
-        TString varname;
+        String varname;
         BlockCnt bl = new BlockCnt();
         enterBlock(fs,bl,true);
         luaX_Next(ls);
         varname = strCheckName(ls);
-        switch (ls.getCurrTokenNum()){
-            case '=':fornum(ls,varname,line);break;
-            case ',':forList(ls,varname);break;
-            default:if(ls.getCurrTokenNum() == TK_IN.getT()){
+        switch (ls.getCurTokenEnum()){
+            case ASSIGN:fornum(ls,varname,line);break;
+            case COMMA:forList(ls,varname);break;
+            case IN:
                 forList(ls,varname);break;
-            }
+            default:
                 System.err.println("语法错误");
+
         }
-        checkMatch(ls,TK_END.getT(),TK_FOR.getT(),line);
+        checkMatch(ls,END,FOR,line);
         leaveBlock(fs);
     }
 
@@ -1701,15 +1686,15 @@ public class LParser {
         int jumpFalse = 0;
         luaX_Next(ls);
         expr(ls,v);
-        checkNext(ls,TK_THEN.getT());
+        checkNext(ls,THEN);
         // if xx then break
-        if(ls.getCurrTokenNum() == TK_BREAK.getT()){
+        if(ls.getCurTokenEnum() == BREAK){
             int line = ls.getLinenumber();
             luaK_goIfFalse(fs,v);
             luaX_Next(ls);
             enterBlock(fs,bl,false);
             newGotoEntry(ls,LString.newStr(ls.getL(),"break"),line,v.t);
-            while(testNext(ls,';'));
+            while(testNext(ls,SEMICON));
             if(blockFollow(ls,false)){
                 leaveBlock(fs);
                 return jumpFalse;
@@ -1725,7 +1710,7 @@ public class LParser {
         //then part
         statList(ls);
         leaveBlock(fs);
-        if(ls.getCurrTokenNum()== TK_ELSE.getT() || ls.getCurrTokenNum() == TK_ELSEIF.getT()){
+        if(ls.getCurTokenEnum() == ELSE ||ls.getCurTokenEnum() == ELSEIF){
             luaK_Concat(fs,escapeList,luaK_Jump(fs),true);
         }
 
@@ -1748,13 +1733,13 @@ public class LParser {
         ExpDesc escapeList = new ExpDesc();
         escapeList.setT(NO_JUMP);
         testThenBlock(ls,escapeList);
-        while(ls.getCurrTokenNum() == TK_ELSEIF.getT()){
+        while(ls.getCurTokenEnum() == ELSEIF){
             testThenBlock(ls,escapeList);
         }
-        if(testNext(ls,TK_ELSE.getT())){
+        if(testNext(ls,ELSE)){
             block(ls);
         }
-        checkMatch(ls,TK_END.getT(),TK_IF.getT(),line);
+        checkMatch(ls,END,IF,line);
         luaK_patchToHere(fs,escapeList.getT());
     }
     public static void localFunc(LexState ls){
@@ -1773,9 +1758,9 @@ public class LParser {
      * ATTRIB -> ['<' Name '>']
      */
     public static int getLocalAttribute(LexState ls){
-        if(testNext(ls,'<')){
-            String attr = strCheckName(ls).getContents();
-            checkNext(ls,'>');
+        if(testNext(ls,LT)){
+            String attr = strCheckName(ls);
+            checkNext(ls,GT);
             if("const".equals(attr)){
                 return RDKCONST;
             } else if("close".equals(attr)){
@@ -1819,8 +1804,8 @@ public class LParser {
                 toclose = fs.nactvar +nvars;
             }
             nvars++;
-        } while(testNext(ls,','));
-        if(testNext(ls,'=')){
+        } while(testNext(ls,COMMA));
+        if(testNext(ls,ASSIGN)){
             nextexps = expList(ls,e);
         } else{
             e.setK(VVOID);
@@ -1846,10 +1831,10 @@ public class LParser {
     public static boolean funcname(LexState ls,ExpDesc v){
         boolean isMethod =false;
         singelVar(ls,v);
-        while(ls.getCurrTokenNum() =='.'){
+        while(ls.getCurTokenEnum() ==DOT){
             fieldSel(ls,v);
         }
-        if(ls.getCurrTokenNum() == ':'){
+        if(ls.getCurTokenEnum() == COLON){
             isMethod = true;
             fieldSel(ls,v);
         }
@@ -1877,7 +1862,7 @@ public class LParser {
         LeftAssignVars v = new LeftAssignVars();
         suffixedExp(ls,v.v);
         //赋值表达式
-        if(ls.getCurrTokenNum() =='=' || ls.getCurrTokenNum() == ','){
+        if(ls.getCurTokenEnum() == ASSIGN || ls.getCurTokenEnum() == COMMA){
             v.prev = null;
             restAssign(ls,v,1);
 
@@ -1895,7 +1880,7 @@ public class LParser {
        int nret;
        //返回值存放的第一个 slot
        int first = luaY_nVarsStack(fs);
-       if(blockFollow(ls,true) || ls.getCurrTokenNum() == ';'){
+       if(blockFollow(ls,true) || ls.getCurTokenEnum() ==SEMICON){
            nret = 0;
        } else{
            nret = expList(ls,e);
@@ -1915,7 +1900,7 @@ public class LParser {
            }
        }
        luaK_Ret(fs,first,nret);
-       testNext(ls,';');
+       testNext(ls,SEMICON);
     }
 
     /**
@@ -1930,11 +1915,11 @@ public class LParser {
         env.setInstack(true);
         env.setIdx(0);
         env.setKind(VDKREG);
-        env.setName(new TString(ls.getEnvn()));
+        env.setName(ls.getEnvn());
         // read first token
         luaX_Next(ls);
         statList(ls);
-        check(ls,TK_EOS);
+        check(ls,EOF);
         closeFunc(ls);
 
     }

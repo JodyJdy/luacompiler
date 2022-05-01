@@ -8,8 +8,7 @@ public class Token {
     /**
      * token类型值
      */
-    int token;
-
+    TokenEnum token;
     double r;
     long i;
     String s;

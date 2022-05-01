@@ -13,17 +13,41 @@ import java.util.List;
 @Data
 public class LexState {
 
-    int current;  /* current character (charint) */
-    int linenumber;  /* input line counter */
-    int lastline;  /* line of last token 'consumed' */
-    Token t;  /* current token */
-    Token lookahead;  /* look ahead token  向前看的 token */
-    FuncState fs;  /* current function (parser) */
+    /**
+     * 当前读取的 字符
+     */
+    int current;
+    /**
+     * 当前的行号
+     */
+    int linenumber;
+    /**
+     * 上一个 token的行号
+     */
+    int lastline;
+    /**
+     * 当前的token
+     */
+    Token t;
+    /**
+     * 向前看一个token
+     */
+    Token lookahead;
+    FuncState fs;
     LuaState L;
     Table h = new Table();  /* to avoid collection/reuse strings  用于收集字符串 */
-    DynData dyd;  /* dynamic structures used by the parser */
-    String source;  /* current source name */
-    String envn;  /* environment variable name */
+    /**
+     * 当前parser使用到的数据
+     */
+    DynData dyd;
+    /**
+     * 当前source的名称
+     */
+    String source;
+    /**
+     * 当前 env的名称
+     */
+    String envn;
 
     InputStream reader;
     /**
@@ -31,7 +55,16 @@ public class LexState {
      */
     List<Integer> buffer = new ArrayList<>();
 
-    public int getCurrTokenNum(){
+    public TokenEnum getCurTokenEnum(){
         return t.getToken();
+    }
+    TokenEnum getNextTokenEnum(){
+        return lookahead.getToken();
+    }
+    void setCurTokenEnum(TokenEnum e){
+        t.setToken(e);
+    }
+    void setNextTokenEnum(TokenEnum e){
+        lookahead.setToken(e);
     }
 }

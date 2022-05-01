@@ -4,7 +4,7 @@ import lombok.Data;
 
 @Data
 public class LocalVar {
-    TString name;
+    String name;
     int startpc;
     int endpc;
 }
