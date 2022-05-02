@@ -150,6 +150,10 @@ public class Instructions {
         return sc2int(getArgC(instruction));
     }
 
+    public static int getArg_sB(Instruction instruction){
+        return sc2int(getArgB(instruction));
+    }
+
     public static int getArgk(Instruction i){
         return getArg(i,POS_k,1);
     }

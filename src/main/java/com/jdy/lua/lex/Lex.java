@@ -119,7 +119,7 @@ public class Lex {
         ls.linenumber++;
     }
 
-    public static boolean check_next1(LexState ls, int c) {
+    private static boolean check_next1(LexState ls, int c) {
         if (ls.current == c) {
             next(ls);
             return true;

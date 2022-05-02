@@ -134,6 +134,6 @@ public enum OpMode {
      */
     public static boolean isTestOp(OpCode opCode){
         byte opmode = lua_opmodes[opCode.getCode()];
-        return (opmode & 1 << 4) == 0;
+        return (opmode & 1 << 4) != 0 ;
     }
 }

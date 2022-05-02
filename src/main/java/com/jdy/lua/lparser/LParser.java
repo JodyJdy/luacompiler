@@ -275,6 +275,7 @@ public class LParser {
                     // real var
                     initVar(fs,e,i);
                 }
+                return i;
             }
         }
         return -1;
@@ -440,7 +441,7 @@ public class LParser {
         desc.close = false;
         desc.pc = pc;
         l.getArr().add(desc);
-        return l.getSize();
+        return l.getSize() - 1;
     }
     public static int newGotoEntry(LexState ls,String name,int line,int pc){
         return newLabelEntry(ls,ls.getDyd().getGt(),name,line,pc);
@@ -472,7 +473,7 @@ public class LParser {
     public static boolean createLabbel(LexState ls, String name,int line,boolean last){
         FuncState fs = ls.getFs();
         LabelList ll = ls.getDyd().getLabel();
-        int l  =newLabelEntry(ls,ll,name,line,luaK_GetLabel(fs));
+        int l = newLabelEntry(ls,ll,name,line,luaK_GetLabel(fs));
         LabelDesc desc = ll.getArr().get(l);
         // blockcnt.nactvar表示 block外部活跃的 变量
         if(last){
@@ -601,6 +602,11 @@ public class LParser {
         luaK_Finish(fs);
         //重新设置 lex 的 funstate
         ls.setFs(fs.prev);
+        //调试语句
+
+            for (Instruction i : f.getCode()) {
+                System.out.println(i.toString());
+            }
     }
     /**
      * 上个表达式是否有多个返回值
@@ -716,10 +722,9 @@ public class LParser {
       */
     public static void statList(LexState ls){
         while(!blockFollow(ls,true)){
+            //return 是最后一个表达式
             if(ls.getCurTokenEnum() != RETURN){
                 statement(ls);
-                //return作为最后一个语句
-                return;
             }
         }
     }
@@ -749,7 +754,7 @@ public class LParser {
         luaX_Next(ls);
         expr(ls, v);
         luaK_exp2val(ls.getFs(),v);
-        check_next1(ls,']');
+        checkNext(ls,MID_RIGHT);
     }
     /**
      * 初始化表时，字段赋值的处理
@@ -766,7 +771,7 @@ public class LParser {
             yIndex(ls,key);
         }
         cons.nh++;
-        check_next1(ls,'=');
+        checkNext(ls,ASSIGN);
         tab = cons.getT();
         luaK_Indexed(fs,tab,key);
         expr(ls,val);
@@ -870,7 +875,7 @@ public class LParser {
         //还没有进行value的读取，先进行初始化
         initExp(cc.getV(),VVOID,0);
         //表的开头符号
-        check_next1(ls,'{');
+        checkNext(ls,BIG_LEFT);
         do{
            //读取到表的末尾
             if(ls.getCurTokenEnum() == BIG_RIGHT){
@@ -944,13 +949,13 @@ public class LParser {
         //设置函数所在的行
         newFs.getProto().setLinedefined(line);
         openFunc(ls,newFs,bl);
-        check_next1(ls,'(');
+        check(ls,SMALL_LEFT);
         //如果是method，会加上self作为method的参数
         if(isMethod){
             newLocalVar(ls,"self");
         }
         parList(ls);
-        check_next1(ls,')');
+        checkNext(ls,SMALL_RIGHT);
         statList(ls);
         //设置最后一行的位置
         newFs.getProto().setLastlinedefined(ls.getLinenumber());
@@ -1086,7 +1091,7 @@ public class LParser {
                   break;
 
               default:
-                  break;
+                  return;
           }
         }
     }
@@ -1367,7 +1372,7 @@ public class LParser {
             restAssign(ls,nv,nvars+1);
         } else{
             // 读取到了 =， 接着处理等于号后面的多个表达式
-            check_next1(ls,'=');
+            checkNext(ls,ASSIGN);
             //返回表达式的数量
             int nextps = expList(ls,e);
             if(nextps != nvars){
@@ -1891,6 +1896,7 @@ public class LParser {
         LexState lexState = new LexState();
         lexState.setCurrTk(new Token());
         lexState.setEnvn("_ENV");
+        lexState.setL(new LuaState());
         lexState.setReader(new FileInputStream(new File("src/test/b.lua")));
         Lex.next(lexState);
         LuaState state = new LuaState();
