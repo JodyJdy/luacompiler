@@ -30,16 +30,16 @@ public enum ExpKind {
     VCONST(11),  /** compile-time <const> variable;
               info = absolute index in 'actvar.arr'  */
     VINDEXED(12),  /** indexed variable;
-                ind.t = table register;
+                ind.currTk = table register;
                 ind.idx = key's R index */
     VINDEXUP(13),  /** indexed upvalue;
-                ind.t = table upvalue;
+                ind.currTk = table upvalue;
                 ind.idx = key's K index  */
     VINDEXI(14), /** indexed variable with constant integer;
-                ind.t = table register;
+                ind.currTk = table register;
                 ind.idx = key's value */
     VINDEXSTR(15), /** indexed variable with literal string;
-                ind.t = table register;
+                ind.currTk = table register;
                 ind.idx = key's K index */
     VJMP(16),  /** expression is a test/comparison;  测试/比较 表达式
             info = pc of corresponding jump instruction */

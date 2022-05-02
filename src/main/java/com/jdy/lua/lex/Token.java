@@ -12,4 +12,11 @@ public class Token {
     double r;
     long i;
     String s;
+
+    public Token(){
+
+    }
+    public Token(TokenEnum e){
+        this.token = e;
+    }
 }

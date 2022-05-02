@@ -2,7 +2,9 @@ package com.jdy.lua.lparser;
 
 import com.jdy.lua.lcodes.BinOpr;
 import com.jdy.lua.lcodes.UnOpr;
+import com.jdy.lua.lex.Lex;
 import com.jdy.lua.lex.LexState;
+import com.jdy.lua.lex.Token;
 import com.jdy.lua.lex.TokenEnum;
 import com.jdy.lua.lobjects.Closure;
 import com.jdy.lua.lobjects.LocalVar;
@@ -14,6 +16,9 @@ import com.jdy.lua.lopcodes.OpCode;
 import com.jdy.lua.lstate.LuaState;
 import com.jdy.lua.lstring.LString;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.util.List;
 
 import static com.jdy.lua.lcodes.BinOpr.*;
@@ -26,50 +31,14 @@ import static com.jdy.lua.lparser.ParserConstants.*;
 @SuppressWarnings("all")
 public class LParser {
 
-    /**
-     * 检查token 是否是c，如果是 读取下一个token
-     * @param ls
-     * @param c
-     * @return
-     */
-    static boolean testNext (LexState ls, TokenEnum c) {
-        if (ls.getCurTokenEnum() == c) {
-            luaX_Next(ls);
-            return true;
-        }
-        return false;
-    }
 
-    /**
-     * 检查 token 是不是 c，如果不是报错
-     * @param ls
-     * @param c
-     */
-    static void check (LexState ls,TokenEnum c) {
-        if (ls.getCurTokenEnum() != c)
-            System.err.println("expecd:"+luaXToken2Str(ls,c));;
-    }
-
-    /**
-     * 期望是 waht
-     * line 是 where
-     * @param ls
-     * @param what
-     * @param who
-     * @param where
-     */
-    public static void checkMatch(LexState ls, TokenEnum what, TokenEnum who, int where){
-        if(!testNext(ls,what)){
-            System.out.println("错误");
-        }
-    }
 
     /**
      * 获取一个 TK_NAME
      */
     public static String strCheckName(LexState ls){
         check(ls,NAME);
-        String str = ls.getT().getS();
+        String str = ls.getCurrTk().getS();
         luaX_Next(ls);
         return str;
     }
@@ -237,19 +206,14 @@ public class LParser {
     /**
      * 关闭  'toLevel' 级之后的变量的作用域
      *  将toLevel 变量的索引即可
-     *  关闭 toLevel - > fs.nactvar 之间的变量
+     *  关闭 toLevel - > fs.blockOuterActVars 之间的变量
      */
     public static void removeVars(FuncState fs,int toLevel){
         DynData dynData = fs.getLexState().getDyd();
-        // fs.nactvar - toLevel 代表 关闭的变量的数量
+        // fs.blockOuterActVars - toLevel 代表 关闭的变量的数量
         dynData.removeNumVarDesc(fs.nactvar - toLevel);
-        //打印debug信息，同时调整 nactvar的值
-        while(fs.nactvar > toLevel){
-            LocalVar var = localDebugInfo(fs,--fs.nactvar);
-            if(var != null){
-                var.setEndpc(fs.pc);
-            }
-        }
+        fs.nactvar = toLevel;
+
     }
     /**
      * 在函数 fs中 serarch UPValues ， 按照给定的名称 name
@@ -322,7 +286,7 @@ public class LParser {
      */
     public static void markBlockUpval(FuncState fs,int level){
         BlockCnt cn = fs.getBlockCnt();
-        while(cn.nactvar > level){
+        while(cn.blockOuterActVars > level){
             cn = cn.previous;
         }
         cn.setUpval(true);
@@ -512,7 +476,7 @@ public class LParser {
         LabelDesc desc = ll.getArr().get(l);
         // blockcnt.nactvar表示 block外部活跃的 变量
         if(last){
-            desc.nactvar = fs.blockCnt.nactvar;
+            desc.nactvar = fs.blockCnt.blockOuterActVars;
         }
         if(solveGotos(ls,desc)){
             //need close,函数close掉，需要关闭无用的 closure
@@ -532,10 +496,10 @@ public class LParser {
          for(i = bl.getFirstgoto();i < gl.getSize();i++){
              LabelDesc gt = gl.getArr().get(i);
              //如果 label处的活跃变量大于block外部的， 可能需要执行close
-             if(regLevel(fs,gt.getNactvar()) > regLevel(fs,bl.getNactvar())){
+             if(regLevel(fs,gt.getNactvar()) > regLevel(fs,bl.getBlockOuterActVars())){
                  gt.close = gt.close || bl.upval;
              }
-             gt.nactvar = bl.nactvar;
+             gt.nactvar = bl.blockOuterActVars;
          }
      }
     /**
@@ -544,7 +508,7 @@ public class LParser {
     public static void enterBlock(FuncState fs,BlockCnt bl,boolean inLoop){
         //记录block是否在循环里面
         bl.isloop = inLoop;
-        bl.nactvar = fs.nactvar;
+        bl.blockOuterActVars = fs.nactvar;
         bl.firstgoto=fs.lexState.getDyd().getGt().getSize();
         bl.upval = false;
         bl.insidetbc = (fs.blockCnt != null && fs.blockCnt.insidetbc);
@@ -561,7 +525,7 @@ public class LParser {
         BlockCnt bl = fs.blockCnt;
         LexState ls = fs.getLexState();
         boolean hasClose = false;
-        int stkLevel = regLevel(fs,bl.nactvar);
+        int stkLevel = regLevel(fs,bl.blockOuterActVars);
         if(bl.isloop){
             hasClose = createLabbel(ls, LString.newStr(ls.getL(),"break"),0,false);
         }
@@ -571,7 +535,7 @@ public class LParser {
        //还原当前的block
       fs.blockCnt = bl.previous;
        //移除block里面定义的变量
-      removeVars(fs,bl.nactvar);
+      removeVars(fs,bl.blockOuterActVars);
       fs.freereg = stkLevel;
       //处理goto
       if(bl.previous !=null){
@@ -752,7 +716,7 @@ public class LParser {
       */
     public static void statList(LexState ls){
         while(!blockFollow(ls,true)){
-            if(ls.getCurTokenEnum() == RETURN){
+            if(ls.getCurTokenEnum() != RETURN){
                 statement(ls);
                 //return作为最后一个语句
                 return;
@@ -1039,7 +1003,7 @@ public class LParser {
                constructor(ls,args);
                break;
            case STRING:
-               codeStringExp(args,ls.getT().getS());
+               codeStringExp(args,ls.getCurrTk().getS());
                luaX_Next(ls);
                break;
            default:
@@ -1139,14 +1103,14 @@ public class LParser {
                 return;
             case FLOAT:
                 initExp(v,VKFLT,0);
-                v.setNval(ls.getT().getR());
+                v.setNval(ls.getCurrTk().getR());
                 break;
             case INT:
                 initExp(v,VKINT,0);
-                v.setIval(ls.getT().getI());
+                v.setIval(ls.getCurrTk().getI());
                 break;
             case STRING: {
-                codeStringExp(v,ls.getT().getS());
+                codeStringExp(v,ls.getCurrTk().getS());
                 break;
             }
             case NIL: {
@@ -1532,7 +1496,7 @@ public class LParser {
         if(bl2.upval){
             int exit = luaK_Jump(fs);
             luaK_patchToHere(fs,condExit);
-            luaK_codeABC(fs,OP_CLOSE,regLevel(fs,bl2.nactvar),0,0);
+            luaK_codeABC(fs,OP_CLOSE,regLevel(fs,bl2.blockOuterActVars),0,0);
             condExit = luaK_Jump(fs);
             luaK_patchToHere(fs,exit);
         }
@@ -1923,8 +1887,20 @@ public class LParser {
 
     }
 
-    public Closure luaY_Parser(LuaState l,DynData dyd,String name,int firstchar){
+    public static Closure luaY_Parser(LuaState l,DynData dyd,String name,int firstchar) throws FileNotFoundException {
+        LexState lexState = new LexState();
+        lexState.setCurrTk(new Token());
+        lexState.setEnvn("_ENV");
+        lexState.setReader(new FileInputStream(new File("src/test/b.lua")));
+        Lex.next(lexState);
+        LuaState state = new LuaState();
+        dyd = new DynData();
 
+        FuncState fs = new FuncState();
+        fs.setProto(new Proto());
+        fs.setLexState(lexState);
+        lexState.setDyd(dyd);
+        mainfunc(lexState,fs);
 
         return null;
     }

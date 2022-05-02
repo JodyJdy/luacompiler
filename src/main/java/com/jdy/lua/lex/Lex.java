@@ -326,8 +326,13 @@ public class Lex {
         token.s = buffer2Str(ls,1,ls.buffer.size() - 2);
     }
 
+    public static void llex(LexState ls,boolean cur){
+        Token t = cur ? ls.getCurrTk() : ls.getLookahead();
+        t.setToken(llex(ls,t));
+        System.out.println(t);
+    }
 
-    public static TokenEnum llex(LexState ls,Token token){
+    private static TokenEnum llex(LexState ls,Token token){
         resetBuffer(ls);
         for(;;){
             switch (ls.current){
@@ -448,25 +453,54 @@ public class Lex {
                 }
             }
         }
+
     }
 
     public static void luaX_Next(LexState l){
         l.setLastline(l.getLinenumber());
-        if(l.getCurTokenEnum()!= EOF){
-            l.setT(l.getLookahead());
+        if(l.getNextTokenEnum()!= EOF){
+            l.setCurrTk(l.getLookahead());
         } else{
-            l.setT(new Token());
-            l.setCurTokenEnum(llex(l,l.getT()));
+           llex(l,true);
         }
     }
 
     public static TokenEnum luaX_lookahead (LexState ls) {
-        Token nextToken = new Token();
-        ls.setLookahead(nextToken);
-        ls.setNextTokenEnum(llex(ls, nextToken));
+        llex(ls,false);
         return ls.getNextTokenEnum();
     }
 
+    /**
+     * 检查token 是否是c，如果是 读取下一个token
+
+     */
+    public static boolean testNext (LexState ls, TokenEnum c) {
+        if (ls.getCurTokenEnum() == c) {
+            luaX_Next(ls);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * 检查 token 是不是 c，如果不是报错
+
+     */
+    public static void check (LexState ls,TokenEnum c) {
+        if (ls.getCurTokenEnum() != c)
+            System.err.println("expecd:"+luaXToken2Str(ls,c));;
+    }
+
+    /**
+     * 期望是 waht
+     * line 是 where
+
+     */
+    public static void checkMatch(LexState ls, TokenEnum what, TokenEnum who, int where){
+        if(!testNext(ls,what)){
+            System.out.println("错误");
+        }
+    }
 
     private static String format(String fom, Object args) {
         return new Formatter().format(fom, args).toString();

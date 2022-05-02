@@ -20,12 +20,19 @@ public enum OpMode {
         return getOpMode(opCode.getCode());
     }
     public static OpMode getOpMode(int i){
-        for(OpMode o : OpMode.values()){
-            if(o.getI() == i){
-                return o;
-            }
+        int type = lua_opmodes[i] & 7;
+        switch (type){
+            case 0:return iABC;
+            case 1:return iABx;
+            case 2:return iAsBx;
+            case 3:return iAx;
+            case 4:return isJ;
         }
         return null;
+    }
+
+    public static void main(String[] args) {
+        System.out.println(getOpMode(OpCode.OP_LOADI));
     }
 
     /**

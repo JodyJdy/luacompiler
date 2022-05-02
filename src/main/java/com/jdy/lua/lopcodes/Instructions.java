@@ -94,7 +94,8 @@ public class Instructions {
      * 获取指令集的 OpCode
      */
     public static OpCode getOpCode(Instruction instruction){
-        return getOpCode(instruction.ins);
+        int op = instruction.ins & 0x7f;
+        return getOpCode(op);
     }
     public static OpCode getOpCode(int i){
         return OpCode.getOpCode(i);
@@ -135,10 +136,6 @@ public class Instructions {
 
     public static void  setArgB(Instruction i, int v){
         setArg(i,v, POS_B,SIZE_B);
-    }
-
-    public static int getArg_sB(Instruction instruction){
-        return sc2int(getArgB(instruction));
     }
 
     public static int getArgC(Instruction i){

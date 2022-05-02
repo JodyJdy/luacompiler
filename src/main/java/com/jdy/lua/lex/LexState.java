@@ -28,11 +28,11 @@ public class LexState {
     /**
      * 当前的token
      */
-    Token t;
+    Token currTk = new Token();
     /**
      * 向前看一个token
      */
-    Token lookahead;
+    Token lookahead = new Token(TokenEnum.EOF);
     FuncState fs;
     LuaState L;
     Table h = new Table();  /* to avoid collection/reuse strings  用于收集字符串 */
@@ -56,15 +56,16 @@ public class LexState {
     List<Integer> buffer = new ArrayList<>();
 
     public TokenEnum getCurTokenEnum(){
-        return t.getToken();
+        return currTk.getToken();
     }
     TokenEnum getNextTokenEnum(){
         return lookahead.getToken();
     }
-    void setCurTokenEnum(TokenEnum e){
-        t.setToken(e);
-    }
-    void setNextTokenEnum(TokenEnum e){
-        lookahead.setToken(e);
+
+    @Override
+    public String toString() {
+        return "LexState{" +
+                "currTk=" + currTk +
+                '}';
     }
 }

@@ -13,7 +13,7 @@ public enum TokenEnum {
     COLON(':'),LEN('#'),
     ASSIGN('='),BIG_LEFT('{'),BIG_RIGHT('}'),MID_LEFT('['),
     MID_RIGHT(']'),SMALL_LEFT('('),SMALL_RIGHT(')'),DOT('.'),
-    DOUBLE_MARK('"'),SINGLE_MARK('\''),SPLIT(','),COMMA(','),SEMICON(';'),
+    DOUBLE_MARK('"'),SINGLE_MARK('\''),COMMA(','),SEMICON(';'),
 
     AND("and"),BREAK("break"),DO("do"),ELSE("else"),ELSEIF("elseif"),
     END("end"),FALSE("false"),FOR("for"),FUNCTION("function"),GOTO("goto"),

@@ -640,7 +640,7 @@ public class LCodes {
                return true;
             }
         }
-        /* else, expression doesn't fit; leave it unchanged */
+        /* else, expression doesn'currTk fit; leave it unchanged */
         return false;
     }
 
@@ -665,7 +665,7 @@ public class LCodes {
     /**
      *  生成code存储表达式 ex的result 到   var上面
      *   对于t[a] = x
-     *   来说  t[a]就是 var;  x 就是ex
+     *   来说  currTk[a]就是 var;  x 就是ex
      */
     public static void luaK_storevar (FuncState fs,ExpDesc var, ExpDesc ex) {
         switch (var.getK()) {
@@ -845,7 +845,7 @@ public class LCodes {
             }
         }
         //拼接真出口
-        luaK_Concat(fs,e,pc,true);/* insert new jump in 't' list */
+        luaK_Concat(fs,e,pc,true);/* insert new jump in 'currTk' list */
         //处理假出口
         luaK_patchToHere(fs, e.getF());  /* false list jumps to here (to go through) */
         e.setF(NO_JUMP);
@@ -938,7 +938,7 @@ public class LCodes {
         return false;
     }
     /**
-     * 创建表达式 t[k]
+     * 创建表达式 currTk[k]
      * t的值需要存放在一个寄存器或者 upvalue
      * Upvalues的key 应该存放在寄存器中 或者常量表中
      */
@@ -1479,7 +1479,7 @@ public class LCodes {
      * type == true 连接 真出口跳转表
      * type == false 连接 假出口 跳转表
      *
-     * expDesc 的 t，f分表是真假跳转表的头部
+     * expDesc 的 currTk，f分表是真假跳转表的头部
      */
     public static void luaK_Concat(FuncState fs,ExpDesc expDesc,int l2, boolean type){
         if(l2 == NO_JUMP){
