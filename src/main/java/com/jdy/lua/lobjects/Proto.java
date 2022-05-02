@@ -11,10 +11,10 @@ import java.util.List;
 public class Proto extends GcObject {
     int numparams;
     boolean isVararg;
-    int maxstacksize;
+    int maxStackSize;
     int linedefined;  /** debug information  */
     int lastlinedefined;  /** debug information  */
-    List<TValue> k = new ArrayList<>(); /** constants used by the function */
+    List<TValue> constants = new ArrayList<>(); /** constants used by the function */
     List<Instruction> code = new ArrayList<>();
     List<Proto> protoList = new ArrayList<>(); /** functions defined inside the function */
     List<UpvalDesc> upvalues = new ArrayList<>(); /**  upvalue information */
@@ -62,5 +62,11 @@ public class Proto extends GcObject {
         Proto p = new Proto();
         return p;
     }
+
+    public void addConstants(TValue k){
+        constants.add(k);
+    }
+
+
 
 }

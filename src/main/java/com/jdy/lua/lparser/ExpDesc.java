@@ -10,15 +10,15 @@ public class ExpDesc implements Cloneable {
     String strval;  /** for VKSTR */
     int info;  /** for generic use */
     /** for indexed variables */
-    int idx;  /** index (R or "long" K) */
-    int tt;  /** table (register or upvalue) */
+    int indexForTable;  /** indexForTable (R or "long" K) */
+    int table;  /** table (register or upvalue) */
     /** for local variables */
-    int ridx;  /** register holding the variable */
-    int vidx;  /** compiler index (in 'actvar.arr')  */
+    int registerIndex;  /** register holding the variable */
+    int actVarIndex;  /** compiler indexForTable (in 'actvar.arr')  */
     
     /** 真假出口*/
-    int t;
-    int f;
+    int tJmp;
+    int fJmp;
 
     @Override
     public Object clone(){
@@ -39,12 +39,12 @@ public class ExpDesc implements Cloneable {
         this.nval = e2.nval;
         this.strval = e2.strval;
         this.info = e2.info;
-        this.idx = e2.idx;
-        this.tt = e2.tt;
-        this.ridx = e2.idx;
-        this.vidx=e2.vidx;
-        this.t= e2.t;
-        this.f=e2.f;
+        this.indexForTable = e2.indexForTable;
+        this.table = e2.table;
+        this.registerIndex = e2.indexForTable;
+        this.actVarIndex =e2.actVarIndex;
+        this.tJmp = e2.tJmp;
+        this.fJmp =e2.fJmp;
     }
 
 

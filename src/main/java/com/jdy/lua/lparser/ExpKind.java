@@ -14,7 +14,7 @@ public enum ExpKind {
     VNIL(1),  /** constant nil */
     VTRUE(2),  /** constant true */
     VFALSE(3),  /** constant false */
-    VK(4),  /** constant in 'k'; info = index of constant in 'k' */
+    VK(4),  /** constant in 'constants'; info = indexForTable of constant in 'constants' */
     VKFLT(5),  /** floating constant; nval = numerical float value */
     VKINT(6),  /** integer constant; ival = numerical integer value */
     VKSTR(7),  /** string constant; strval = TString address;
@@ -23,24 +23,24 @@ public enum ExpKind {
     VNONRELOC(8),  /** expression has its value in a fixed register;
                  info = result register */
     // local 变量
-    VLOCAL(9),  /** local variable; var.ridx = register index;
-              var.vidx = relative index in 'actvar.arr'  */
+    VLOCAL(9),  /** local variable; var.registerIndex = register indexForTable;
+              var.actVarIndex = relative indexForTable in 'actvar.arr'  */
     // upvalue 变量
-    VUPVAL(10),  /** upvalue variable; info = index of upvalue in 'upvalues' */
+    VUPVAL(10),  /** upvalue variable; info = indexForTable of upvalue in 'upvalues' */
     VCONST(11),  /** compile-time <const> variable;
-              info = absolute index in 'actvar.arr'  */
+              info = absolute indexForTable in 'actvar.arr'  */
     VINDEXED(12),  /** indexed variable;
                 ind.currTk = table register;
-                ind.idx = key's R index */
+                ind.indexForTable = key's R indexForTable */
     VINDEXUP(13),  /** indexed upvalue;
                 ind.currTk = table upvalue;
-                ind.idx = key's K index  */
+                ind.indexForTable = key's K indexForTable  */
     VINDEXI(14), /** indexed variable with constant integer;
                 ind.currTk = table register;
-                ind.idx = key's value */
+                ind.indexForTable = key's value */
     VINDEXSTR(15), /** indexed variable with literal string;
                 ind.currTk = table register;
-                ind.idx = key's K index */
+                ind.indexForTable = key's K indexForTable */
     VJMP(16),  /** expression is a test/comparison;  测试/比较 表达式
             info = pc of corresponding jump instruction */
     VRELOC(17),  /** expression can put result in any register;  可以将结果放在任意寄存器的表达式

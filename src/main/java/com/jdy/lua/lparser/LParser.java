@@ -48,15 +48,15 @@ public class LParser {
     public static void initExp(ExpDesc e,ExpKind k,int i){
         e.setK(k);
         e.setInfo(i);
-        e.setT(NO_JUMP);
-        e.setF(NO_JUMP);
+        e.setTJmp(NO_JUMP);
+        e.setFJmp(NO_JUMP);
     }
     /**
      * 初始化 exp，字符串作为内容
      */
     public static void codeStringExp(ExpDesc e, String  s){
-        e.setF(NO_JUMP);
-        e.setT(NO_JUMP);
+        e.setFJmp(NO_JUMP);
+        e.setTJmp(NO_JUMP);
         e.setK(VKSTR);
         e.setStrval(s);
     }
@@ -147,15 +147,15 @@ public class LParser {
         return fs.proto.getLocalVar(idx);
     }
     /**
-     * 创建一个表示变量 vidx 的表达式
+     * 创建一个表示变量 actVarIndex 的表达式
      */
     public static void initVar(FuncState fs,ExpDesc e,int vidx){
-        e.setF(NO_JUMP);
-        e.setT(NO_JUMP);
+        e.setFJmp(NO_JUMP);
+        e.setTJmp(NO_JUMP);
         e.setK(VLOCAL);
-        e.setVidx(vidx);
+        e.setActVarIndex(vidx);
         //设置寄存器索引
-        e.setRidx(getLocalVarDesc(fs,vidx).ridx);
+        e.setRegisterIndex(getLocalVarDesc(fs,vidx).ridx);
     }
     /**
      * 如果变量是 只读的，尝试赋值，会抛error
@@ -168,7 +168,7 @@ public class LParser {
                 DynData dyd = ls.getDyd();
                 varName=dyd.getVarDesc(e.getInfo()).getName();break;
             case VLOCAL:
-                Vardesc vardesc = getLocalVarDesc(fs,e.getVidx());
+                Vardesc vardesc = getLocalVarDesc(fs,e.getActVarIndex());
                 //不是一个 regular 变量
                 if(vardesc.getKind() != VDKREG){
                     varName =vardesc.getName();
@@ -250,8 +250,8 @@ public class LParser {
         if(v.getK() == VLOCAL){
             desc.setInstack(true);
             //记录desc 在 outer 函数中寄存器地址
-            desc.setIdx(v.getIdx());
-            desc.setKind(getLocalVarDesc(prev,v.idx).getKind());
+            desc.setIdx(v.getIndexForTable());
+            desc.setKind(getLocalVarDesc(prev,v.indexForTable).getKind());
         } else{
             desc.setInstack(false);
             desc.setKind(prev.proto.getUpValDesc(v.info).getKind());
@@ -332,7 +332,7 @@ public class LParser {
         if(v >= 0){
             if(v == VLOCAL.kind && base == 0){
                 //当作upval使用
-                markBlockUpval(fs,e.getVidx());
+                markBlockUpval(fs,e.getActVarIndex());
             }
         } else{
             //尝试在 Upvalues中找
@@ -585,7 +585,7 @@ public class LParser {
         fs.firstlabel = dyd.getLabel().getSize();
         f.setSource(ls.getSource());
         //前两个寄存器总是有效的
-        f.setMaxstacksize(2);
+        f.setMaxStackSize(2);
         enterBlock(fs,bl,false);
 
     }
@@ -747,7 +747,7 @@ public class LParser {
 
     /**
      * 表的索引
-     *  index -> '[' expr ']'
+     *  indexForTable -> '[' expr ']'
      */
     public static void yIndex(LexState ls, ExpDesc v) {
         //跳过 '['
@@ -949,7 +949,7 @@ public class LParser {
         //设置函数所在的行
         newFs.getProto().setLinedefined(line);
         openFunc(ls,newFs,bl);
-        check(ls,SMALL_LEFT);
+        checkNext(ls,SMALL_LEFT);
         //如果是method，会加上self作为method的参数
         if(isMethod){
             newLocalVar(ls,"self");
@@ -1303,31 +1303,31 @@ public class LParser {
                 //table是一个 upvalue，其索引使用的是 "常量"，
                 if(lh.v.getK() == VINDEXUP){
                     //tt代表之前赋值用到的table
-                    // tt == v.getinfo 表示之前用的table 和 现在 v中的变量
+                    // table == v.getinfo 表示之前用的table 和 现在 v中的变量
                     //是同一个，有冲突。
-                    if(v.getK() == VUPVAL && lh.v.getTt() == v.getInfo()){
+                    if(v.getK() == VUPVAL && lh.v.getTable() == v.getInfo()){
                         // 表示lh中使用的table 是 当前被赋值的变量
                         conflict = true;
                         //使用拷贝的内容 去赋值
                         lh.v.setK(VINDEXSTR);
-                        lh.v.setTt(extra);
+                        lh.v.setTable(extra);
                     }
                 } else{
                     //table 放在寄存器里面
                     // a[b],a=x,y
-                    if(v.getK() == VLOCAL && lh.v.getTt() == v.getIdx()){
+                    if(v.getK() == VLOCAL && lh.v.getTable() == v.getIndexForTable()){
                         //表示lh中使用的table是当前被赋值的变量
                         conflict =true;
-                        lh.v.setTt(extra);
+                        lh.v.setTable(extra);
                     }
                     // a[b],b=x,y的情形，需要实现拷贝b
                     //VINDEXED比较特殊，索引可以是寄存器下标
                     //而寄存器里面的值是会发生改变的
                     //如果有冲突，需要拷贝一份副本
                     if(lh.v.getK()==VINDEXED && v.getK() == VLOCAL
-                        && lh.v.getIdx() == v.getIdx()){
+                        && lh.v.getIndexForTable() == v.getIndexForTable()){
                         conflict = true;
-                        lh.v.setIdx(extra);
+                        lh.v.setIndexForTable(extra);
                     }
                 }
             }
@@ -1336,7 +1336,7 @@ public class LParser {
         if(conflict){
             //拷贝 upvalue 或者local,到extra的位置
             if(v.getK() == VLOCAL){
-                luaK_codeABC(fs,OP_MOVE,extra,v.getRidx(),0);
+                luaK_codeABC(fs,OP_MOVE,extra,v.getRegisterIndex(),0);
             }else{
                 luaK_codeABC(fs,OP_GETUPVAL,extra,v.getInfo(),0);
             }
@@ -1400,7 +1400,7 @@ public class LParser {
             v.k = VFALSE;
         }
         luaK_goIfTrue(ls.getFs(),v);
-        return v.getF();
+        return v.getFJmp();
     }
     /**
      * goto语句
@@ -1661,7 +1661,7 @@ public class LParser {
             luaK_goIfFalse(fs,v);
             luaX_Next(ls);
             enterBlock(fs,bl,false);
-            newGotoEntry(ls,LString.newStr(ls.getL(),"break"),line,v.t);
+            newGotoEntry(ls,LString.newStr(ls.getL(),"break"),line,v.tJmp);
             while(testNext(ls,SEMICON));
             if(blockFollow(ls,false)){
                 leaveBlock(fs);
@@ -1673,7 +1673,7 @@ public class LParser {
         } else{
             luaK_goIfTrue(fs,v);
             enterBlock(fs,bl,false);
-            jumpFalse = v.getF();
+            jumpFalse = v.getFJmp();
         }
         //then part
         statList(ls);
@@ -1699,7 +1699,7 @@ public class LParser {
 
         //仅仅用来存储 一个 整数
         ExpDesc escapeList = new ExpDesc();
-        escapeList.setT(NO_JUMP);
+        escapeList.setTJmp(NO_JUMP);
         testThenBlock(ls,escapeList);
         while(ls.getCurTokenEnum() == ELSEIF){
             testThenBlock(ls,escapeList);
@@ -1708,7 +1708,7 @@ public class LParser {
             block(ls);
         }
         checkMatch(ls,END,IF,line);
-        luaK_patchToHere(fs,escapeList.getT());
+        luaK_patchToHere(fs,escapeList.getTJmp());
     }
     public static void localFunc(LexState ls){
         ExpDesc b = new ExpDesc();
@@ -1743,7 +1743,7 @@ public class LParser {
     }
 
     public static void checkToClose(FuncState fs,int level){
-        if(level !=1){
+        if(level != -1){
             markToBeClosed(fs);
             luaK_codeABC(fs,OP_TBC,regLevel(fs,level),0,0);
         }

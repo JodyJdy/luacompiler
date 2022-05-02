@@ -12,7 +12,7 @@ public class Vardesc {
     int kind;
     int ridx;  /* register holding the variable */
     // 本地变量表索引
-    int pidx;  /* index of the variable in the Proto's 'locvars' array */
+    int pidx;  /* indexForTable of the variable in the Proto's 'locvars' array */
     //变量名
     String name;  /* variable name */
     TValue k; /* constant value */

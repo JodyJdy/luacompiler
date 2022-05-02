@@ -1,1 +1,1 @@
-local a,b=1,2
+local a = 1 + 2 + 4;

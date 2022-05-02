@@ -3,6 +3,7 @@ package com.jdy.lua.lcodes;
 import com.jdy.lua.lex.LexState;
 import com.jdy.lua.lobjects.Proto;
 import com.jdy.lua.lobjects.TValue;
+import com.jdy.lua.lobjects.Value;
 import com.jdy.lua.lopcodes.Instruction;
 import com.jdy.lua.lopcodes.OpCode;
 import com.jdy.lua.lopcodes.OpMode;
@@ -18,6 +19,7 @@ import static com.jdy.lua.lopcodes.Instructions.getOpCode;
 import static com.jdy.lua.lopcodes.Instructions.*;
 import static com.jdy.lua.lopcodes.OpCode.*;
 import static com.jdy.lua.lparser.ExpKind.*;
+import static com.jdy.lua.lparser.LParser.breakStat;
 import static com.jdy.lua.lparser.LParser.luaY_nVarsStack;
 import static com.jdy.lua.ltm.TMS.*;
 
@@ -85,7 +87,7 @@ public class LCodes {
 
     /**
      * 生成一个 load constant的指令
-     * 如果 index k 小于18 bit，使用OP_LOADK
+     * 如果 indexForTable constants 小于18 bit，使用OP_LOADK
      * 否则就是OP_LOADKX,并且，额外生成一条OP_EXTRAARG指令
      */
     static int luaK_codeK (FuncState fs, int reg, int k) {
@@ -103,12 +105,12 @@ public class LCodes {
      */
     public static void luaK_checkStack(FuncState fs,int n){
         int newStack = fs.getFreereg() + n;
-        if(newStack > fs.getProto().getMaxstacksize()){
+        if(newStack > fs.getProto().getMaxStackSize()){
             if(newStack > MAX_REGS){
                 System.err.println("寄存器达到最大值");
             }
             //重新设置 最大栈的尺寸
-            fs.getProto().setMaxstacksize(newStack);
+            fs.getProto().setMaxStackSize(newStack);
         }
     }
 
@@ -126,7 +128,7 @@ public class LCodes {
      */
     public static void freeReg (FuncState fs, int reg) {
         if (reg >= luaY_nVarsStack(fs)) {
-          fs.decreFreeReg();
+            fs.decreFreeReg();
         }
     }
 
@@ -173,13 +175,13 @@ public class LCodes {
             return (int) idx.getI();
         }
         //创建一个新的常量到常量数组里面
-        int k = fs.getNk();
+        int k = fs.getNumOfConstants();
         val.setI(k);
         //将值 和 下标，存储
         lex.getH().put(value,val);
         //存储到常量数组里面去
-        proto.getK().add(value);
-        fs.setNk(k + 1);
+        proto.addConstants(value);
+        fs.setNumOfConstants(k + 1);
         return k;
     }
 
@@ -272,7 +274,7 @@ public class LCodes {
                 expDesc.setK(VTRUE);
                 break;
             case LUA_TNIL:
-                expDesc.setK(VKINT);
+                expDesc.setK(VNIL);
                 break;
             case LUA_TSTRING:
                 expDesc.setK(VKSTR);
@@ -290,7 +292,7 @@ public class LCodes {
     }
 
     public static boolean hasJumps(ExpDesc desc){
-        return desc.getT() != desc.getF();
+        return desc.getTJmp() != desc.getFJmp();
     }
 
     /**
@@ -301,10 +303,16 @@ public class LCodes {
             return false;  /* not a numeral */
         switch (e.getK()) {
             case VKINT:
-                if (v != null)v.setI(e.getIval());
+                if (v != null){
+                    v.setI(e.getIval());
+                    v.setValueType(LUA_TNUMINT);
+                }
                 return true;
             case VKFLT:
-                if (v != null) v.setF(e.getNval());
+                if (v != null) {
+                    v.setF(e.getNval());
+                    v.setValueType(LUA_TNUMFLONT);
+                }
                 return true;
             default: return false;
         }
@@ -334,7 +342,7 @@ public class LCodes {
             case VTRUE:v.setValueType(LUA_TTRUE);break;
             case VNIL:v.setValueType(LUA_TNIL);break;
             case VKSTR:v.setValueType(LUA_TSTRING);v.setObj(desc.getStrval());break;
-            case VCONST:v.initByTValue(const2Val(fs,desc));break;
+            case VCONST:v.setFromTValue(const2Val(fs,desc));break;
             default:return tonumeral(desc,v);
         }
         return true;
@@ -396,7 +404,7 @@ public class LCodes {
              * local 变量已经存放在寄存器里了
              */
             case VLOCAL: {
-                e.setInfo(e.getRidx());
+                e.setInfo(e.getRegisterIndex());
                 e.setK(VNONRELOC);  /* becomes a non-relocatable value */
                 break;
             }
@@ -406,26 +414,26 @@ public class LCodes {
                 break;
             }
             case VINDEXUP: {
-                e.setInfo(luaK_codeABC(fs, OP_GETTABUP, 0, e.getTt(), e.getIdx()));
+                e.setInfo(luaK_codeABC(fs, OP_GETTABUP, 0, e.getTable(), e.getIndexForTable()));
                 e.setK(VRELOC);
                 break;
             }
             case VINDEXI: {
                 //释放寄存器，因为寄存器里面的值，已经包含在下面生成的指令里面了,下面的freeReg同理
-                freeReg(fs, e.getTt());
-                e.setInfo(luaK_codeABC(fs, OP_GETI, 0, e.getTt(), e.getIdx()));
+                freeReg(fs, e.getTable());
+                e.setInfo(luaK_codeABC(fs, OP_GETI, 0, e.getTable(), e.getIndexForTable()));
                 e.setK(VRELOC);
                 break;
             }
             case VINDEXSTR: {
-                freeReg(fs, e.getTt());
-                e.setInfo(luaK_codeABC(fs, OP_GETFIELD, 0, e.getTt(), e.getIdx()));
+                freeReg(fs, e.getTable());
+                e.setInfo(luaK_codeABC(fs, OP_GETFIELD, 0, e.getTable(), e.getIndexForTable()));
                 e.setK(VRELOC);
                 break;
             }
             case VINDEXED: {
-                freeRegs(fs,e.getTt(),e.getIdx());
-                e.setInfo(luaK_codeABC(fs, OP_GETTABLE, 0, e.getTt(),e.getIdx()));
+                freeRegs(fs,e.getTable(),e.getIndexForTable());
+                e.setInfo(luaK_codeABC(fs, OP_GETTABLE, 0, e.getTable(),e.getIndexForTable()));
                 e.setK(VRELOC);
                 break;
             }
@@ -511,7 +519,7 @@ public class LCodes {
     }
 
     /**
-     *  不是 OP_TESTSET就会返回true，应该是因为我 OP_TESETSET已经将值存储在了寄存器里，所以不需要再存储了
+     *  不是 OP_TESTSET就会返回true，应该是因为 OP_TESETSET已经将值存储在了寄存器里，所以不需要再存储了
      */
     public static boolean needValue(FuncState fs,int list){
         for(;list != NO_JUMP;list = getJumpDestination(fs,list)){
@@ -535,7 +543,7 @@ public class LCodes {
             int finalPos;
             int pf = NO_JUMP;
             int pT = NO_JUMP;
-            if(needValue(fs,e.getT()) || needValue(fs,e.getF())){
+            if(needValue(fs,e.getTJmp()) || needValue(fs,e.getFJmp())){
                 // e如果不是 VJMP类型的，就生成一条jmp指令，用于跳出下面的bool语句
                 /**
                  * 例如:   c = a > b  and a  表达式包含了布尔表达式也包含了a
@@ -560,11 +568,11 @@ public class LCodes {
             }
             finalPos = luaK_GetLabel(fs);
             //回填，真假出口， TESTSET 使用作为 target， 其他测试指令使用 pf/pf作为target
-            patchListAux(fs,e.getF(),finalPos,reg,pf);
-            patchListAux(fs,e.getT(),finalPos,reg,pT);
+            patchListAux(fs,e.getFJmp(),finalPos,reg,pf);
+            patchListAux(fs,e.getTJmp(),finalPos,reg,pT);
         }
-        e.setF(NO_JUMP);
-        e.setT(NO_JUMP);
+        e.setFJmp(NO_JUMP);
+        e.setTJmp(NO_JUMP);
         e.setInfo(reg);
         e.setK(VNONRELOC);
     }
@@ -672,7 +680,7 @@ public class LCodes {
             case VLOCAL: {
                 freeExpReg(fs, ex);
                 //将表达式 ex的值存到 register idx上面
-                exp2Reg(fs, ex, var.getRidx());
+                exp2Reg(fs, ex, var.getRegisterIndex());
                 return;
             }
             case VUPVAL: {
@@ -682,21 +690,21 @@ public class LCodes {
                 break;
             }
             case VINDEXUP: {
-                //var.getTt()记录了 table，var.getIdx()记录了key的索引
-                codeABRK(fs, OP_SETTABUP, var.getTt(), var.getIdx(), ex);
+                //var.getTable()记录了 table，var.getIndexForTable()记录了key的索引
+                codeABRK(fs, OP_SETTABUP, var.getTable(), var.getIndexForTable(), ex);
                 break;
             }
             case VINDEXI: {
-                //var.getTt()记录了 table，var.getIdx()记录了key的索引
-                codeABRK(fs, OP_SETI, var.getTt(), var.getIdx(), ex);
+                //var.getTable()记录了 table，var.getIndexForTable()记录了key的索引
+                codeABRK(fs, OP_SETI, var.getTable(), var.getIndexForTable(), ex);
                 break;
             }
             case VINDEXSTR: {
-                codeABRK(fs, OP_SETFIELD, var.getT(), var.getIdx(), ex);
+                codeABRK(fs, OP_SETFIELD, var.getTable(), var.getIndexForTable(), ex);
                 break;
             }
             case VINDEXED: {
-                codeABRK(fs, OP_SETTABLE, var.getTt(), var.getIdx(), ex);
+                codeABRK(fs, OP_SETTABLE, var.getTable(), var.getIndexForTable(), ex);
                 break;
             }
             default: break;  /* invalid var kind to store */
@@ -798,7 +806,7 @@ public class LCodes {
         switch (e.getK()) {
             case VJMP: {  /* condition? */
                 //颠倒跳转条件，将标记为k反转即可
-                // 测试语句都是 if(e ~= k) pc++;  eq生成的指令是反过来的，因为k=1，这里进行修正。
+                // 测试语句都是 if(e ~= constants) pc++;  eq生成的指令是反过来的，因为k=1，这里进行修正。
                 negateCondition(fs, e);  /* jump when it is false */
                 pc = e.getInfo();  /* save jump position */
                 break;
@@ -814,11 +822,11 @@ public class LCodes {
                 break;
             }
         }
-        //pc是假出口，连接 e->f 和 pc
+        //pc是假出口，连接 e->fJmp 和 pc
         luaK_Concat(fs,e,pc,false);  /* insert new jump in false list */
         // 回填真出口到当前位置，真出口 jump到这里
-        luaK_patchToHere(fs,e.getT());  /* true list jumps to here (to go through) */
-        e.setT(NO_JUMP);
+        luaK_patchToHere(fs,e.getTJmp());  /* true list jumps to here (to go through) */
+        e.setTJmp(NO_JUMP);
     }
 
     /**
@@ -847,8 +855,8 @@ public class LCodes {
         //拼接真出口
         luaK_Concat(fs,e,pc,true);/* insert new jump in 'currTk' list */
         //处理假出口
-        luaK_patchToHere(fs, e.getF());  /* false list jumps to here (to go through) */
-        e.setF(NO_JUMP);
+        luaK_patchToHere(fs, e.getFJmp());  /* false list jumps to here (to go through) */
+        e.setFJmp(NO_JUMP);
     }
     /**
      * not 运算
@@ -877,13 +885,13 @@ public class LCodes {
             default:break;
         }
         //真假出口链表交换
-        int t = e.getT();
-        int f = e.getF();
-        e.setF(t);
-        e.setT(f);
+        int t = e.getTJmp();
+        int f = e.getFJmp();
+        e.setFJmp(t);
+        e.setTJmp(f);
         //not 中，表达式的值是无用的，将 TESTSET 跳转成 TEST
-        removeValues(fs,e.getF());
-        removeValues(fs,e.getT());
+        removeValues(fs,e.getFJmp());
+        removeValues(fs,e.getTJmp());
     }
 
     /**
@@ -891,10 +899,10 @@ public class LCodes {
      */
     public static boolean isKstr(FuncState fs,ExpDesc e){
         Proto proto = fs.getProto();
-        List<TValue> ks = proto.getK();
+        List<TValue> ks = proto.getConstants();
         return e.getK() == VK
                 && !hasJumps(e)
-                && e.getInfo() <= MAX_ARG_B
+                && e.getInfo() <= MAX_ARG_B && e.getInfo() < ks.size()
                 && ks.get(e.getInfo()).getValueType() == LUA_TSTRING;
     }
     /**
@@ -938,7 +946,7 @@ public class LCodes {
         return false;
     }
     /**
-     * 创建表达式 currTk[k]
+     * 创建表达式 currTk[constants]
      * t的值需要存放在一个寄存器或者 upvalue
      * Upvalues的key 应该存放在寄存器中 或者常量表中
      */
@@ -952,25 +960,26 @@ public class LCodes {
         }
         //处理 VUPVal
         if(t.getK() == VUPVAL){
-            // upvalue index
-            t.setTt(t.getInfo());
+            // upvalue indexForTable
+            t.setTable(t.getInfo());
             //索引 upvalue的字面量
-            t.setIdx(k.getInfo());
+            t.setIndexForTable(k.getInfo());
+            t.setK(VINDEXUP);
         } else{
             //处理table
             //table的寄存器索引
-            t.setTt(t.getK() == VLOCAL ? t.getIdx() : t.getInfo());
+            t.setTable(t.getK() == VLOCAL ? t.getRegisterIndex() : t.getInfo());
             //字符串常量索引table
             if(isKstr(fs,k)){
-                t.setIdx(k.getInfo());
+                t.setIndexForTable(k.getInfo());
                 t.setK(VINDEXSTR);
             } else if(isCint(k)){
                 //整数常量索引table
-                t.setIdx((int)k.getIval());
+                t.setIndexForTable((int)k.getIval());
                 t.setK(VINDEXI);
             } else{
                 //寄存器索引table
-                t.setIdx((int)k.getIval());
+                t.setIndexForTable(luaK_exp2anyreg(fs,k));
                 t.setK(VINDEXED);
             }
         }
@@ -991,16 +1000,72 @@ public class LCodes {
     }
 
     /**
+     * 整数的运算
+     */
+    private static void calInteger(BinOpr op,long a,long b,TValue res){
+        res.setValueType(LUA_TNUMINT);
+        switch (op){
+            case OPR_BAND: res.setI(a & b);break;
+            case OPR_BOR:res.setI(a | b);break;
+            case OPR_BXOR:res.setI(a ^ b);break;
+            case OPR_SHL: res.setI(a << b);break;
+            case OPR_SHR: res.setI(a >> b);break;
+            case OPR_IDIV: res.setI(a/b);break;
+            case OPR_MOD: res.setI(a % b);break;
+            default:break;
+        }
+    }
+    /** double 数值的运算
+     * */
+    public static void calDouble(BinOpr op,TValue v1,TValue v2,TValue res){
+        double num1 = v1.getValueType() == LUA_TNUMFLONT ? v1.getF() : v1.getI();
+        double num2 = v2.getValueType() == LUA_TNUMFLONT ? v2.getF() : v2.getI();
+        double result = 0.0;
+        switch (op){
+            case OPR_ADD:result = num1+num2;break;
+                case OPR_SUB: result = num1-num2;break;
+                case OPR_MUL: result = num1*num2;break;
+                case OPR_DIV: result = num1/num2;break;
+                case OPR_POW: result = Math.pow(num1,num2);break;
+                default:break;
+        }
+        if(v1.getValueType() == LUA_TNUMFLONT || v2.getValueType() == LUA_TNUMFLONT){
+            res.setF(result);
+        } else{
+            res.setI((long)result);
+        }
+    }
+    /**
+     * 进行运算
+     */
+    private static void arith(int op, TValue v1,TValue v2,TValue res){
+        BinOpr o =BinOpr.getBinOpr(op);
+        switch (o){
+            case OPR_BAND: case OPR_BOR: case OPR_BXOR:
+            case OPR_SHL: case OPR_SHR: case OPR_IDIV:
+                long num1 = v1.getI();
+                long num2 = v2.getI();
+                calInteger(o,num1,num2,res);
+                break;
+            case OPR_ADD:case OPR_SUB:case OPR_MUL:case OPR_DIV:case OPR_POW:
+                calDouble(o,v1,v2,res);
+                break;
+                default:break;
+        }
+
+    }
+
+    /**
      * 常量折叠
      *   如果成功， e1 存放最终的结果
      */
     public static boolean constFolding(FuncState fs,int op,ExpDesc e1,ExpDesc e2){
         TValue v1 = new TValue(),v2 = new TValue(),res = new TValue();
-        if(!tonumeral(e1,v1) || tonumeral(e2,v2) || !validateOp(op,v1,v2)){
+        if(!tonumeral(e1,v1) || !tonumeral(e2,v2) || !validateOp(op,v1,v2)){
             return false;
         }
         //进行运算
-//        luaO_rawarith(fs->ls->L, op, &v1, &v2, &res);  /* does operation */
+        arith(op, v1, v2, res);
         if(isInteger(res)){
             e1.setK(VKINT);
             e1.setIval(res.getI());
@@ -1326,12 +1391,12 @@ public class LCodes {
             return;  /* done by folding */
         switch (opr) {
             case OPR_AND: {
-                luaK_Concat(fs,e2,e1.getF(),false);
+                luaK_Concat(fs,e2,e1.getFJmp(),false);
                 e1.setFromExp(e2);
                 break;
             }
             case OPR_OR: {
-                luaK_Concat(fs, e2, e1.getT(),true);
+                luaK_Concat(fs, e2, e1.getTJmp(),true);
                 e1.setFromExp(e2);
                 break;
             }
@@ -1441,7 +1506,7 @@ public class LCodes {
         int pc = fs.getPc();
         Proto proto = fs.getProto();
         if(pc > fs.getLasttarget()){
-            return proto.getInstruction(pc);
+            return proto.getInstruction(pc-1);
         }
         return INVALID_INSTRUCTIN;
     }
@@ -1484,12 +1549,12 @@ public class LCodes {
     public static void luaK_Concat(FuncState fs,ExpDesc expDesc,int l2, boolean type){
         if(l2 == NO_JUMP){
             return;
-        } else if(type && expDesc.getT() == NO_JUMP){
-            expDesc.setT(l2);
-        } else if(!type && expDesc.getF() == NO_JUMP){
-            expDesc.setF(l2);
+        } else if(type && expDesc.getTJmp() == NO_JUMP){
+            expDesc.setTJmp(l2);
+        } else if(!type && expDesc.getFJmp() == NO_JUMP){
+            expDesc.setFJmp(l2);
         }else{
-            int list = type ? expDesc.getT() : expDesc.getF();
+            int list = type ? expDesc.getTJmp() : expDesc.getFJmp();
             int next;
             //找到最后一个 jump语句
             while((next = getJumpDestination(fs,list)) != NO_JUMP){
@@ -1562,7 +1627,7 @@ public class LCodes {
         if(getOpCode(i) != OP_TESTSET){
             return false;
         }
-        // R[A]=R[B]，所以不同是同一个寄存器
+        // R[A]=R[B]，所以不能是同一个寄存器
         if(reg != NO_REG && reg != getArgB(i)){
             setArgA(i,reg);
         } else{

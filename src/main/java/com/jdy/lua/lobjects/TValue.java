@@ -19,7 +19,7 @@ public class TValue extends Value {
 
     }
 
-    public void initByTValue(TValue v){
+    public void setFromTValue(TValue v){
         if(v != null) {
             this.setValueType(v.getValueType());
             this.setTbcList(v.getTbcList());

@@ -1,9 +1,6 @@
 import com.jdy.lua.lex.Lex;
 import com.jdy.lua.lex.LexState;
 import com.jdy.lua.lex.Token;
-import com.jdy.lua.lex.TokenEnum;
-import com.jdy.lua.lopcodes.Instruction;
-import com.jdy.lua.lopcodes.Instructions;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -11,18 +8,11 @@ import java.io.FileNotFoundException;
 import java.util.Formatter;
 import java.util.Scanner;
 
-import static com.jdy.lua.lopcodes.Instructions.OFFSET_sBx;
-import static com.jdy.lua.lopcodes.Instructions.create_ABx;
-import static com.jdy.lua.lopcodes.OpCode.OP_LOADI;
 import static com.jdy.lua.lparser.LParser.luaY_Parser;
 
 public class Test {
     public static void main(String[] args) throws Exception {
-//        int b = 1 + OFFSET_sBx;
-//        Instruction i = create_ABx(OP_LOADI.getCode(),1,b);
-//        System.out.println(Instructions.getOpCode(i));
-//        System.out.println(i);
-        func4();
+      func4();
     }
     public static void func1() throws FileNotFoundException {
         Scanner scanner = new Scanner(new FileInputStream(new File("src/test/A.TXT")));
@@ -47,7 +37,7 @@ public class Test {
         Lex.next(lexState);
         while(lexState.getCurrent() != Lex.EOZ){
             Lex.llex(lexState,true);
-            System.out.println(lexState.getCurrTk());
+//            System.out.println(lexState.getCurrTk());
         }
 
         System.out.println();

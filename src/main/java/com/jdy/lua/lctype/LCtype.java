@@ -44,7 +44,7 @@ public class LCtype {
                 NONA,  NONA,  NONA,  NONA,  NONA,  NONA,  NONA,  NONA,
                 NONA,  NONA,  NONA,  NONA,  NONA,  NONA,  NONA,  NONA,	/* e. */
                 NONA,  NONA,  NONA,  NONA,  NONA,  NONA,  NONA,  NONA,
-                NONA,  NONA,  NONA,  NONA,  NONA,  0x00,  0x00,  0x00,	/* f. */
+                NONA,  NONA,  NONA,  NONA,  NONA,  0x00,  0x00,  0x00,	/* fJmp. */
                 0x00,  0x00,  0x00,  0x00,  0x00,  0x00,  0x00,  0x00
     };
 
