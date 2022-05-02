@@ -1030,8 +1030,10 @@ public class LCodes {
                 default:break;
         }
         if(v1.getValueType() == LUA_TNUMFLONT || v2.getValueType() == LUA_TNUMFLONT){
+            res.setValueType(LUA_TNUMFLONT);
             res.setF(result);
         } else{
+            res.setValueType(LUA_TNUMINT);
             res.setI((long)result);
         }
     }
@@ -1040,6 +1042,7 @@ public class LCodes {
      */
     private static void arith(int op, TValue v1,TValue v2,TValue res){
         BinOpr o =BinOpr.getBinOpr(op);
+        res.setValueType(LUA_TNUMINT);
         switch (o){
             case OPR_BAND: case OPR_BOR: case OPR_BXOR:
             case OPR_SHL: case OPR_SHR: case OPR_IDIV:
