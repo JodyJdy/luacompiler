@@ -315,17 +315,32 @@ public class LParser {
             subExpr = new SubExpr(expr);
         }
         op = getBinopr(ls.getCurTokenEnum());
-        subExpr.setBinOpr(op);
-        while(op != OPR_NOBINOPR && priority[op.getOp()][0] > limit){
-            luaX_Next(ls);
-            SubExpr subExpr2 = subExpr(ls,priority[op.getOp()][1]);
+        if(op != OPR_NOBINOPR){
             subExpr.setBinOpr(op);
+        }
+
+        while(op != null && op != OPR_NOBINOPR && priority[op.getOp()][0] > limit){
+            luaX_Next(ls);
+            //subexpr2 的 op表示 读取到等级小于limit的符号了，不再递归处理
+            SubExpr subExpr2 = subExpr(ls,priority[op.getOp()][1]);
             subExpr.setSubExpr2(subExpr2);
+            subExpr.setBinOpr(op);
+
             //再套一层
             subExpr = new SubExpr(subExpr);
             //获取下一个操作符
             op = subExpr2.getBinOpr();
+            subExpr.setBinOpr(op);
+            //subexpr2读取到的符号是未处理的，此时的subexpr2是
+            //subExpr的第一个操作数， subexpr2的 op 是subexpr 的op
+            //将subexpr2  设置成无操作符的普通表达式。
+            // 例如 1 and 1 or 1, 表达式层级是 (1 and 1) or 1
+            // 读取了1 and  再执行subExpr函数会返回 1 or, 此时要将
+            // 返回的subExpr2设置成null，处理成 (1 and 1) or
+            //的形式。(1 and 1) or 就是新生成的 subExpr处理后的形式
+            subExpr2.setBinOpr(null);
         }
+
         return subExpr;
     }
     public static SimpleExpr simpleExp(LexState ls){

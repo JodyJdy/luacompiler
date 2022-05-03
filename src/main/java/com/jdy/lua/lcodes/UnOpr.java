@@ -33,7 +33,7 @@ public enum UnOpr {
             case LEN: return UnOpr.OPR_LEN;
             case NOT:return UnOpr.OPR_NOT;
             default:
-                return UnOpr.OPR_NOUNOPR;
+                return OPR_NOUNOPR;
         }
     }
 }

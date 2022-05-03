@@ -461,7 +461,7 @@ public class Lex {
         if(l.getNextTokenEnum()!= EOF){
             l.setCurrTk(l.getLookahead());
             //重置lookhead
-            l.defaultLookHead();
+            l.resetLookAhead();
         } else{
            llex(l,true);
         }

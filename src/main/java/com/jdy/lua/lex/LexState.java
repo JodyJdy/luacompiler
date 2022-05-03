@@ -63,7 +63,7 @@ public class LexState {
     TokenEnum getNextTokenEnum(){
         return lookahead.getToken();
     }
-    public void defaultLookHead(){
+    public void resetLookAhead(){
         lookahead = new Token(TokenEnum.EOF);
     }
     @Override
