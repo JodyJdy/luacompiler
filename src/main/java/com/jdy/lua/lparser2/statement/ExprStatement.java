@@ -1,4 +1,4 @@
 package com.jdy.lua.lparser2.statement;
 
-public class ExprStatement {
+public class ExprStatement extends Statement{
 }

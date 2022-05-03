@@ -4,20 +4,22 @@ import com.jdy.lua.lcodes.BinOpr;
 import com.jdy.lua.lcodes.UnOpr;
 import lombok.Data;
 
+import static com.jdy.lua.lcodes.BinOpr.OPR_NOBINOPR;
+
 @Data
 public class SubExpr extends Expr{
-    private SimpleExpr simpleExpr;
+
     private UnOpr unOpr;
-    private SubExpr subExpr;
-    private BinOpr binOpr;
+    private Expr subExpr1;
+    private BinOpr binOpr = OPR_NOBINOPR;
     private SubExpr subExpr2;
 
-    public SubExpr(SimpleExpr simpleExpr) {
-        this.simpleExpr = simpleExpr;
+    public SubExpr(Expr subExpr1) {
+        this.subExpr1 = subExpr1;
     }
 
     public SubExpr(UnOpr unOpr, SubExpr subExpr) {
         this.unOpr = unOpr;
-        this.subExpr = subExpr;
+        this.subExpr1 = subExpr;
     }
 }

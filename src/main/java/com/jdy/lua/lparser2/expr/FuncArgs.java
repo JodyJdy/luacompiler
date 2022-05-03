@@ -15,8 +15,11 @@ public class FuncArgs extends Expr{
     public FuncArgs(TableConstructor constructor) {
         this.constructor = constructor;
     }
+    public FuncArgs(){
 
-    public void addExpr(Expr e){
-        expr1.add(e);
+    }
+
+    public void addExprList(ExprList e){
+        expr1.addAll(e.getExprList());
     }
 }
