@@ -300,6 +300,14 @@ public class LParser {
      */
     public static int UNARY_PRIORITY = 12;
 
+    public static SubExpr trySimplyfy(SubExpr subExpr){
+        if(subExpr.getUnOpr() == null && subExpr.getBinOpr() == null && subExpr.getSubExpr2() ==null){
+            if(subExpr.getSubExpr1() instanceof  SubExpr){
+                return (SubExpr)subExpr.getSubExpr1();
+            }
+        }
+        return subExpr;
+    }
 
     public static SubExpr subExpr(LexState ls,int limit){
         BinOpr op;
@@ -325,23 +333,20 @@ public class LParser {
             SubExpr subExpr2 = subExpr(ls,priority[op.getOp()][1]);
             subExpr.setSubExpr2(subExpr2);
             subExpr.setBinOpr(op);
-
-            //再套一层
-            subExpr = new SubExpr(subExpr);
+            //情况 1 + (1 * 1)，返回的一个完整的表达式，说明解析完毕了
+            if(subExpr2.getSubExpr2() != null){
+                break;
+            }
+            //情况 1 * 1 + 1, 解析到 + 号就结束了，因为遇到了比 *运算符等级低的
+            //需要将 1 * 1 + 1，构造成 (1 * 1) + 1，下面的操作就是完成了套一层的操作。
             //获取下一个操作符
-            op = subExpr2.getBinOpr();
+            subExpr = new SubExpr(subExpr);
             subExpr.setBinOpr(op);
-            //subexpr2读取到的符号是未处理的，此时的subexpr2是
-            //subExpr的第一个操作数， subexpr2的 op 是subexpr 的op
-            //将subexpr2  设置成无操作符的普通表达式。
-            // 例如 1 and 1 or 1, 表达式层级是 (1 and 1) or 1
-            // 读取了1 and  再执行subExpr函数会返回 1 or, 此时要将
-            // 返回的subExpr2设置成null，处理成 (1 and 1) or
-            //的形式。(1 and 1) or 就是新生成的 subExpr处理后的形式
+            op = subExpr2.getBinOpr();
             subExpr2.setBinOpr(null);
         }
-
-        return subExpr;
+        //再次简化，去掉无用的嵌套结构
+        return trySimplyfy(subExpr);
     }
     public static SimpleExpr simpleExp(LexState ls){
 
