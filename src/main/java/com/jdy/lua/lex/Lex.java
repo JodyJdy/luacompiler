@@ -460,6 +460,8 @@ public class Lex {
         l.setLastline(l.getLinenumber());
         if(l.getNextTokenEnum()!= EOF){
             l.setCurrTk(l.getLookahead());
+            //重置lookhead
+            l.defaultLookHead();
         } else{
            llex(l,true);
         }

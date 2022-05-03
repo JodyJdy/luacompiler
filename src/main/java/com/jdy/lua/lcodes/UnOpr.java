@@ -1,5 +1,7 @@
 package com.jdy.lua.lcodes;
 
+import com.jdy.lua.lex.TokenEnum;
+
 /**
  * 单操作符
  */
@@ -22,5 +24,16 @@ public enum UnOpr {
 
     public int getOp(){
         return op;
+    }
+
+    public static UnOpr getUnopr(TokenEnum op){
+        switch (op){
+            case SUB:return UnOpr.OPR_MINUS;
+            case BITXOR: return UnOpr.OPR_BNOT;
+            case LEN: return UnOpr.OPR_LEN;
+            case NOT:return UnOpr.OPR_NOT;
+            default:
+                return UnOpr.OPR_NOUNOPR;
+        }
     }
 }

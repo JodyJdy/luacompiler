@@ -2,82 +2,97 @@ package com.jdy.lua.lparser2;
 
 import com.jdy.lua.lcodes.BinOpr;
 import com.jdy.lua.lcodes.UnOpr;
-import com.jdy.lua.lex.Lex;
 import com.jdy.lua.lex.LexState;
 import com.jdy.lua.lex.TokenEnum;
-import com.jdy.lua.lparser.FuncState;
 import com.jdy.lua.lparser2.expr.*;
 import com.jdy.lua.lparser2.statement.*;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import static com.jdy.lua.lcodes.BinOpr.*;
-import static com.jdy.lua.lcodes.LCodes.luaK_codeABC;
 import static com.jdy.lua.lex.Lex.*;
-import static com.jdy.lua.lex.Lex.luaX_Next;
 import static com.jdy.lua.lex.TokenEnum.*;
-import static com.jdy.lua.lopcodes.OpCode.OP_VARARG;
-import static com.jdy.lua.lparser.ExpKind.*;
-import static com.jdy.lua.lparser.ExpKind.VVARARG;
-import static com.jdy.lua.lparser.LParser.UNARY_PRIORITY;
 
 public class LParser {
+
+    public static boolean blockFollow(LexState ls,boolean withUntil){
+        switch (ls.getCurTokenEnum()){
+            case ELSE: case ELSEIF:
+            case END: case EOF:
+                return true;
+            case UNTIL:
+                return withUntil;
+            default:
+                return false;
+
+        }
+    }
     public static BlockStatement block(LexState ls){
-        return null;
+        StatList statList = new StatList();
+        while(!blockFollow(ls,true)){
+            statList.addStatement(statement(ls));
+        }
+        return new BlockStatement(statList);
     }
     public static Statement statement(LexState ls){
         int line = ls.getLinenumber();
         switch (ls.getCurTokenEnum()){
 
-            case IF: {  /* stat -> ifstat */
+            case IF: {
+                luaX_Next(ls);
                 return ifStat(ls, line);
 
             }
-            case WHILE: {  /* stat -> whilestat */
+            case WHILE: {
+                luaX_Next(ls);
                 return whileStat(ls, line);
 
             }
-            case DO: {  /* stat -> DO block END */
+            case DO: {
                 luaX_Next(ls);  /* skip DO */
-                Statement s = block(ls,line);
+                Statement s = block(ls);
                 checkMatch(ls, END, DO, line);
                 return s;
 
             }
-            case FOR: {  /* stat -> forstat */
+            case FOR: {
                 return forStat(ls, line);
 
             }
-            case REPEAT: {  /* stat -> repeatstat */
+            case REPEAT: {
                 return repeatStat(ls, line);
 
             }
-            case FUNCTION: {  /* stat -> funcstat */
+            case FUNCTION: {
                 return funcStat(ls, line);
 
             }
-            case LOCAL: {  /* stat -> localstat */
-                luaX_Next(ls);  /* skip LOCAL */
-                if (testNext(ls, FUNCTION))  /* local function? */
+            case LOCAL: {
+                luaX_Next(ls);
+                if (testNext(ls, FUNCTION))
                     return localFunc(ls,line);
                 else
                     return localStat(ls,line);
 
             }
-            case DOU_COLON: {  /* stat -> label */
-                luaX_Next(ls);  /* skip double colon */
+            case DOU_COLON: {
+                luaX_Next(ls);
                 return labelStat(ls, line);
 
             }
-            case RETURN: {  /* stat -> retstat */
-                luaX_Next(ls);  /* skip RETURN */
+            case RETURN: {
+                luaX_Next(ls);
                 return retStat(ls,line);
 
             }
-            case BREAK: {  /* stat -> breakstat */
+            case BREAK: {
+                luaX_Next(ls);
                 return breakStat(ls,line);
 
             }
-            case GOTO: {  /* stat -> 'goto' NAME */
-                luaX_Next(ls);  /* skip 'goto' */
+            case GOTO: {
+                luaX_Next(ls);
                 return gotoStat(ls,line);
 
             }
@@ -94,9 +109,11 @@ public class LParser {
         IfStatement ifStatement;
 
         Expr cond = expr(ls);
+        checkNext(ls,THEN);
         BlockStatement block = block(ls);
         ifStatement = new IfStatement(cond,block);
         while(ls.getCurTokenEnum() == ELSEIF){
+            checkNext(ls,ELSEIF);
             ifStatement.addElseThenCond(expr(ls));
             ifStatement.addElseThenBlock(block(ls));
         }
@@ -113,11 +130,41 @@ public class LParser {
         checkMatch(ls,END,WHILE,line);
         return new WhileStatement(cond,block);
     }
-    public static BlockStatement block(LexState ls, int line){
-        return null;
-    }
-    public static ForStatement forStat(LexState ls, int line){
 
+    public static ForStatement forStat(LexState ls, int line){
+        luaX_Next(ls);
+        NameExpr nameExpr = new NameExpr(ls.getCurrTk().getS());
+        switch (ls.getCurTokenEnum()){
+            //数值型for循环
+            case ASSIGN:
+                Expr expr1 = expr(ls);
+                checkNext(ls,COMMA);
+                Expr expr2 = expr(ls);
+                Expr expr3 = null;
+                if(testNext(ls,COMMA)){
+                     expr3 = expr(ls);
+                }
+                checkNext(ls,DO);
+                BlockStatement block = block(ls);
+                checkMatch(ls,END,FOR,line);
+                return new ForStatement(nameExpr,expr1,expr2,expr3,block);
+
+            case COMMA:
+            case IN:
+                List<NameExpr> nameExprList = new ArrayList<>();
+                nameExprList.add(nameExpr);
+                while(testNext(ls,COMMA)){
+                    nameExprList.add(new NameExpr(ls.getCurrTk().getS()));
+                }
+                checkNext(ls,IN);
+                ExprList exprList = exprList(ls);
+                checkNext(ls,DO);
+                BlockStatement block2 = block(ls);
+                checkMatch(ls,END,FOR,line);
+                return new ForStatement(nameExprList,exprList,block2);
+            default:
+                System.err.println("语法错误");
+        }
         return null;
     }
     public static RepeatStatement repeatStat(LexState ls,int line){
@@ -129,13 +176,65 @@ public class LParser {
         return new RepeatStatement(block,cond);
     }
     public static FunctionStat funcStat(LexState ls, int line){
-        return null;
+        luaX_Next(ls);
+
+        List<NameExpr> exprs = new ArrayList<>();
+        exprs.add(new NameExpr(ls.getCurrTk().getS()));
+        boolean isMethod = false;
+        while(ls.getCurTokenEnum() == DOT){
+            luaX_Next(ls);
+            exprs.add(new NameExpr(ls.getCurrTk().getS()));
+        }
+        if(ls.getCurTokenEnum() == COLON){
+            luaX_Next(ls);
+            exprs.add(new NameExpr(ls.getCurrTk().getS()));
+            isMethod = true;
+        }
+        BlockStatement blockStatement = block(ls);
+        checkNext(ls,END);
+        //单纯的函数名称
+        if(exprs.size() == 1){
+            return new FunctionStat(exprs.get(0),blockStatement);
+        } else{
+            // a.b.c.d:XX() 这种，最后一个是函数名称
+            NameExpr funName = exprs.remove(exprs.size() - 1);
+            FunctionStat stat = new FunctionStat(funName,blockStatement);
+            stat.setMethod(isMethod);
+            stat.setFieldDesc(exprs);
+            return stat;
+        }
     }
     public static LocalStatement localStat(LexState ls,int line){
-        return null;
+        LocalStatement localStatement = new LocalStatement();
+        int index = 0;
+        do{
+            localStatement.addNameExpr(new NameExpr(ls.getCurrTk().getS()));
+            luaX_Next(ls);
+
+            if(testNext(ls,LT)){
+                String attr = ls.getCurrTk().getS();
+                checkNext(ls,GT);
+                if("const".equals(attr)){
+                    localStatement.addNameExprAttributes(index,attr);
+                } else if("close".equals(attr)){
+                    localStatement.addNameExprAttributes(index,attr);
+                } else{
+                    System.err.println("错误的变量属性");
+                }
+            }
+
+            index++;
+        }while(testNext(ls,COMMA));
+        if(testNext(ls,ASSIGN)){
+            localStatement.setExprList(exprList(ls));
+        }
+        return localStatement;
     }
-    public static FunctionStat localFunc(LexState ls,int line){
-        return null;
+    public static LocalFuncStat localFunc(LexState ls,int line){
+       String name = ls.getCurrTk().getS();
+       BlockStatement blockStatement = block(ls);
+       checkNext(ls,END);
+       return new  LocalFuncStat(name,blockStatement);
     }
     public static LabelStatement labelStat(LexState ls,int line){
         checkNext(ls,DOU_COLON);
@@ -144,16 +243,32 @@ public class LParser {
         return labelStatement;
     }
     public static ReturnStatement retStat(LexState ls,int line){
-        return null;
+        return new ReturnStatement(exprList(ls));
     }
     public static BreakStatement breakStat(LexState ls,int line){
-        return null;
+        return new BreakStatement();
     }
     public static GotoStatement gotoStat(LexState ls,int line){
-        return null;
+        GotoStatement gotoStatement = new GotoStatement(ls.getCurrTk().getS());
+        luaX_Next(ls);
+        return gotoStatement;
     }
     public static ExprStatement exprStat(LexState ls,int line){
-        return null;
+        SuffixedExp s = suffixedExp(ls);
+        ExprStatement state = new ExprStatement();
+        if(ls.getCurTokenEnum() == ASSIGN || ls.getCurTokenEnum() == COMMA){
+            state.addLeft(s);
+            while(testNext(ls,COMMA)){
+                state.addLeft(suffixedExp(ls));
+            }
+            //读取到了 =
+            checkNext(ls,ASSIGN);
+            state.setRight(exprList(ls));
+        } else{
+            //函数调用
+            state.setFunc(s);
+        }
+        return state;
     }
     public static ExprList exprList(LexState ls){
         ExprList exprList = new ExprList();
@@ -167,16 +282,7 @@ public class LParser {
         return subExpr(ls,0);
     }
 
-    public static UnOpr getUnopr(TokenEnum op){
-        switch (op){
-            case SUB:return UnOpr.OPR_MINUS;
-            case BITXOR: return UnOpr.OPR_BNOT;
-            case LEN: return UnOpr.OPR_LEN;
-            case NOT:return UnOpr.OPR_NOT;
-            default:
-                return UnOpr.OPR_NOUNOPR;
-        }
-    }
+
     public static int[][] priority ={
             {10, 10}, {10, 10},           /* '+' '-' */
             {11, 11}, {11, 11},           /* '*' '%' */
@@ -194,38 +300,12 @@ public class LParser {
      */
     public static int UNARY_PRIORITY = 12;
 
-    public static BinOpr getBinopr(TokenEnum op){
-        switch (op){
-            case ADD:return BinOpr.OPR_ADD;
-            case SUB: return OPR_SUB;
-            case MUL: return OPR_MUL;
-            case MOD: return OPR_MOD;
-            case POW: return OPR_POW;
-            case DIV: return OPR_DIV;
-            case BITAND: return OPR_BAND;
-            case BITOR: return OPR_BOR;
-            case BITXOR: return OPR_BXOR;
-            case LT: return OPR_LT;
-            case GT: return OPR_GT;
-            case IDIV: return OPR_IDIV;
-            case LSHIFT: return OPR_SHL;
-            case RSHIFT: return OPR_SHR;
-            case CAT: return OPR_CONCAT;
-            case NE: return OPR_NE;
-            case EQ: return OPR_EQ;
-            case LE: return OPR_LE;
-            case GE: return OPR_GE;
-            case AND: return OPR_AND;
-            case OR: return OPR_OR;
-            default:
-                return OPR_NOBINOPR;
-        }
-    }
+
     public static SubExpr subExpr(LexState ls,int limit){
         BinOpr op;
         UnOpr uop;
         SubExpr subExpr;
-        uop = getUnopr(ls.getCurTokenEnum());
+        uop = UnOpr.getUnopr(ls.getCurTokenEnum());
         if(uop != UnOpr.OPR_NOUNOPR){
             luaX_Next(ls);
             SubExpr exp = subExpr(ls,UNARY_PRIORITY);
@@ -235,7 +315,9 @@ public class LParser {
             subExpr = new SubExpr(expr);
         }
         op = getBinopr(ls.getCurTokenEnum());
+        subExpr.setBinOpr(op);
         while(op != OPR_NOBINOPR && priority[op.getOp()][0] > limit){
+            luaX_Next(ls);
             SubExpr subExpr2 = subExpr(ls,priority[op.getOp()][1]);
             subExpr.setBinOpr(op);
             subExpr.setSubExpr2(subExpr2);
@@ -278,6 +360,7 @@ public class LParser {
             }
             case FALSE: {
                 expr = new FalseExpr();
+                luaX_Next(ls);
                 break;
             }
             case VARARG: {
@@ -288,7 +371,7 @@ public class LParser {
 
             case FUNCTION: {
                  luaX_Next(ls);
-                 BlockStatement st = block(ls, ls.getLinenumber());
+                 BlockStatement st = block(ls);
                  expr = new FunctionBody(st);
                  break;
             }
@@ -308,7 +391,9 @@ public class LParser {
             checkNext(ls,SMALL_RIGHT);
             return new PrimaryExpr(expr);
         } else if(ls.getCurTokenEnum() == NAME){
-            return new PrimaryExpr(new NameExpr(ls.getCurrTk().getS()));
+            String s = ls.getCurrTk().getS();
+            luaX_Next(ls);
+            return new PrimaryExpr(new NameExpr(s));
         }
         return null;
     }
@@ -410,6 +495,7 @@ public class LParser {
         Expr left,right;
         if(ls.getCurTokenEnum() == NAME){
             left = new NameExpr(ls.getCurrTk().getS());
+            luaX_Next(ls);
         } else{
             left = tableIndex(ls);
         }

@@ -30,7 +30,7 @@ public enum TokenEnum {
      * 保留词汇
      */
     private static List<TokenEnum> reserved = Arrays.asList(AND,BREAK,DO,ELSE,ELSEIF,END,FALSE,FOR
-        ,FUNCTION,GOTO,IF,IN,LOCAL,NIL,NOT,OR,REPEAT,RETURN,THEN,UNTIL,WHILE);
+        ,FUNCTION,GOTO,IF,IN,LOCAL,NIL,NOT,OR,REPEAT,RETURN,THEN,UNTIL,WHILE,TRUE);
 
 
     TokenEnum(char ch){

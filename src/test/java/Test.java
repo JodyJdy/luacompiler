@@ -1,6 +1,8 @@
 import com.jdy.lua.lex.Lex;
 import com.jdy.lua.lex.LexState;
 import com.jdy.lua.lex.Token;
+import com.jdy.lua.lparser2.statement.BlockStatement;
+import com.jdy.lua.lstate.LuaState;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -9,10 +11,11 @@ import java.util.Formatter;
 import java.util.Scanner;
 
 import static com.jdy.lua.lparser.LParser.luaY_Parser;
+import static com.jdy.lua.lparser2.LParser.block;
 
 public class Test {
     public static void main(String[] args) throws Exception {
-      func4();
+        func5();
     }
     public static void func1() throws FileNotFoundException {
         Scanner scanner = new Scanner(new FileInputStream(new File("src/test/A.TXT")));
@@ -44,5 +47,15 @@ public class Test {
     }
     public static void func4() throws FileNotFoundException {
         luaY_Parser(null,null,"hello",'a');
+    }
+
+  public static void func5() throws FileNotFoundException{
+        LexState lexState = new LexState();
+        lexState.setCurrTk(new Token());
+        lexState.setEnvn("_ENV");
+        lexState.setL(new LuaState());
+        lexState.setReader(new FileInputStream(new File("src/test/b.lua")));
+        Lex.luaX_Next(lexState);
+        BlockStatement b = block(lexState);
     }
 }

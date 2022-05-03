@@ -1,5 +1,7 @@
 package com.jdy.lua.lcodes;
 
+import com.jdy.lua.lex.TokenEnum;
+
 public enum BinOpr {
 
     /* arithmetic operators */
@@ -39,5 +41,33 @@ public enum BinOpr {
      */
     public boolean foldBinaryOp(){
         return this.getOp() <= OPR_SHR.getOp();
+    }
+
+    public static BinOpr getBinopr(TokenEnum op){
+        switch (op){
+            case ADD:return BinOpr.OPR_ADD;
+            case SUB: return OPR_SUB;
+            case MUL: return OPR_MUL;
+            case MOD: return OPR_MOD;
+            case POW: return OPR_POW;
+            case DIV: return OPR_DIV;
+            case BITAND: return OPR_BAND;
+            case BITOR: return OPR_BOR;
+            case BITXOR: return OPR_BXOR;
+            case LT: return OPR_LT;
+            case GT: return OPR_GT;
+            case IDIV: return OPR_IDIV;
+            case LSHIFT: return OPR_SHL;
+            case RSHIFT: return OPR_SHR;
+            case CAT: return OPR_CONCAT;
+            case NE: return OPR_NE;
+            case EQ: return OPR_EQ;
+            case LE: return OPR_LE;
+            case GE: return OPR_GE;
+            case AND: return OPR_AND;
+            case OR: return OPR_OR;
+            default:
+                return OPR_NOBINOPR;
+        }
     }
 }

@@ -2,7 +2,6 @@ package com.jdy.lua.lparser;
 
 import com.jdy.lua.lcodes.BinOpr;
 import com.jdy.lua.lcodes.UnOpr;
-import com.jdy.lua.lex.Lex;
 import com.jdy.lua.lex.LexState;
 import com.jdy.lua.lex.Token;
 import com.jdy.lua.lex.TokenEnum;
@@ -21,8 +20,10 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.util.List;
 
-import static com.jdy.lua.lcodes.BinOpr.*;
+import static com.jdy.lua.lcodes.BinOpr.OPR_NOBINOPR;
+import static com.jdy.lua.lcodes.BinOpr.getBinopr;
 import static com.jdy.lua.lcodes.LCodes.*;
+import static com.jdy.lua.lcodes.UnOpr.getUnopr;
 import static com.jdy.lua.lex.Lex.*;
 import static com.jdy.lua.lex.TokenEnum.*;
 import static com.jdy.lua.lopcodes.OpCode.*;
@@ -1150,44 +1151,6 @@ public class LParser {
         luaX_Next(ls);
     }
 
-    public static UnOpr getUnopr(TokenEnum op){
-        switch (op){
-            case SUB:return UnOpr.OPR_MINUS;
-            case BITXOR: return UnOpr.OPR_BNOT;
-            case LEN: return UnOpr.OPR_LEN;
-            case NOT:return UnOpr.OPR_NOT;
-            default:
-                return UnOpr.OPR_NOUNOPR;
-        }
-    }
-
-    public static BinOpr getBinopr(TokenEnum op){
-        switch (op){
-            case ADD:return BinOpr.OPR_ADD;
-            case SUB: return OPR_SUB;
-            case MUL: return OPR_MUL;
-            case MOD: return OPR_MOD;
-            case POW: return OPR_POW;
-            case DIV: return OPR_DIV;
-            case BITAND: return OPR_BAND;
-            case BITOR: return OPR_BOR;
-            case BITXOR: return OPR_BXOR;
-            case LT: return OPR_LT;
-            case GT: return OPR_GT;
-            case IDIV: return OPR_IDIV;
-            case LSHIFT: return OPR_SHL;
-            case RSHIFT: return OPR_SHR;
-            case CAT: return OPR_CONCAT;
-            case NE: return OPR_NE;
-            case EQ: return OPR_EQ;
-            case LE: return OPR_LE;
-            case GE: return OPR_GE;
-            case AND: return OPR_AND;
-            case OR: return OPR_OR;
-            default:
-                return OPR_NOBINOPR;
-        }
-    }
 
     /**
      *  2元运算符优先表。  没有使用递归的形式，隐含出运算符优先级，使用优先级表的方式
@@ -1898,7 +1861,7 @@ public class LParser {
         lexState.setEnvn("_ENV");
         lexState.setL(new LuaState());
         lexState.setReader(new FileInputStream(new File("src/test/b.lua")));
-        Lex.next(lexState);
+        luaX_Next(lexState);
         LuaState state = new LuaState();
         dyd = new DynData();
 

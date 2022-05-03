@@ -16,7 +16,7 @@ public class LexState {
     /**
      * 当前读取的 字符
      */
-    int current;
+    int current = ' ';
     /**
      * 当前的行号
      */
@@ -29,6 +29,8 @@ public class LexState {
      * 当前的token
      */
     Token currTk = new Token();
+
+
     /**
      * 向前看一个token
      */
@@ -61,7 +63,9 @@ public class LexState {
     TokenEnum getNextTokenEnum(){
         return lookahead.getToken();
     }
-
+    public void defaultLookHead(){
+        lookahead = new Token(TokenEnum.EOF);
+    }
     @Override
     public String toString() {
         return "LexState{" +
