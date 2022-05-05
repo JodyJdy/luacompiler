@@ -134,6 +134,7 @@ public class LParser {
     public static ForStatement forStat(LexState ls, int line){
         luaX_Next(ls);
         NameExpr nameExpr = new NameExpr(ls.getCurrTk().getS());
+        luaX_Next(ls);
         switch (ls.getCurTokenEnum()){
             //数值型for循环
             case ASSIGN:
@@ -155,6 +156,7 @@ public class LParser {
                 nameExprList.add(nameExpr);
                 while(testNext(ls,COMMA)){
                     nameExprList.add(new NameExpr(ls.getCurrTk().getS()));
+                    luaX_Next(ls);
                 }
                 checkNext(ls,IN);
                 ExprList exprList = exprList(ls);
@@ -282,7 +284,9 @@ public class LParser {
         return subExpr(ls,0);
     }
 
-
+    /**
+     * 定义运算符优先级，用于决定是否继续读入
+     */
     public static int[][] priority ={
             {10, 10}, {10, 10},           /* '+' '-' */
             {11, 11}, {11, 11},           /* '*' '%' */
@@ -303,7 +307,7 @@ public class LParser {
     /**
      * 优化 Subexpr的结构
      */
-    public static SubExpr trySimplyfy(SubExpr subExpr){
+    public static SubExpr trySimplyfySubExpr(SubExpr subExpr){
         if(subExpr.getUnOpr() == null && subExpr.getBinOpr() == null && subExpr.getSubExpr2() ==null){
             if(subExpr.getSubExpr1() instanceof  SubExpr){
                 return (SubExpr)subExpr.getSubExpr1();
@@ -354,7 +358,7 @@ public class LParser {
             subExpr.setBinOpr(op);
             op = subExpr2.getOpr();
         }
-        return new SubExprWithOp(trySimplyfy(subExpr),op);
+        return new SubExprWithOp(trySimplyfySubExpr(subExpr),op);
     }
     public static SimpleExpr simpleExp(LexState ls){
          /* simpleexp -> FLT | INT | STRING | NIL | TRUE | FALSE | ... |

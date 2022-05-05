@@ -1,3 +1,8 @@
 
 
-a=  a "hello"
+for a,b in c,d
+do
+
+  print("hello")
+
+end
