@@ -300,6 +300,9 @@ public class LParser {
      */
     public static int UNARY_PRIORITY = 12;
 
+    /**
+     * 优化 Subexpr的结构
+     */
     public static SubExpr trySimplyfy(SubExpr subExpr){
         if(subExpr.getUnOpr() == null && subExpr.getBinOpr() == null && subExpr.getSubExpr2() ==null){
             if(subExpr.getSubExpr1() instanceof  SubExpr){
@@ -430,7 +433,9 @@ public class LParser {
 
     public static NameExpr fieldSel(LexState ls){
         luaX_Next(ls);
-        return new NameExpr(ls.getCurrTk().getS());
+        NameExpr nameExpr =new NameExpr(ls.getCurrTk().getS());
+        luaX_Next(ls);
+        return  nameExpr;
     }
     public static SuffixedExp suffixedExp(LexState ls){
         /* suffixedexp -> primaryexp { '.' NAME | '[' exp ']' | ':' NAME funcargs | funcargs } */
@@ -440,32 +445,25 @@ public class LParser {
             switch (ls.getCurTokenEnum()){
                 case DOT:
                     NameExpr nameExpr = fieldSel(ls);
-                    suffixedExp.setNameExpr(nameExpr);
-                    suffixedExp.setHasDot(true);
+                    suffixedExp.addSuffixedExpContent(new SuffixedExp.SuffixedExpContent(nameExpr));
                     break;
                 case MID_LEFT: {
                     TableIndex tableIndex = tableIndex(ls);
-                    suffixedExp.setExpr(tableIndex);
+                    suffixedExp.addSuffixedExpContent(new SuffixedExp.SuffixedExpContent(tableIndex));
                     break;
                 }
                 case COLON: {
-                    luaX_Next(ls);
-                    NameExpr nameExpr1 = new NameExpr(ls.getCurrTk().getS());
+                    NameExpr nameExpr1 = fieldSel(ls);
                     FuncArgs funcArgs = funcArgs(ls);
-                    suffixedExp.setNameExpr(nameExpr1);
-                    suffixedExp.setFuncArgs(funcArgs);
-                    suffixedExp.setHasColon(true);
+                    suffixedExp.addSuffixedExpContent(new SuffixedExp.SuffixedExpContent(nameExpr1,funcArgs));
                     break;
                 }
                 case SMALL_LEFT: case BIG_LEFT: case STRING:
-                    suffixedExp.setFuncArgs(funcArgs(ls));
+                    suffixedExp.addSuffixedExpContent(new SuffixedExp.SuffixedExpContent(funcArgs(ls)));
                     break;
-
                 default:
                     return suffixedExp;
             }
-            //嵌套结构，因为有 a.b.c.d这种情况
-            suffixedExp = new SuffixedExp(suffixedExp);
         }
 
     }
@@ -502,6 +500,7 @@ public class LParser {
                     ExprList exprList = exprList(ls);
                     funcArgs.addExprList(exprList);
                 }
+                luaX_Next(ls);
                 break;
             case BIG_LEFT:
                 TableConstructor constructor = constructor(ls);
@@ -511,7 +510,7 @@ public class LParser {
                 funcArgs = new FuncArgs(new StringExpr(ls.getCurrTk().getS()));
                 luaX_Next(ls);
                 break;
-                default:
+            default:
                     funcArgs = null;
                     System.err.println("lost func args");
 
