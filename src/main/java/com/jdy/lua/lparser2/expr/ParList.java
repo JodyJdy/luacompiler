@@ -22,4 +22,10 @@ public class ParList extends Expr{
     public GenerateInfo generate(InstructionGenerator generator) {
        return  generator.generate(this);
     }
+
+    @Override
+    public GenerateInfo generate(InstructionGenerator generator, GenerateInfo info) {
+        return generator.generate(this,info);
+    }
+
 }

@@ -11,4 +11,8 @@ public abstract class Expr implements Generator {
     public GenerateInfo generate(InstructionGenerator generator) {
         return null;
     }
+
+    public GenerateInfo generate(InstructionGenerator generator,GenerateInfo info){
+        return null;
+    }
 }

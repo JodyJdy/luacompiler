@@ -70,4 +70,10 @@ public class SuffixedExp extends Expr{
        return  generator.generate(this);
     }
 
+    @Override
+    public GenerateInfo generate(InstructionGenerator generator, GenerateInfo info) {
+        return generator.generate(this,info);
+    }
+
+
 }

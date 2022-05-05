@@ -6,6 +6,9 @@ import com.jdy.lua.lobjects.LocalVar;
 import com.jdy.lua.lobjects.Proto;
 import com.jdy.lua.lobjects.TValue;
 import com.jdy.lua.lparser.DynData;
+import static com.jdy.lua.lparser.ExpKind.*;
+
+import com.jdy.lua.lparser.ExpKind;
 import com.jdy.lua.lparser.FuncState;
 import com.jdy.lua.lparser.Vardesc;
 import com.jdy.lua.lparser2.LocalVarAttribute;
@@ -78,12 +81,7 @@ public class InstructionGenerator {
 
     }
 
-    /**
-     * 将表达式的结果存储在指定寄存器里面
-     */
-    public void expr2reg(Expr expr,int reg){
-        expr.generate(this);
-    }
+
     public GenerateInfo generate(LocalStatement localStatement){
 
         List<NameExpr> nameExprList =localStatement.getNameExprList();
@@ -116,6 +114,9 @@ public class InstructionGenerator {
     public GenerateInfo generate(Expr expr){
         return null;
     }
+    public GenerateInfo generate(Expr expr,GenerateInfo generateInfo){
+        return null;
+    }
 
     public GenerateInfo generate(ExprList exprList){
         return null;
@@ -125,87 +126,27 @@ public class InstructionGenerator {
      * 常量的处理
      */
     public GenerateInfo generate(TrueExpr expr){
-        GenerateInfo info = new GenerateInfo(LocalVarAttribute.RDKCONST);
-        info.setKIndex(trueConstant(fs));
-        LCodes.luaK_codeK(fs,reserveRegs(1),info.getKIndex());
-        return info;
+       return GenerateInfo.info(VTRUE);
     }
     public GenerateInfo generate(FalseExpr expr){
-        GenerateInfo info = new GenerateInfo(LocalVarAttribute.RDKCONST);
-        info.setKIndex(falseConstant(fs));
-        LCodes.luaK_codeK(fs,reserveRegs(1),info.getKIndex());
-        return info;
+       return GenerateInfo.info(VFALSE);
     }
     public GenerateInfo generate(IntExpr expr){
-        GenerateInfo info = new GenerateInfo(LocalVarAttribute.RDKCONST);
-        info.setKIndex(intConstant(fs,expr.getI()));
-        LCodes.luaK_codeK(fs,reserveRegs(1),info.getKIndex());
-        return info;
+        return GenerateInfo.intInfo(expr.getI());
     }
     public GenerateInfo generate(FloatExpr expr){
-        GenerateInfo info = new GenerateInfo(LocalVarAttribute.RDKCONST);
-        info.setKIndex(floatConstant(fs,expr.getF()));
-        LCodes.luaK_codeK(fs,reserveRegs(1),info.getKIndex());
-        return info;
+        return GenerateInfo.floatInfo(expr.getF());
     }
     public GenerateInfo generate(StringExpr expr){
-        GenerateInfo info = new GenerateInfo(LocalVarAttribute.RDKCONST);
-        info.setKIndex(stringConstant(fs,expr.getStr()));
-        LCodes.luaK_codeK(fs,reserveRegs(1),info.getKIndex());
-        return info;
+       return GenerateInfo.strInfo(expr.getStr());
     }
     public GenerateInfo generate(NilExpr expr){
-        GenerateInfo info = new GenerateInfo(LocalVarAttribute.RDKCONST);
-        info.setKIndex(nilConstant(fs));
-        LCodes.luaK_codeK(fs,reserveRegs(1),info.getKIndex());
-        return info;
+       return GenerateInfo.info(VNIL);
     }
 
-    private static int addK(FuncState fs, TValue key, TValue value){
-        TValue val = new TValue();
-        Proto proto = fs.getProto();
-        LexState lex = fs.getLexState();
-        TValue idx = lex.getH().get(key);
-        if(idx != null){
-            return (int) idx.getI();
-        }
-        //创建一个新的常量到常量数组里面
-        int k = proto.getConstants().size();
-        val.setI(k);
-        //将值 和 下标，存储
-        lex.getH().put(value,val);
-        //存储到常量数组里面去
-        proto.addConstants(value);
-        return k;
+    public GenerateInfo generate(SimpleExpr expr){
+
     }
 
-    private static int stringConstant(FuncState fs, String t){
-        TValue v = TValue.strValue(t);
-        return addK(fs,v,v);
-    }
 
-    private static int intConstant(FuncState fs,long n){
-        TValue o = TValue.intValue(n);
-        return addK(fs,o,o);
-    }
-
-    private static int floatConstant(FuncState fs,double n){
-        TValue v = TValue.doubleValue(n);
-        return addK(fs,v,v);
-    }
-
-    private static int falseConstant(FuncState fs){
-        TValue v = TValue.falseValue();
-        return addK(fs,v,v);
-    }
-
-    private static int trueConstant(FuncState fs){
-        TValue v = TValue.trueValue();
-        return addK(fs,v,v);
-    }
-
-    private static int nilConstant(FuncState fs){
-        TValue v = TValue.nilValue();
-        return addK(fs,v,v);
-    }
 }
