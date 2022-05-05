@@ -1,5 +1,6 @@
 package com.jdy.lua.lparser2.statement;
 
+import com.jdy.lua.lcodes2.InstructionGenerator;
 import com.jdy.lua.lparser2.expr.Expr;
 import com.jdy.lua.lparser2.expr.ExprList;
 import com.jdy.lua.lparser2.expr.SuffixedExp;
@@ -21,5 +22,9 @@ public class ExprStatement extends Statement{
 
     public void addLeft(SuffixedExp suffixedExp){
         lefts.add(suffixedExp);
+    }
+    @Override
+    public void generate(InstructionGenerator generator) {
+        generator.generate(this);
     }
 }

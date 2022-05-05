@@ -1,5 +1,6 @@
 package com.jdy.lua.lparser2.statement;
 
+import com.jdy.lua.lcodes2.InstructionGenerator;
 import com.jdy.lua.lparser2.expr.Expr;
 import com.jdy.lua.lparser2.expr.ExprList;
 import com.jdy.lua.lparser2.expr.NameExpr;
@@ -31,6 +32,11 @@ public class ForStatement extends Statement{
         this.exprList = exprList;
         this.block = block;
 
+    }
+
+    @Override
+    public void generate(InstructionGenerator generator) {
+        generator.generate(this);
     }
 
 }

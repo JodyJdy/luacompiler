@@ -1,5 +1,6 @@
 package com.jdy.lua.lparser2.expr;
 
+import com.jdy.lua.lcodes2.InstructionGenerator;
 import lombok.Data;
 import lombok.Getter;
 
@@ -61,6 +62,11 @@ public class SuffixedExp extends Expr{
         public SuffixedExpContent(FuncArgs funcArgs){
             this.funcArgs = funcArgs;
         }
+    }
+
+    @Override
+    public void generate(InstructionGenerator generator) {
+        generator.generate(this);
     }
 
 }

@@ -1,5 +1,7 @@
 package com.jdy.lua.lparser2.expr;
 
+import com.jdy.lua.lcodes2.InstructionGenerator;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -13,5 +15,10 @@ public class ParList extends Expr{
     }
     public void addNameExpr(NameExpr ex){
         nameExprs.add(ex);
+    }
+
+    @Override
+    public void generate(InstructionGenerator generator) {
+        generator.generate(this);
     }
 }

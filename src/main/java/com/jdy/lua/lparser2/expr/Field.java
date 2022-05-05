@@ -1,5 +1,6 @@
 package com.jdy.lua.lparser2.expr;
 
+import com.jdy.lua.lcodes2.InstructionGenerator;
 import lombok.Data;
 
 @Data
@@ -13,5 +14,10 @@ public class Field extends Expr{
 
     public Field(TableListField tableListField) {
         this.tableListField = tableListField;
+    }
+
+    @Override
+    public void generate(InstructionGenerator generator) {
+        generator.generate(this);
     }
 }

@@ -1,5 +1,7 @@
 package com.jdy.lua.lparser2.expr;
 
+import com.jdy.lua.lcodes2.InstructionGenerator;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -14,5 +16,10 @@ public class TableConstructor  extends Expr{
     }
     public void addTableListFieds(TableListField listField){
         listFields.add(listField);
+    }
+
+    @Override
+    public void generate(InstructionGenerator generator) {
+        generator.generate(this);
     }
 }

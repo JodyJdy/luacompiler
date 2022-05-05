@@ -1,5 +1,7 @@
 package com.jdy.lua.lparser2.expr;
 
+import com.jdy.lua.lcodes2.InstructionGenerator;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -21,5 +23,9 @@ public class FuncArgs extends Expr{
 
     public void addExprList(ExprList e){
         expr1.addAll(e.getExprList());
+    }
+    @Override
+    public void generate(InstructionGenerator generator) {
+        generator.generate(this);
     }
 }

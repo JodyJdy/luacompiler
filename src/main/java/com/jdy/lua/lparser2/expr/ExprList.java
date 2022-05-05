@@ -1,5 +1,6 @@
 package com.jdy.lua.lparser2.expr;
 
+import com.jdy.lua.lcodes2.InstructionGenerator;
 import lombok.Getter;
 
 import java.util.ArrayList;
@@ -14,5 +15,10 @@ public class ExprList extends Expr{
 
     public void addExpr(Expr e){
         exprList.add(e);
+    }
+
+    @Override
+    public void generate(InstructionGenerator generator) {
+        generator.generate(this);
     }
 }

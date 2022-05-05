@@ -1,5 +1,13 @@
 package com.jdy.lua.lparser2.expr;
 
-public abstract class Expr {
+import com.jdy.lua.lcodes2.Generator;
+import com.jdy.lua.lcodes2.InstructionGenerator;
+
+public abstract class Expr implements Generator {
     int line;
+
+    @Override
+    public void generate(InstructionGenerator generator) {
+
+    }
 }

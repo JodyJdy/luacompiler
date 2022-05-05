@@ -1,5 +1,7 @@
 package com.jdy.lua.lparser2.statement;
 
+import com.jdy.lua.lcodes2.InstructionGenerator;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -9,5 +11,10 @@ public class StatList extends Statement {
 
     public void addStatement(Statement s){
         statements.add(s);
+    }
+
+    @Override
+    public void generate(InstructionGenerator generator) {
+        generator.generate(this);
     }
 }
