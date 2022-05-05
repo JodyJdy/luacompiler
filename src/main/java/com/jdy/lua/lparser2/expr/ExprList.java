@@ -18,7 +18,7 @@ public class ExprList extends Expr{
     }
 
     @Override
-    public void generate(InstructionGenerator generator) {
-        generator.generate(this);
+    public GenerateInfo generate(InstructionGenerator generator) {
+       return  generator.generate(this);
     }
 }

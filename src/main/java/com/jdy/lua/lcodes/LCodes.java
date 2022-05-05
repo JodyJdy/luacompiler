@@ -90,7 +90,7 @@ public class LCodes {
      * 如果 indexForTable constants 小于18 bit，使用OP_LOADK
      * 否则就是OP_LOADKX,并且，额外生成一条OP_EXTRAARG指令
      */
-    static int luaK_codeK (FuncState fs, int reg, int k) {
+    public static int luaK_codeK (FuncState fs, int reg, int k) {
         if (k <= MAX_ARG_Bx)
             return luaK_codeABx(fs, OP_LOADK, reg, k);
         else {

@@ -25,7 +25,7 @@ public class Proto extends GcObject {
   ;
     List<LocalVar> localVars = new ArrayList<>(); /** information about local variables (debug information) */
     String source;
-    List<GcObject> gcList = new ArrayList<>();
+
 
     public void addLineInfo(int i){
         lineInfoss.add(i);

@@ -1,5 +1,6 @@
 package com.jdy.lua.lparser2.statement;
 
+import com.jdy.lua.lcodes2.GenerateInfo;
 import com.jdy.lua.lcodes2.InstructionGenerator;
 import com.jdy.lua.lparser2.expr.Expr;
 import lombok.Data;
@@ -31,7 +32,7 @@ public class IfStatement extends Statement{
     }
 
     @Override
-    public void generate(InstructionGenerator generator) {
-        generator.generate(this);
+    public GenerateInfo generate(InstructionGenerator generator) {
+       return  generator.generate(this);
     }
 }

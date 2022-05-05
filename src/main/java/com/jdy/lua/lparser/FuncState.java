@@ -24,7 +24,7 @@ public class FuncState {
      * FuncState中第一个label 在 DynData中的下标
      */
     int firstlabel;
-    int ndebugvars;  /* number of elements in 'fJmp->locvars' */
+    int ndebugvars;  /* number of elements in 'f->locvars' */
     int nactvar;  /* number of active local variables */
     int nups;  /* number of upvalues */
     /*当前函数栈的下一个可用位置*/

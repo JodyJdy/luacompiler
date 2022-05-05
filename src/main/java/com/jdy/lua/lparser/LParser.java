@@ -742,7 +742,7 @@ public class LParser {
         luaK_exp2anyreg(fs,e);
         //跳过 . / :
         luaX_Next(ls);
-        codeNameExp(ls,e);
+        codeNameExp(ls,key);
         luaK_Indexed(fs,e,key);
     }
 
