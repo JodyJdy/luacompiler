@@ -15,7 +15,7 @@ public class SuffixedExp extends Expr{
 
 
     public SuffixedExp(Expr primaryExr) {
-        this.primaryExr = expr;
+        this.primaryExr = primaryExr;
     }
 
 }

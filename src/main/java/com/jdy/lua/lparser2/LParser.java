@@ -310,6 +310,14 @@ public class LParser {
     }
 
     public static SubExpr subExpr(LexState ls,int limit){
+        return subExprWithOp(ls,limit).getSubExpr();
+    }
+
+    /**
+     ** subexpr -> (simpleexp | unop subexpr) { binop subexpr }
+     ** where 'binop' is any binary operator with a priority higher than 'limit'
+     */
+    public static SubExprWithOp subExprWithOp(LexState ls,int limit){
         BinOpr op;
         UnOpr uop;
         SubExpr subExpr;
@@ -323,33 +331,31 @@ public class LParser {
             subExpr = new SubExpr(expr);
         }
         op = getBinopr(ls.getCurTokenEnum());
-        if(op != OPR_NOBINOPR){
-            subExpr.setBinOpr(op);
-        }
-
         while(op != null && op != OPR_NOBINOPR && priority[op.getOp()][0] > limit){
             luaX_Next(ls);
             //subexpr2 的 op表示 读取到等级小于limit的符号了，不再递归处理
-            SubExpr subExpr2 = subExpr(ls,priority[op.getOp()][1]);
-            subExpr.setSubExpr2(subExpr2);
+            SubExprWithOp subExpr2 = subExprWithOp(ls,priority[op.getOp()][1]);
+            subExpr.setSubExpr2(subExpr2.getSubExpr());
             subExpr.setBinOpr(op);
-            //情况 1 + (1 * 1)，返回的一个完整的表达式，说明解析完毕了
-            if(subExpr2.getSubExpr2() != null){
-                break;
+
+            //说明读取结束了
+            //情况 0 + (1 * 1)，返回的一个完整的表达式，说明解析完毕了
+            if(subExpr2.getOpr() == null || subExpr2.getOpr() == OPR_NOBINOPR){
+                return new SubExprWithOp(subExpr,null);
             }
+
             //情况 1 * 1 + 1, 解析到 + 号就结束了，因为遇到了比 *运算符等级低的
             //需要将 1 * 1 + 1，构造成 (1 * 1) + 1，下面的操作就是完成了套一层的操作。
             //获取下一个操作符
             subExpr = new SubExpr(subExpr);
             subExpr.setBinOpr(op);
-            op = subExpr2.getBinOpr();
-            subExpr2.setBinOpr(null);
+            op = subExpr2.getOpr();
         }
-        //再次简化，去掉无用的嵌套结构
-        return trySimplyfy(subExpr);
+        return new SubExprWithOp(trySimplyfy(subExpr),op);
     }
     public static SimpleExpr simpleExp(LexState ls){
-
+         /* simpleexp -> FLT | INT | STRING | NIL | TRUE | FALSE | ... |
+                  constructor | FUNCTION body | suffixedexp */
         Expr expr;
         switch (ls.getCurTokenEnum()){
             case BIG_LEFT:
@@ -403,17 +409,21 @@ public class LParser {
         }
         return new SimpleExpr(expr);
     }
-    public static PrimaryExpr primaryExpr(LexState ls){
+
+    /**
+     *  primaryexp -> NAME | '(' expr ')'
+     */
+    public static Expr primaryExpr(LexState ls){
         Expr expr;
         if(ls.getCurTokenEnum()== SMALL_LEFT){
             luaX_Next(ls);
             expr = expr(ls);
             checkNext(ls,SMALL_RIGHT);
-            return new PrimaryExpr(expr);
+            return expr;
         } else if(ls.getCurTokenEnum() == NAME){
             String s = ls.getCurrTk().getS();
             luaX_Next(ls);
-            return new PrimaryExpr(new NameExpr(s));
+            return new NameExpr(s);
         }
         return null;
     }
@@ -423,6 +433,7 @@ public class LParser {
         return new NameExpr(ls.getCurrTk().getS());
     }
     public static SuffixedExp suffixedExp(LexState ls){
+        /* suffixedexp -> primaryexp { '.' NAME | '[' exp ']' | ':' NAME funcargs | funcargs } */
         Expr expr = primaryExpr(ls);
         SuffixedExp suffixedExp = new SuffixedExp(expr);
         for(;;){
@@ -438,7 +449,6 @@ public class LParser {
                     break;
                 }
                 case COLON: {
-
                     luaX_Next(ls);
                     NameExpr nameExpr1 = new NameExpr(ls.getCurrTk().getS());
                     FuncArgs funcArgs = funcArgs(ls);
