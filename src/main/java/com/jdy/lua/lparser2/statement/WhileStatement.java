@@ -12,9 +12,8 @@ public class WhileStatement extends Statement {
         this.cond = cond;
         this.block = block;
     }
-
     @Override
-    public GenerateInfo generate(InstructionGenerator generator) {
-       return  generator.generate(this);
+    public void generate(InstructionGenerator generator, int a, int n) {
+        generator.generate(this,a,n);
     }
 }

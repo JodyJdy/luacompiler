@@ -6,7 +6,7 @@ import com.jdy.lua.lcodes2.InstructionGenerator;
 public class BreakStatement extends Statement{
 
     @Override
-    public GenerateInfo generate(InstructionGenerator generator) {
-       return  generator.generate(this);
+    public void generate(InstructionGenerator generator, int a, int n) {
+        generator.generate(this,a,n);
     }
 }

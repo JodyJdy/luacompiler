@@ -95,6 +95,10 @@ public class FunctionInfo {
         return idx;
     }
 
+    public List<Instruction> getInstructions() {
+        return instructions;
+    }
+
     public int getPc(){
         return instructions.size() - 1;
     }

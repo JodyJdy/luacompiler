@@ -63,11 +63,12 @@ public class InstructionGenerator {
             }
             loadRegs();
         }
-
-        //表示只有一个操作数
-        if(subExpr.getBinOpr() == null || subExpr.getBinOpr() == BinOpr.OPR_NOBINOPR){
+        // subExpr只有，一个表达式，无任何运算符号
+        if(b == -1 && subExpr.getBinOpr() == null && subExpr.getUnOpr() == null && subExpr.getSubExpr2() == null){
+            subExpr.getSubExpr1().generate(this,a,n);
             return;
         }
+
         //接着处理第二个操作数, and 和 or单独处理
        if(subExpr.getBinOpr() == BinOpr.OPR_AND || subExpr.getBinOpr() == BinOpr.OPR_OR){
            //表示左边的第一个表达式还未处理

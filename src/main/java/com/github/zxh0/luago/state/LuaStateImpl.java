@@ -592,15 +592,15 @@ public class LuaStateImpl implements LuaState, LuaVM {
 
     @Override
     public ThreadStatus load(byte[] chunk, String chunkName, String mode) {
-        Prototype proto = BinaryChunk.isBinaryChunk(chunk)
-                ? BinaryChunk.undump(chunk)
-                : Compiler.compile(new String(chunk), chunkName);
-        Closure closure = new Closure(proto);
-        stack.push(closure);
-        if (proto.getUpvalues().length > 0) {
-            Object env = registry.get(LUA_RIDX_GLOBALS);
-            closure.upvals[0] = new UpvalueHolder(env); // todo
-        }
+//        Prototype proto = BinaryChunk.isBinaryChunk(chunk)
+//                ? BinaryChunk.undump(chunk)
+//                : Compiler.compile(new String(chunk), chunkName);
+//        Closure closure = new Closure(proto);
+//        stack.push(closure);
+//        if (proto.getUpvalues().length > 0) {
+//            Object env = registry.get(LUA_RIDX_GLOBALS);
+//            closure.upvals[0] = new UpvalueHolder(env); // todo
+//        }
         return LUA_OK;
     }
 

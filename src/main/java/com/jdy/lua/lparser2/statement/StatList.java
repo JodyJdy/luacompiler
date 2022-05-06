@@ -2,10 +2,12 @@ package com.jdy.lua.lparser2.statement;
 
 import com.jdy.lua.lcodes2.GenerateInfo;
 import com.jdy.lua.lcodes2.InstructionGenerator;
+import lombok.Getter;
 
 import java.util.ArrayList;
 import java.util.List;
 
+@Getter
 public class StatList extends Statement {
     private List<Statement> statements = new ArrayList<>();
 
@@ -15,7 +17,7 @@ public class StatList extends Statement {
     }
 
     @Override
-    public GenerateInfo generate(InstructionGenerator generator) {
-       return  generator.generate(this);
+    public void generate(InstructionGenerator generator, int a, int n) {
+        generator.generate(this,a,n);
     }
 }

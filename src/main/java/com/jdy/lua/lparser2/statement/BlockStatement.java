@@ -2,7 +2,9 @@ package com.jdy.lua.lparser2.statement;
 
 import com.jdy.lua.lcodes2.GenerateInfo;
 import com.jdy.lua.lcodes2.InstructionGenerator;
+import lombok.Getter;
 
+@Getter
 public class BlockStatement extends Statement{
     private StatList statList;
 
@@ -11,7 +13,7 @@ public class BlockStatement extends Statement{
     }
 
     @Override
-    public GenerateInfo generate(InstructionGenerator generator) {
-       return  generator.generate(this);
+    public void generate(InstructionGenerator generator, int a, int n) {
+        generator.generate(this,a,n);
     }
 }

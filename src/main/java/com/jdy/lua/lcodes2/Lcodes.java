@@ -94,12 +94,12 @@ public class Lcodes {
                 emitCodeABC(fi, OP_CONCAT,b,2,0);
             default:
                 switch (op){
-                    case OPR_EQ:emitCodeABC(fi,OP_EQ,b,c,1);break;
-                    case OPR_NE:emitCodeABC(fi,OP_EQ,b,c,0);break;
-                    case OPR_LT:emitCodeABC(fi,OP_LT,b,c,1);break;
-                    case OPR_LE:emitCodeABC(fi,OP_LE,b,c,1);break;
-                    case OPR_GE:emitCodeABC(fi,OP_LT,b,c,0);break;
-                    case OPR_GT:emitCodeABC(fi,OP_LE,b,c,0);break;
+                    case OPR_EQ:emitCodeABCK(fi,OP_EQ,b,c,0,1);break;
+                    case OPR_NE:emitCodeABCK(fi,OP_EQ,b,c,0,0);break;
+                    case OPR_LT:emitCodeABCK(fi,OP_LT,b,c,0,1);break;
+                    case OPR_LE:emitCodeABCK(fi,OP_LE,b,c,0,0);break;
+                    case OPR_GE:emitCodeABCK(fi,OP_LT,b,c,0,0);break;
+                    case OPR_GT:emitCodeABCK(fi,OP_LE,b,c,0,0);break;
                     default:break;
                 }
                 emitCodeJump(fi,1,0);

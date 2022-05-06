@@ -1,7 +1,12 @@
+import com.jdy.lua.lcodes2.InstructionGenerator;
 import com.jdy.lua.lex.Lex;
 import com.jdy.lua.lex.LexState;
 import com.jdy.lua.lex.Token;
+import com.jdy.lua.lopcodes.Instruction;
+import com.jdy.lua.lparser2.FunctionInfo;
+import com.jdy.lua.lparser2.expr.SubExpr;
 import com.jdy.lua.lparser2.statement.BlockStatement;
+import com.jdy.lua.lparser2.statement.LocalStatement;
 import com.jdy.lua.lstate.LuaState;
 
 import java.io.File;
@@ -57,5 +62,14 @@ public class Test {
         lexState.setReader(new FileInputStream(new File("src/test/b.lua")));
         Lex.luaX_Next(lexState);
         BlockStatement b = block(lexState);
+      FunctionInfo fi = new FunctionInfo();
+      InstructionGenerator generator = new InstructionGenerator(fi);
+      SubExpr expr = (SubExpr)((LocalStatement)b.getStatList().getStatements().get(0)).getExprList().getExprList().get(0);
+      expr.generate(generator,0,0);
+      for(Instruction c : fi.getInstructions()){
+          System.out.println(c);
+      }
+      System.out.println();
+
     }
 }
