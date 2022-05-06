@@ -1,6 +1,5 @@
 package com.jdy.lua.lparser2.expr;
 
-import com.jdy.lua.lcodes2.GenerateInfo;
 import com.jdy.lua.lcodes2.InstructionGenerator;
 import lombok.Data;
 import lombok.Getter;
@@ -13,7 +12,7 @@ public class SuffixedExp extends Expr{
 
     private Expr primaryExr;
 
-    private List<SuffixedExpContent> suffixedExpContentList = new ArrayList<>();
+    private List<SuffixedContent> suffixedContentList = new ArrayList<>();
 
 
 
@@ -21,12 +20,12 @@ public class SuffixedExp extends Expr{
         this.primaryExr = primaryExr;
     }
 
-    public void addSuffixedExpContent(SuffixedExpContent content){
-        suffixedExpContentList.add(content);
+    public void addSuffixedExpContent(SuffixedContent content){
+        suffixedContentList.add(content);
     }
 
     @Getter
-    public static class SuffixedExpContent{
+    public static class SuffixedContent {
         private NameExpr nameExpr;
         private FuncArgs funcArgs;
         private TableIndex tableIndex;
@@ -36,7 +35,7 @@ public class SuffixedExp extends Expr{
         /**
          * primaryExpr.nameExpr
          */
-        public SuffixedExpContent(NameExpr nameExpr){
+        public SuffixedContent(NameExpr nameExpr){
             this.nameExpr = nameExpr;
             this.hasDot = true;
         }
@@ -44,14 +43,14 @@ public class SuffixedExp extends Expr{
         /**
          * primaryExpr [ expr ]
          */
-        public SuffixedExpContent(TableIndex tableIndex){
+        public SuffixedContent(TableIndex tableIndex){
             this.tableIndex = tableIndex;
         }
 
         /**
          * primaryExpr:name(a,b,c)
          */
-        public SuffixedExpContent(NameExpr nameExpr,FuncArgs funcArgs){
+        public SuffixedContent(NameExpr nameExpr, FuncArgs funcArgs){
             this.nameExpr = nameExpr;
             this.funcArgs = funcArgs;
             this.hasColon = true;
@@ -60,7 +59,7 @@ public class SuffixedExp extends Expr{
         /**
          *  primaryExpr(x,x,x)
          */
-        public SuffixedExpContent(FuncArgs funcArgs){
+        public SuffixedContent(FuncArgs funcArgs){
             this.funcArgs = funcArgs;
         }
     }

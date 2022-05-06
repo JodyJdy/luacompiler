@@ -32,7 +32,7 @@ public enum OpCode {
     OP_SETI(17),/**	A B C	R[A][B] := RK(C)				*/
     OP_SETFIELD(18),/**	A B C	R[A][K[B]:string] := RK(C)			*/
 
-    OP_NEWTABLE(19),/**	A B C constants	R[A] := {}					*/
+    OP_NEWTABLE(19),/**	A B C k	R[A] := {}					*/
 
     OP_SELF(20),/**	A B C	R[A+1] := R[B]; R[A] := R[B][RK(C):string]	*/
 

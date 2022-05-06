@@ -3,7 +3,6 @@ package com.jdy.lua.lparser2;
 import com.jdy.lua.lcodes.BinOpr;
 import com.jdy.lua.lcodes.UnOpr;
 import com.jdy.lua.lex.LexState;
-import com.jdy.lua.lex.TokenEnum;
 import com.jdy.lua.lparser2.expr.*;
 import com.jdy.lua.lparser2.statement.*;
 
@@ -448,21 +447,21 @@ public class LParser {
             switch (ls.getCurTokenEnum()){
                 case DOT:
                     NameExpr nameExpr = fieldSel(ls);
-                    suffixedExp.addSuffixedExpContent(new SuffixedExp.SuffixedExpContent(nameExpr));
+                    suffixedExp.addSuffixedExpContent(new SuffixedExp.SuffixedContent(nameExpr));
                     break;
                 case MID_LEFT: {
                     TableIndex tableIndex = tableIndex(ls);
-                    suffixedExp.addSuffixedExpContent(new SuffixedExp.SuffixedExpContent(tableIndex));
+                    suffixedExp.addSuffixedExpContent(new SuffixedExp.SuffixedContent(tableIndex));
                     break;
                 }
                 case COLON: {
                     NameExpr nameExpr1 = fieldSel(ls);
                     FuncArgs funcArgs = funcArgs(ls);
-                    suffixedExp.addSuffixedExpContent(new SuffixedExp.SuffixedExpContent(nameExpr1,funcArgs));
+                    suffixedExp.addSuffixedExpContent(new SuffixedExp.SuffixedContent(nameExpr1,funcArgs));
                     break;
                 }
                 case SMALL_LEFT: case BIG_LEFT: case STRING:
-                    suffixedExp.addSuffixedExpContent(new SuffixedExp.SuffixedExpContent(funcArgs(ls)));
+                    suffixedExp.addSuffixedExpContent(new SuffixedExp.SuffixedContent(funcArgs(ls)));
                     break;
                 default:
                     return suffixedExp;

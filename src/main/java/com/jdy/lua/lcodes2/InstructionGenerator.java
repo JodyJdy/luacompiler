@@ -9,7 +9,7 @@ import com.jdy.lua.lparser2.ArgAndKind;
 import com.jdy.lua.lparser2.FunctionInfo;
 import com.jdy.lua.lparser2.expr.*;
 import com.jdy.lua.lparser2.statement.Statement;
-import com.sun.org.apache.xpath.internal.Arg;
+import static com.jdy.lua.lparser2.expr.SuffixedExp.SuffixedContent;
 
 public class InstructionGenerator {
 
@@ -42,6 +42,63 @@ public class InstructionGenerator {
 
    }
    public void generate(Statement statement,int a,int n){
+
+   }
+
+   private int getSuffixedExpType(SuffixedExp exp){
+       //只需要处理SuffixedExp中的primaryexpr, xx
+       if(exp.getSuffixedContentList().size() == 0){
+           return 0;
+       }
+       SuffixedExp.SuffixedContent content = exp.getSuffixedContentList().get(0);
+       // xx(x,x,x)
+       if(content.getFuncArgs() != null){
+           return 1;
+       }
+
+       // x.x x:x(xx) 或者 x[x] 与table相关的
+       return 2;
+   }
+   public void generate(SuffixedExp suffixedExp,int a,int n){
+       Expr expr = suffixedExp.getPrimaryExr();
+       int type = getSuffixedExpType(suffixedExp);
+       //普通的表达式
+       if(type == 0){
+           expr.generate(this,a,n);
+           return;
+       }
+       //函数调用
+       if(type == 1){
+           //先不处理
+           return;
+       }
+
+       storeRegs();
+       ArgAndKind argAndKind = exp2ArgAndKind(fi,expr,ArgAndKind.ARG_RK);
+       boolean isUpVal = argAndKind.getKind() == ArgAndKind.ARG_UPVAL;
+       int b = argAndKind.getArg();
+       for(int i=0;i<suffixedExp.getSuffixedContentList().size();i++){
+            SuffixedContent content = suffixedExp.getSuffixedContentList().get(i);
+            int c;
+            if(content.isHasDot()){
+                c = fi.allocReg();
+                content.getNameExpr().generate(this,c,0);
+                Lcodes.emitCodeABC(fi,isUpVal ? OpCode.OP_GETTABUP: OpCode.OP_GETTABLE,a,b,c);
+            } else if(content.getTableIndex() != null){
+                c = fi.allocReg();
+                content.getTableIndex().getExpr().generate(this,c,0);
+                Lcodes.emitCodeABC(fi,isUpVal ? OpCode.OP_GETTABUP: OpCode.OP_GETTABLE,a,b,c);
+            } else if(content.isHasColon()){
+                //方法调用
+            }
+
+           loadRegs();
+            //只要执行一次，就将值放到了寄存器a里面
+           //对于a.b.c.d，如果a是Upval，第一次执行GETTABUP，后面都是GETTABLE
+           isUpVal = false;
+           //总是将结果存放到a寄存器里面
+           b = a;
+       }
 
    }
    public void generate(TableIndex index,int a,int n){
