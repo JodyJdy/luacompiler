@@ -8,6 +8,7 @@ import com.jdy.lua.lopcodes.OpCode;
 import com.jdy.lua.lparser2.ArgAndKind;
 import com.jdy.lua.lparser2.FunctionInfo;
 import com.jdy.lua.lparser2.expr.*;
+import com.jdy.lua.lparser2.statement.Statement;
 import com.sun.org.apache.xpath.internal.Arg;
 
 public class InstructionGenerator {
@@ -40,7 +41,12 @@ public class InstructionGenerator {
    public void generate(Expr expr,int a,int n){
 
    }
+   public void generate(Statement statement,int a,int n){
 
+   }
+   public void generate(TableIndex index,int a,int n){
+
+   }
    public void generate(SubExpr subExpr, int a,int n){
        int b = -1;
        //有单个操作符，需要优先进行处理
