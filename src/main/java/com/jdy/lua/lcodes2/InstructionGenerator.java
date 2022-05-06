@@ -74,30 +74,24 @@ public class InstructionGenerator {
        }
 
        storeRegs();
-       ArgAndKind argAndKind = exp2ArgAndKind(fi,expr,ArgAndKind.ARG_RK);
-       boolean isUpVal = argAndKind.getKind() == ArgAndKind.ARG_UPVAL;
-       int b = argAndKind.getArg();
+       //无论是 table 还是 upval都先将其放在寄存器a里面，key也统一使用寄存器，而不是常量
+       suffixedExp.getPrimaryExr().generate(this,a,0);
+
        for(int i=0;i<suffixedExp.getSuffixedContentList().size();i++){
             SuffixedContent content = suffixedExp.getSuffixedContentList().get(i);
             int c;
             if(content.isHasDot()){
                 c = fi.allocReg();
                 content.getNameExpr().generate(this,c,0);
-                Lcodes.emitCodeABC(fi,isUpVal ? OpCode.OP_GETTABUP: OpCode.OP_GETTABLE,a,b,c);
+                Lcodes.emitCodeABC(fi,OpCode.OP_GETTABLE,a,a,c);
             } else if(content.getTableIndex() != null){
                 c = fi.allocReg();
                 content.getTableIndex().getExpr().generate(this,c,0);
-                Lcodes.emitCodeABC(fi,isUpVal ? OpCode.OP_GETTABUP: OpCode.OP_GETTABLE,a,b,c);
+                Lcodes.emitCodeABC(fi,OpCode.OP_GETTABLE,a,a,c);
             } else if(content.isHasColon()){
                 //方法调用
             }
-
            loadRegs();
-            //只要执行一次，就将值放到了寄存器a里面
-           //对于a.b.c.d，如果a是Upval，第一次执行GETTABUP，后面都是GETTABLE
-           isUpVal = false;
-           //总是将结果存放到a寄存器里面
-           b = a;
        }
 
    }
