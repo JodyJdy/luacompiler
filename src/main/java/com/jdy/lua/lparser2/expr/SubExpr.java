@@ -23,13 +23,8 @@ public class SubExpr extends Expr{
         this.subExpr1 = subExpr;
     }
     @Override
-    public GenerateInfo generate(InstructionGenerator generator) {
-       return  generator.generate(this);
-    }
-
-    @Override
-    public GenerateInfo generate(InstructionGenerator generator, GenerateInfo info) {
-        return generator.generate(this,info);
+    public void generate(InstructionGenerator generator, int a, int n) {
+        generator.generate(this,a,n);
     }
 
 }

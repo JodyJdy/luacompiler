@@ -8,11 +8,7 @@ public abstract class Expr implements Generator {
     int line;
 
     @Override
-    public GenerateInfo generate(InstructionGenerator generator) {
-        return null;
-    }
-
-    public GenerateInfo generate(InstructionGenerator generator,GenerateInfo info){
-        return null;
+    public void generate(InstructionGenerator generator, int a, int n) {
+       generator.generate(this,a,n);
     }
 }

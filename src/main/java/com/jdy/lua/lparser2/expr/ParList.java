@@ -19,13 +19,7 @@ public class ParList extends Expr{
     }
 
     @Override
-    public GenerateInfo generate(InstructionGenerator generator) {
-       return  generator.generate(this);
+    public void generate(InstructionGenerator generator, int a, int n) {
+        generator.generate(this,a,n);
     }
-
-    @Override
-    public GenerateInfo generate(InstructionGenerator generator, GenerateInfo info) {
-        return generator.generate(this,info);
-    }
-
 }

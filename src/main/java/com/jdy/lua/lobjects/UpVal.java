@@ -8,8 +8,6 @@ import java.util.List;
 public class UpVal extends GcObject {
     int tbc;
     TValue v;
-
-
     UpVal next;
     List<UpVal> previous;
     TValue value;

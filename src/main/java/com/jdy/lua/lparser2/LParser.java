@@ -107,7 +107,6 @@ public class LParser {
 
     public static IfStatement ifStat(LexState ls,int line){
         IfStatement ifStatement;
-
         Expr cond = expr(ls);
         checkNext(ls,THEN);
         BlockStatement block = block(ls);

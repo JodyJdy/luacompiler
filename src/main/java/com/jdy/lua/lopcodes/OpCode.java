@@ -68,8 +68,8 @@ public enum OpCode {
     OP_SHR(45),/**	A B C	R[A] := R[B] >> R[C]				*/
 
     OP_MMBIN(46),/**	A B C	call C metamethod over R[A] and R[B]	(*)	*/
-    OP_MMBINI(47),/**	A sB C constants	call C metamethod over R[A] and sB	*/
-    OP_MMBINK(48),/**	A B C constants		call C metamethod over R[A] and K[B]	*/
+    OP_MMBINI(47),/**	A B k	if ((R[A] == R[B]) ~= k) then pc++		*/
+    OP_MMBINK(48),/**	A B C k		call C metamethod over R[A] and K[B]	*/
 
     OP_UNM(49),/**	A B	R[A] := -R[B]					*/
     OP_BNOT(50),/**	A B	R[A] := ~R[B]					*/
@@ -85,25 +85,25 @@ public enum OpCode {
     OP_JMP(56),/**	sJ	pc += sJ	 无条件跳转				*/
 
     /**下面的跳转语句都是 进行判断后决定是否跳转  也就是说，所有比较语句，已经包含了跳转在里面*/
-    OP_EQ(57),/**	A B constants	if ((R[A] == R[B]) ~= constants) then pc++		*/
-    OP_LT(58),/**	A B constants	if ((R[A] <  R[B]) ~= constants) then pc++		*/
-    OP_LE(59),/**	A B constants	if ((R[A] <= R[B]) ~= constants) then pc++		*/
+    OP_EQ(57),/**	A B k	if ((R[A] == R[B]) ~= k) then pc++		*/
+    OP_LT(58),/**	A B k	if ((R[A] <  R[B]) ~= k) then pc++		*/
+    OP_LE(59),/**	A B k	if ((R[A] <= R[B]) ~= k) then pc++		*/
 
-    OP_EQK(60),/**	A B constants	if ((R[A] == K[B]) ~= constants) then pc++		*/
-    OP_EQI(61),/**	A sB constants	if ((R[A] == sB) ~= constants) then pc++		*/
-    OP_LTI(62),/**	A sB constants	if ((R[A] < sB) ~= constants) then pc++			*/
-    OP_LEI(63),/**	A sB constants	if ((R[A] <= sB) ~= constants) then pc++		*/
-    OP_GTI(64),/**	A sB constants	if ((R[A] > sB) ~= constants) then pc++			*/
-    OP_GEI(65),/**	A sB constants	if ((R[A] >= sB) ~= constants) then pc++		*/
-    /**OP_TEST进行赋值，OP_TESTSET不进行赋值*/
-    OP_TEST(66),/**	A constants	if (not R[A] == constants) then pc++			*/
+    OP_EQK(60),/**	A B k	if ((R[A] == K[B]) ~= k) then pc++		*/
+    OP_EQI(61),/**	A sB k	if ((R[A] == sB) ~= k) then pc++		*/
+    OP_LTI(62),/**	A sB k	if ((R[A] < sB) ~= k) then pc++			*/
+    OP_LEI(63),/**	A sB k	if ((R[A] <= sB) ~= k) then pc++		*/
+    OP_GTI(64),/**	A sB k	if ((R[A] > sB) ~= k) then pc++			*/
+    OP_GEI(65),/**	A sB k	if ((R[A] >= sB) ~= k) then pc++		*/
+    /**OP_TEST进行赋值，OP_TESTSET不进行赋值, 用来测试一个值是否为空*/
+    OP_TEST(66),/**	A k	if (not R[A] == k) then pc++				*/
 
-    OP_TESTSET(67),/**	A B constants	if (not R[B] == constants) then pc++ else R[A] := R[B] (*) */
+    OP_TESTSET(67),/**	A B k	if (not R[B] == k) then pc++ else R[A] := R[B] (*) */
 
     OP_CALL(68),/**	A B C	R[A], ... ,R[A+C-2] := R[A](R[A+1], ... ,R[A+B-1]) */
-    OP_TAILCALL(69),/**	A B C constants	return R[A](R[A+1], ... ,R[A+B-1])		*/
+    OP_TAILCALL(69),/**	A B C k	return R[A](R[A+1], ... ,R[A+B-1])		*/
 
-    OP_RETURN(70),/**	A B C constants	return R[A], ... ,R[A+B-2]	(see note)	*/
+    OP_RETURN(70),/**	A B C k	return R[A], ... ,R[A+B-2]	(see note)	*/
     OP_RETURN0(71),/**		return						*/
     OP_RETURN1(72),/**	A	return R[A]					*/
 
@@ -115,7 +115,7 @@ public enum OpCode {
     OP_TFORCALL(76),/**	A C	R[A+4], ... ,R[A+3+C] := R[A](R[A+1], R[A+2]);	*/
     OP_TFORLOOP(77),/**	A Bx	if R[A+2] ~= nil then { R[A]=R[A+2]; pc -= Bx }	*/
 
-    OP_SETLIST(78),/**	A B C constants	R[A][C+i] := R[A+i], 1 <= i <= B		*/
+    OP_SETLIST(78),/**	A B C k	R[A][C+i] := R[A+i], 1 <= i <= B		*/
 
     OP_CLOSURE(79),/**	A Bx	R[A] := closure(KPROTO[Bx])			*/
 
