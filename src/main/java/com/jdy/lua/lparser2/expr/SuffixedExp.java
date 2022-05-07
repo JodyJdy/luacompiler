@@ -12,7 +12,7 @@ public class SuffixedExp extends Expr{
 
     private Expr primaryExr;
 
-    private List<SuffixedContent> suffixedContentList = new ArrayList<>();
+    private SuffixedContent suffixedContent;
 
 
 
@@ -20,8 +20,9 @@ public class SuffixedExp extends Expr{
         this.primaryExr = primaryExr;
     }
 
-    public void addSuffixedExpContent(SuffixedContent content){
-        suffixedContentList.add(content);
+    public SuffixedExp(Expr primaryExr,SuffixedContent content){
+        this.primaryExr = primaryExr;
+        this.suffixedContent = content;
     }
 
     @Getter

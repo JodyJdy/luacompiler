@@ -1861,7 +1861,7 @@ public class LParser {
         lexState.setEnvn("_ENV");
         lexState.setL(new LuaState());
         lexState.setReader(new FileInputStream(new File("src/test/b.lua")));
-        luaX_Next(lexState);
+//        luaX_Next(lexState);
         LuaState state = new LuaState();
         dyd = new DynData();
 

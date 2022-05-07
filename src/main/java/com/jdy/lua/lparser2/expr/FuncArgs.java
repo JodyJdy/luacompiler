@@ -1,10 +1,12 @@
 package com.jdy.lua.lparser2.expr;
 
 import com.jdy.lua.lcodes2.InstructionGenerator;
+import lombok.Getter;
 
 import java.util.ArrayList;
 import java.util.List;
 
+@Getter
 public class FuncArgs extends Expr{
     private List<Expr> expr1 = new ArrayList<>();
     private StringExpr stringExpr;

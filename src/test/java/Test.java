@@ -20,7 +20,7 @@ import static com.jdy.lua.lparser2.LParser.block;
 
 public class Test {
     public static void main(String[] args) throws Exception {
-        func5();
+        func4();
     }
     public static void func1() throws FileNotFoundException {
         Scanner scanner = new Scanner(new FileInputStream(new File("src/test/A.TXT")));

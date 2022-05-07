@@ -9,6 +9,10 @@ import com.jdy.lua.lparser2.ArgAndKind;
 import com.jdy.lua.lparser2.FunctionInfo;
 import com.jdy.lua.lparser2.expr.*;
 import com.jdy.lua.lparser2.statement.Statement;
+
+import java.util.ArrayList;
+import java.util.List;
+
 import static com.jdy.lua.lparser2.expr.SuffixedExp.SuffixedContent;
 
 public class InstructionGenerator {
@@ -45,58 +49,127 @@ public class InstructionGenerator {
 
    }
 
-   private int getSuffixedExpType(SuffixedExp exp){
-       //只需要处理SuffixedExp中的primaryexpr, xx
-       if(exp.getSuffixedContentList().size() == 0){
-           return 0;
-       }
-       SuffixedExp.SuffixedContent content = exp.getSuffixedContentList().get(0);
-       // xx(x,x,x)
-       if(content.getFuncArgs() != null){
-           return 1;
-       }
+   public void generate(TableConstructor constructor,int a,int n){
 
-       // x.x x:x(xx) 或者 x[x] 与table相关的
-       return 2;
    }
+
    public void generate(SuffixedExp suffixedExp,int a,int n){
-       Expr expr = suffixedExp.getPrimaryExr();
-       int type = getSuffixedExpType(suffixedExp);
-       //普通的表达式
-       if(type == 0){
-           expr.generate(this,a,n);
+       if(suffixedExp.getSuffixedContent() == null){
+           suffixedExp.getPrimaryExr().generate(this,a,n);
            return;
        }
-       //函数调用
-       if(type == 1){
-           //先不处理
-           return;
+       Expr primary = suffixedExp.getPrimaryExr();
+       SuffixedContent content = suffixedExp.getSuffixedContent();
+       //a.b
+       if(content.isHasDot()){
+           tableAccess(primary,content.getNameExpr(),a);
+       //a[b]
+       } else if(content.getTableIndex() != null){
+           tableAccess(primary,content.getTableIndex().getExpr(),a);
+       //a:b()
+       } else if(content.isHasColon()){
+           methodCall(primary,content.getNameExpr(),content.getFuncArgs(),a,n);
+       //a()
+       } else{
+          funcCall(primary,content.getFuncArgs(),a,n);
+       }
+   }
+    public static boolean hasMultiRet(Expr expr){
+       if(expr instanceof VarargExpr){
+           return true;
+       }
+       //func Call
+       if(expr instanceof SuffixedExp){
+           SuffixedExp suf = (SuffixedExp)expr;
+           if(suf.getSuffixedContent() != null && suf.getSuffixedContent().getFuncArgs()!= null){
+               return true;
+           }
        }
 
-       storeRegs();
-       //无论是 table 还是 upval都先将其放在寄存器a里面，key也统一使用寄存器，而不是常量
-       suffixedExp.getPrimaryExr().generate(this,a,0);
+       return false;
+    }
+   private int prepareFuncCall(Expr expr, NameExpr name,FuncArgs args,int a,int n){
+      List<Expr> exprList = new ArrayList<>();
+      //函数参数有三种类型 a "hello"  a(x,x,x)  a{a=1,b=2,c=3}
+      if(args.getExpr1().size() != 0){
+          exprList = args.getExpr1();
+      } else if(args.getConstructor() != null){
+          exprList.add(args.getConstructor());
+      } else if(args.getStringExpr() != null){
+          exprList.add(args.getStringExpr());
+      }
+      int nArgs = exprList.size();
+      boolean hasMultiRet = false;
 
-       for(int i=0;i<suffixedExp.getSuffixedContentList().size();i++){
-            SuffixedContent content = suffixedExp.getSuffixedContentList().get(i);
-            int c;
-            if(content.isHasDot()){
-                c = fi.allocReg();
-                content.getNameExpr().generate(this,c,0);
-                Lcodes.emitCodeABC(fi,OpCode.OP_GETTABLE,a,a,c);
-            } else if(content.getTableIndex() != null){
-                c = fi.allocReg();
-                content.getTableIndex().getExpr().generate(this,c,0);
-                Lcodes.emitCodeABC(fi,OpCode.OP_GETTABLE,a,a,c);
-            } else if(content.isHasColon()){
-                //方法调用
-            }
-           loadRegs();
+      expr.generate(this,a,1);
+      //method Call
+      if(name != null){
+          fi.allocReg();
+          ArgAndKind argAndKindC = exp2ArgAndKind(fi, name, ArgAndKind.ARG_REG);
+          Lcodes.emitCodeABC(fi,OpCode.OP_SELF,a,a,argAndKindC.getArg());
+          fi.freeReg(1);
+      }
+      for(int i=0;i<exprList.size();i++){
+          Expr ex = exprList.get(i);
+          int tempReg = fi.allocReg();
+          if(i == exprList.size() - 1 && hasMultiRet(ex)){
+              hasMultiRet = true;
+              ex.generate(this,tempReg,-1);
+          } else{
+              ex.generate(this,tempReg,1);
+          }
+      }
+      fi.freeReg(nArgs);
+
+       if (name != null) {
+           nArgs++;
        }
+
+       if(hasMultiRet){
+           nArgs=-1;
+       }
+       return nArgs;
+   }
+   private void  methodCall(Expr expr,NameExpr name,FuncArgs args,int a,int n){
+        int nArgs = prepareFuncCall(expr,name,args,a,n);
+        //b c 分别为参数数量 和 函数的返回值数量
+        Lcodes.emitCodeABC(fi,OpCode.OP_CALL,a,nArgs + 1,n + 1);
 
    }
-   public void generate(TableIndex index,int a,int n){
-
+    private void funcCall(Expr exp,FuncArgs args,int a,int n){
+        int nArgs = prepareFuncCall(exp,null,args,a,n);
+        Lcodes.emitCodeABC(fi,OpCode.OP_CALL,a,nArgs + 1,n + 1);
+    }
+    /**
+     * exp[key]
+     */
+   private void tableAccess(Expr exp,Expr key,int a){
+       storeRegs();
+       ArgAndKind argAndKindB = exp2ArgAndKind(fi,exp, ArgAndKind.ARG_RU);
+       int b = argAndKindB.getArg();
+       int c = exp2ArgAndKind(fi,key, ArgAndKind.ARG_RK).getArg();
+       storeRegs();
+       if (argAndKindB.getKind() == ArgAndKind.ARG_REG) {
+           Lcodes.emitCodeABC(fi,OpCode.OP_GETTABLE,a,b,c);
+       } else {
+           Lcodes.emitCodeABC(fi,OpCode.OP_GETTABUP,a,b,c);
+       }
+       loadRegs();
+   }
+   public void generate(NameExpr expr,int a,int n){
+       int r = fi.slotOfLocVar(expr.getName());
+       if(r>=0){
+           Lcodes.emitCodeABC(fi,OpCode.OP_MOVE,a,r,0);
+           return;
+       }
+       r = fi.indexOfUpval(expr.getName());
+       if(r>=0){
+           Lcodes.emitCodeABC(fi,OpCode.OP_GETUPVAL,a,r,0);
+           return;
+       }
+       //env['name'],env存放全局的东西
+       NameExpr expr1 = new NameExpr("_ENV");
+       tableAccess(expr1,expr,a);
    }
    public void generate(SubExpr subExpr, int a,int n){
        int b = -1;
@@ -188,11 +261,17 @@ public class InstructionGenerator {
         if(expr instanceof NameExpr){
             //从函数的 localVar中查找变量
             if((kind & ArgAndKind.ARG_REG) != 0){
-
+                int r = fi.slotOfLocVar(((NameExpr) expr).getName());
+                if(r != -1){
+                    return new ArgAndKind(r,ArgAndKind.ARG_REG);
+                }
             }
             //从 UpVal中查找变量
             if((kind & ArgAndKind.ARG_UPVAL) != 0){
-
+                int r = fi.indexOfUpval(((NameExpr) expr).getName());
+                if(r != -1){
+                    return new ArgAndKind(r,ArgAndKind.ARG_UPVAL);
+                }
             }
         }
         int a = fi.allocReg();

@@ -12,6 +12,7 @@ import java.util.List;
 import static com.jdy.lua.lcodes.BinOpr.*;
 import static com.jdy.lua.lex.Lex.*;
 import static com.jdy.lua.lex.TokenEnum.*;
+import static com.jdy.lua.lparser2.expr.SuffixedExp.SuffixedContent;
 
 public class LParser {
 
@@ -441,30 +442,33 @@ public class LParser {
     }
     public static SuffixedExp suffixedExp(LexState ls){
         /* suffixedexp -> primaryexp { '.' NAME | '[' exp ']' | ':' NAME funcargs | funcargs } */
-        Expr expr = primaryExpr(ls);
-        SuffixedExp suffixedExp = new SuffixedExp(expr);
+        Expr suffixedExp = primaryExpr(ls);
+
         for(;;){
             switch (ls.getCurTokenEnum()){
                 case DOT:
                     NameExpr nameExpr = fieldSel(ls);
-                    suffixedExp.addSuffixedExpContent(new SuffixedExp.SuffixedContent(nameExpr));
+                    suffixedExp = new SuffixedExp(suffixedExp,new SuffixedContent(nameExpr));
                     break;
                 case MID_LEFT: {
                     TableIndex tableIndex = tableIndex(ls);
-                    suffixedExp.addSuffixedExpContent(new SuffixedExp.SuffixedContent(tableIndex));
+                    suffixedExp = new SuffixedExp(suffixedExp,new SuffixedContent(tableIndex));
                     break;
                 }
                 case COLON: {
                     NameExpr nameExpr1 = fieldSel(ls);
                     FuncArgs funcArgs = funcArgs(ls);
-                    suffixedExp.addSuffixedExpContent(new SuffixedExp.SuffixedContent(nameExpr1,funcArgs));
+                    suffixedExp = new SuffixedExp(suffixedExp,new SuffixedContent(nameExpr1,funcArgs));
                     break;
                 }
                 case SMALL_LEFT: case BIG_LEFT: case STRING:
-                    suffixedExp.addSuffixedExpContent(new SuffixedExp.SuffixedContent(funcArgs(ls)));
+                    suffixedExp = new SuffixedExp(suffixedExp,new SuffixedContent(funcArgs(ls)));
                     break;
                 default:
-                    return suffixedExp;
+                    if(suffixedExp instanceof SuffixedExp){
+                       return (SuffixedExp)suffixedExp;
+                    }
+                    return new SuffixedExp(suffixedExp);
             }
         }
 
