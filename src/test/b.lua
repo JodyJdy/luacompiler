@@ -1,10 +1,4 @@
 
+local a =1;
+(a)=1;
 
-local a = 1;
-
-while a < 10
-do
-
- a = a + 1;
-
-end

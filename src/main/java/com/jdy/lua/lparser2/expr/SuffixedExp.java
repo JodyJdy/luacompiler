@@ -1,6 +1,8 @@
 package com.jdy.lua.lparser2.expr;
 
+import com.github.zxh0.luago.compiler.ast.exps.TableAccessExp;
 import com.jdy.lua.lcodes2.InstructionGenerator;
+import com.jdy.lua.lparser2.TableAccess;
 import lombok.Data;
 import lombok.Getter;
 
@@ -63,6 +65,19 @@ public class SuffixedExp extends Expr{
         public SuffixedContent(FuncArgs funcArgs){
             this.funcArgs = funcArgs;
         }
+    }
+
+    public TableAccess tryTrans2TableAccess(){
+        if(suffixedContent == null){
+            return null;
+        }
+        if(suffixedContent.hasDot && suffixedContent.getNameExpr() != null){
+            return new TableAccess(primaryExr,suffixedContent.getNameExpr());
+        }
+        if(suffixedContent.getTableIndex() != null){
+            return new TableAccess(primaryExr,suffixedContent.getTableIndex().getExpr());
+        }
+        return null;
     }
 
     @Override

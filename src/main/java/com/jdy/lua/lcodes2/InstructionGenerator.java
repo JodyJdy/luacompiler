@@ -1,7 +1,5 @@
 package com.jdy.lua.lcodes2;
 
-import com.github.zxh0.luago.compiler.ast.Exp;
-import com.github.zxh0.luago.compiler.ast.exps.NameExp;
 import com.jdy.lua.lcodes.BinOpr;
 import com.jdy.lua.lcodes.UnOpr;
 import com.jdy.lua.lobjects.TValue;
@@ -9,6 +7,7 @@ import com.jdy.lua.lopcodes.Instructions;
 import com.jdy.lua.lopcodes.OpCode;
 import com.jdy.lua.lparser2.ArgAndKind;
 import com.jdy.lua.lparser2.FunctionInfo;
+import com.jdy.lua.lparser2.TableAccess;
 import com.jdy.lua.lparser2.expr.*;
 import com.jdy.lua.lparser2.statement.ExprStatement;
 import com.jdy.lua.lparser2.statement.LocalStatement;
@@ -48,7 +47,6 @@ public class InstructionGenerator {
 
 
     public void generate(Expr expr, int a, int n) {
-
     }
 
     public void generate(Statement statement, int a, int n) {
@@ -60,7 +58,12 @@ public class InstructionGenerator {
             exprs.remove(exprs.size() - 1);
         }
     }
-
+    private SuffixedExp simplify(SuffixedExp suffixedExp){
+        while (suffixedExp.getSuffixedContent() == null && suffixedExp.getPrimaryExr() instanceof SuffixedExp){
+            suffixedExp = (SuffixedExp)suffixedExp.getPrimaryExr();
+        }
+        return suffixedExp;
+    }
     public void generate(ExprStatement exprStatement,int a,int n){
         //函数调用
         if(exprStatement.getFunc() != null){
@@ -75,15 +78,106 @@ public class InstructionGenerator {
         int nExps = exprs.size();
         int[] tableRegs = new int[nVars];
         int[] keyRegs = new int[nVars];
-        int[] valueRegs = new int[nVars];
+        //将值存放到varRegs
+        int[] varRegs = new int[nVars];
         storeRegs();
 
         for(int i=0;i< vars.size();i++){
             SuffixedExp suffixedExp = vars.get(i);
-
-            tableAccess();
+            suffixedExp = simplify(suffixedExp);
+            TableAccess tableAccess = suffixedExp.tryTrans2TableAccess();
+            if(tableAccess != null){
+                //存放 table
+                tableRegs[i] = fi.allocReg();
+                tableAccess.getTable().generate(this,tableRegs[i],1);
+                keyRegs[i] = fi.allocReg();
+                tableAccess.getKey().generate(this,keyRegs[i],1);
+            } else{
+                NameExpr nameExpr = (NameExpr)suffixedExp.getPrimaryExr();
+                String name = nameExpr.getName();
+                if(fi.slotOfLocVar(name) <0 && fi.indexOfUpval(name)<0){
+                    keyRegs[i] = -1;
+                    //全局变量
+                    if(fi.indexOfConstant(TValue.strValue(name)) > 0xFF){
+                        keyRegs[i] =fi.allocReg();
+                    }
+                }
+            }
         }
+        //实现存储好变量值的寄存器，后面才会 alloc
+        for (int i = 0; i < vars.size(); i++) {
+            varRegs[i] = fi.getUsedRegs() + i;
+        }
+        if(nExps >= nVars){
+            for (int i = 0; i < exprs.size(); i++) {
+                Expr exp = exprs.get(i);
+                int tempReg = fi.allocReg();
+                if (i >= nVars && i == nExps-1 &&hasMultiRet(exp)) {
+                    exp.generate(this,  tempReg, 0);
+                } else {
+                    exp.generate(this, tempReg, 1);
+                }
+            }
+        }else{
+            boolean multRet = false;
+            for (int i = 0; i < exprs.size(); i++) {
+                Expr exp = exprs.get(i);
+                int tempRega = fi.allocReg();
+                if (i == nExps-1 && hasMultiRet(exp)) {
+                    multRet = true;
+                    int tempReg = nVars - nExps + 1;
+                    exp.generate(this,  tempReg, 0);
+                    fi.allocReg(n - 1);
+                } else {
+                    exp.generate(this, tempRega, 1);
+                }
+            }
+            if (!multRet) {
+                int tempNum = nVars - nExps;
+                int tempReg = fi.allocReg(n);
+                Lcodes.emitCodeABC(fi,OpCode.OP_LOADNIL,tempReg,tempNum-1,0);
+            }
+        }
+        for(int i=0;i<nVars;i++){
+            SuffixedExp suffixedExp = simplify(vars.get(i));
+            if(suffixedExp.tryTrans2TableAccess() != null){
+                Lcodes.emitCodeABC(fi,OpCode.OP_SETTABLE,tableRegs[i],keyRegs[i],varRegs[i]);
+                continue;
+            }
+            NameExpr nameExpr = (NameExpr)suffixedExp.getPrimaryExr();
+            String varName = nameExpr.getName();
+            int varIndex = fi.slotOfLocVar(varName);
+            if(varIndex >=0){
+             Lcodes.emitCodeABC(fi,OpCode.OP_MOVE,a,varRegs[i],0);
+             continue;
+            }
 
+            varIndex = fi.indexOfUpval(varName);
+            if(varIndex>=0){
+                Lcodes.emitCodeABC(fi,OpCode.OP_SETUPVAL,varRegs[i],varIndex,0);
+                continue;
+            }
+            int env = fi.slotOfLocVar("_ENV");
+            if(env >=0){
+                if(keyRegs[i] < 0){
+                   int b = 0x100 + fi.indexOfConstant(TValue.strValue(varName));
+                   Lcodes.emitCodeABC(fi,OpCode.OP_SETFIELD,env,b,varRegs[i]);
+                }else{
+                    Lcodes.emitCodeABC(fi,OpCode.OP_SETTABLE,env,keyRegs[i],varRegs[i]);
+                }
+                continue;
+            }
+            //全局变量
+            env = fi.indexOfUpval("_ENV");
+            if(keyRegs[i] < 0){
+                int b = 0x100 + fi.indexOfConstant(TValue.strValue(varName));
+                Lcodes.emitCodeABC(fi,OpCode.OP_SETFIELD,env,b,varRegs[i]);
+            }else{
+                Lcodes.emitCodeABC(fi,OpCode.OP_SETTABLE,env,keyRegs[i],varRegs[i]);
+            }
+
+        }
+        loadRegs();
     }
 
     public void generate(LocalStatement statement,int a, int n){
@@ -285,6 +379,9 @@ public class InstructionGenerator {
         Lcodes.emitCodeABC(fi, OpCode.OP_CALL, a, nArgs + 1, n + 1);
     }
 
+    private void tableAccess(TableAccess access,int a){
+        tableAccess(access.getTable(),access.getKey(),a);
+    }
     /**
      * exp[key]
      */
