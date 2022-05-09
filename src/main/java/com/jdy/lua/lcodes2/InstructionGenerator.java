@@ -1,5 +1,6 @@
 package com.jdy.lua.lcodes2;
 
+import com.github.zxh0.luago.compiler.ast.Exp;
 import com.github.zxh0.luago.compiler.ast.exps.NameExp;
 import com.jdy.lua.lcodes.BinOpr;
 import com.jdy.lua.lcodes.UnOpr;
@@ -66,8 +67,22 @@ public class InstructionGenerator {
             exprStatement.getFunc().generate(this,a,n);
             return;
         }
-
+        List<SuffixedExp> vars = exprStatement.getLefts();
+        List<Expr> exprs = exprStatement.getRight().getExprList();
         //赋值 a,b,c=1,2,3
+        removeTailNils(exprStatement.getRight());
+        int nVars = exprStatement.getLefts().size();
+        int nExps = exprs.size();
+        int[] tableRegs = new int[nVars];
+        int[] keyRegs = new int[nVars];
+        int[] valueRegs = new int[nVars];
+        storeRegs();
+
+        for(int i=0;i< vars.size();i++){
+            SuffixedExp suffixedExp = vars.get(i);
+
+            tableAccess();
+        }
 
     }
 
