@@ -9,6 +9,11 @@ public abstract class Statement implements Generator {
 
     @Override
     public void generate(InstructionGenerator generator, int a, int n) {
-        generator.generate(this,a,n);
+        // do nothing
+    }
+
+    @Override
+    public void generate(InstructionGenerator ins) {
+        ins.generate(this);
     }
 }

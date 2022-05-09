@@ -1,7 +1,11 @@
 package com.jdy.lua.lparser2;
 
+import com.jdy.lua.lcodes.LCodes;
+import com.jdy.lua.lcodes2.Lcodes;
 import com.jdy.lua.lobjects.TValue;
 import com.jdy.lua.lopcodes.Instruction;
+import com.jdy.lua.lopcodes.Instructions;
+import com.jdy.lua.lopcodes.OpCode;
 import lombok.Getter;
 
 import java.util.ArrayList;
@@ -14,6 +18,7 @@ public class FunctionInfo {
      * 已经使用的寄存器数量
      */
     private int usedRegs;
+    private int maxRegs;
     /**
      * 作用域的层级
      */
@@ -174,5 +179,87 @@ public class FunctionInfo {
             }
         }
         return -1;
+    }
+
+    /**
+     * 进入一个 block
+     *
+     * 只有在循环里面， breakable = true
+     * 需要存储 相关的break
+     */
+    public void enterScope(boolean breakable){
+
+        scopeLevel++;
+        if(breakable){
+            breaks.add(new ArrayList<>());
+        }else{
+            breaks.add(null);
+        }
+    }
+    /**
+     * 退出一个block 传入 endPc，用于跳转
+     */
+    public void exitScope(int endPc){
+        List<Integer> pendingBreakJmps = breaks.remove(breaks.size() -1);
+        if(pendingBreakJmps != null){
+            for(int p : pendingBreakJmps){
+                int sJ = getPc() - p;
+                //调整jump语句的跳转参数
+                Instruction ins = instructions.get(p);
+                Instructions.setArgsJ(ins,sJ);
+            }
+        }
+        scopeLevel--;
+        //删除在block里面定义的变量
+        for(LocVarInfo var : new ArrayList<>(locVarInfoMap.values())){
+            if(var.scopeLv > scopeLevel){
+                var.endPC = endPc;
+                removeLocVar(var);
+            }
+        }
+    }
+
+    public void closeOpnUpval(){
+        int a = findMaxClosedUpVal();
+        Lcodes.emitCodeABC(this, OpCode.OP_CLOSE,a,0,0);
+    }
+
+    /**
+     * 关闭针对的都是 UpVal
+     */
+    public int findMaxClosedUpVal(){
+        boolean hasCaptured = false;
+        int minSlotOfLocVars = maxRegs;
+        for(LocVarInfo var : locVarInfoMap.values()){
+            if(var.scopeLv == scopeLevel){
+                for(LocVarInfo v = var;v != null && v.scopeLv == scopeLevel ;v=v.prev){
+                    if(v.captured){
+                        hasCaptured = true;
+                    }
+                    //for循环会添加一些(开头的变量
+                    if(v.slot < minSlotOfLocVars && v.name.charAt(0) != '('){
+                        minSlotOfLocVars = v.slot;
+                    }
+                }
+            }
+        }
+        if(hasCaptured){
+            return minSlotOfLocVars+1;
+        }
+        return 0;
+    }
+
+    /**
+     * 添加 break 语句的jump
+     */
+    public void addBreakJmp(int pc) {
+        for (int i = scopeLevel; i >= 0; i--) {
+            if (breaks.get(i) != null) { // breakable
+                breaks.get(i).add(pc);
+                return;
+            }
+        }
+
+        throw new RuntimeException("<break> at line ? not inside a loop!");
     }
 }

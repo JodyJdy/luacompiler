@@ -3,15 +3,14 @@ package com.jdy.lua.lcodes2;
 import com.jdy.lua.lcodes.BinOpr;
 import com.jdy.lua.lcodes.UnOpr;
 import com.jdy.lua.lobjects.TValue;
+import com.jdy.lua.lopcodes.Instruction;
 import com.jdy.lua.lopcodes.Instructions;
 import com.jdy.lua.lopcodes.OpCode;
 import com.jdy.lua.lparser2.ArgAndKind;
 import com.jdy.lua.lparser2.FunctionInfo;
 import com.jdy.lua.lparser2.TableAccess;
 import com.jdy.lua.lparser2.expr.*;
-import com.jdy.lua.lparser2.statement.ExprStatement;
-import com.jdy.lua.lparser2.statement.LocalStatement;
-import com.jdy.lua.lparser2.statement.Statement;
+import com.jdy.lua.lparser2.statement.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -49,8 +48,93 @@ public class InstructionGenerator {
     public void generate(Expr expr, int a, int n) {
     }
 
-    public void generate(Statement statement, int a, int n) {
+    public void generate(Statement statement) {
 
+    }
+
+    public void generate(RepeatStatement repeatStatement){
+        fi.enterScope(true);
+        int pcBeforeBlock = fi.getPc();
+        repeatStatement.getBlock().generate(this);
+        storeRegs();
+         int a = exp2ArgAndKind(fi, repeatStatement.getCond(), ArgAndKind.ARG_REG).getArg();
+        loadRegs();
+        Lcodes.emitCodeABC(fi,OpCode.OP_TEST,a,0,0);
+        Lcodes.emitCodeJump(fi,pcBeforeBlock-fi.getPc()-1,0);
+        fi.closeOpnUpval();
+        fi.exitScope(fi.getPc() + 1);
+    }
+
+    public void generate(BreakStatement breakStatement){
+        int pc = Lcodes.emitCodeJump(fi, 0,0);
+        fi.addBreakJmp(pc);
+    }
+
+    public void generate(WhileStatement whileStatement){
+        int pcBeforeExp = fi.getPc();
+        storeRegs();
+        int a = exp2ArgAndKind(fi,whileStatement.getCond(),ArgAndKind.ARG_REG).getArg();
+        loadRegs();
+        Lcodes.emitCodeABC(fi,OpCode.OP_TEST,a,0,0);
+        int pcJmpToEnd = Lcodes.emitCodeJump(fi,0,0);
+        fi.enterScope(true);
+        whileStatement.getBlock().generate(this,0,0);
+        fi.closeOpnUpval();
+        Lcodes.emitCodeJump(fi,pcBeforeExp-fi.getPc()-1,0);
+        fi.exitScope(fi.getPc());
+        Instruction ins = fi.getInstruction(pcJmpToEnd);
+        Instructions.setArgsJ(ins,fi.getPc() -pcJmpToEnd);
+    }
+
+    public void generate(IfStatement ifStatement){
+        int expNum = 1 + ifStatement.getElseThenConds().size();
+        int[] pcJumpsToEnds = new int[expNum];
+        int pcJmpToNextExp = -1;
+
+        for(int i=0;i<expNum;i++){
+            Expr expr;
+            if(i==0){
+                expr = ifStatement.getCond();
+            } else{
+                expr = ifStatement.getElseThenConds().get(i-1);
+            }
+            //调整jump的调整位置，pcJumpToNextExp是上个表达式里jmp指令的pc
+            if(pcJmpToNextExp >= 0){
+                Instruction jmpIns = fi.getInstruction(pcJmpToNextExp);
+                Instructions.setArgsJ(jmpIns,fi.getPc() - pcJmpToNextExp);
+            }
+            storeRegs();
+            int a =exp2ArgAndKind(fi, expr, ArgAndKind.ARG_REG).getArg();
+            loadRegs();
+
+            Lcodes.emitCodeABC(fi,OpCode.OP_TEST,a,0,0);
+            pcJmpToNextExp = Lcodes.emitCodeJump(fi,0,0);
+            fi.enterScope(false);
+            if(i == 0){
+                ifStatement.getBlockStatement().generate(this,0,0);
+            } else{
+                ifStatement.getElseThenBlock().get(i-1).generate(this,0,0);
+            }
+            fi.closeOpnUpval();
+            fi.exitScope(fi.getPc() + 1);
+            if(i < expNum - 1 || ifStatement.getElseBlock() != null){
+                pcJumpsToEnds[i] = Lcodes.emitCodeJump(fi,0,0);
+            } else {
+                pcJumpsToEnds[i] = pcJmpToNextExp;
+            }
+
+        }
+        //如果有else
+        if(ifStatement.getElseBlock() != null){
+            fi.enterScope(false);
+            ifStatement.getElseBlock().generate(this,0,0);
+            fi.closeOpnUpval();
+            fi.exitScope(fi.getPc()+1);
+        }
+        for(int pc : pcJumpsToEnds){
+            Instruction in = fi.getInstruction(pc);
+            Instructions.setArgsJ(in,fi.getPc() - pc);
+        }
     }
     public void removeTailNils(ExprList exprList){
         List<Expr> exprs = exprList.getExprList();
@@ -64,10 +148,12 @@ public class InstructionGenerator {
         }
         return suffixedExp;
     }
-    public void generate(ExprStatement exprStatement,int a,int n){
+    public void generate(ExprStatement exprStatement){
         //函数调用
         if(exprStatement.getFunc() != null){
-            exprStatement.getFunc().generate(this,a,n);
+            int r = fi.allocReg();
+            exprStatement.getFunc().generate(this,r,0);
+            fi.freeReg();
             return;
         }
         List<SuffixedExp> vars = exprStatement.getLefts();
@@ -111,31 +197,31 @@ public class InstructionGenerator {
         if(nExps >= nVars){
             for (int i = 0; i < exprs.size(); i++) {
                 Expr exp = exprs.get(i);
-                int tempReg = fi.allocReg();
+                int a = fi.allocReg();
                 if (i >= nVars && i == nExps-1 &&hasMultiRet(exp)) {
-                    exp.generate(this,  tempReg, 0);
+                    exp.generate(this,  a, 0);
                 } else {
-                    exp.generate(this, tempReg, 1);
+                    exp.generate(this, a, 1);
                 }
             }
         }else{
             boolean multRet = false;
             for (int i = 0; i < exprs.size(); i++) {
                 Expr exp = exprs.get(i);
-                int tempRega = fi.allocReg();
+                int a = fi.allocReg();
                 if (i == nExps-1 && hasMultiRet(exp)) {
                     multRet = true;
-                    int tempReg = nVars - nExps + 1;
-                    exp.generate(this,  tempReg, 0);
+                    int n = nVars - nExps + 1;
+                    exp.generate(this,  a, n);
                     fi.allocReg(n - 1);
                 } else {
-                    exp.generate(this, tempRega, 1);
+                    exp.generate(this, a, 1);
                 }
             }
             if (!multRet) {
-                int tempNum = nVars - nExps;
-                int tempReg = fi.allocReg(n);
-                Lcodes.emitCodeABC(fi,OpCode.OP_LOADNIL,tempReg,tempNum-1,0);
+                int n = nVars - nExps;
+                int a = fi.allocReg(n);
+                Lcodes.emitCodeABC(fi,OpCode.OP_LOADNIL,a,n-1,0);
             }
         }
         for(int i=0;i<nVars;i++){
@@ -146,21 +232,21 @@ public class InstructionGenerator {
             }
             NameExpr nameExpr = (NameExpr)suffixedExp.getPrimaryExr();
             String varName = nameExpr.getName();
-            int varIndex = fi.slotOfLocVar(varName);
-            if(varIndex >=0){
+            int a = fi.slotOfLocVar(varName);
+            if(a >=0){
              Lcodes.emitCodeABC(fi,OpCode.OP_MOVE,a,varRegs[i],0);
              continue;
             }
 
-            varIndex = fi.indexOfUpval(varName);
-            if(varIndex>=0){
-                Lcodes.emitCodeABC(fi,OpCode.OP_SETUPVAL,varRegs[i],varIndex,0);
+            int b = fi.indexOfUpval(varName);
+            if(b>=0){
+                Lcodes.emitCodeABC(fi,OpCode.OP_SETUPVAL,varRegs[i],b,0);
                 continue;
             }
             int env = fi.slotOfLocVar("_ENV");
             if(env >=0){
                 if(keyRegs[i] < 0){
-                   int b = 0x100 + fi.indexOfConstant(TValue.strValue(varName));
+                   b = 0x100 + fi.indexOfConstant(TValue.strValue(varName));
                    Lcodes.emitCodeABC(fi,OpCode.OP_SETFIELD,env,b,varRegs[i]);
                 }else{
                     Lcodes.emitCodeABC(fi,OpCode.OP_SETTABLE,env,keyRegs[i],varRegs[i]);
@@ -170,7 +256,7 @@ public class InstructionGenerator {
             //全局变量
             env = fi.indexOfUpval("_ENV");
             if(keyRegs[i] < 0){
-                int b = 0x100 + fi.indexOfConstant(TValue.strValue(varName));
+                b = 0x100 + fi.indexOfConstant(TValue.strValue(varName));
                 Lcodes.emitCodeABC(fi,OpCode.OP_SETFIELD,env,b,varRegs[i]);
             }else{
                 Lcodes.emitCodeABC(fi,OpCode.OP_SETTABLE,env,keyRegs[i],varRegs[i]);
@@ -180,7 +266,7 @@ public class InstructionGenerator {
         loadRegs();
     }
 
-    public void generate(LocalStatement statement,int a, int n){
+    public void generate(LocalStatement statement){
        removeTailNils(statement.getExprList());
        storeRegs();
        List<Expr> exprList = statement.getExprList().getExprList();
@@ -285,7 +371,9 @@ public class InstructionGenerator {
         }
 
     }
+    public void generate(ForStatement forStatement){
 
+    }
 
     public void generate(SuffixedExp suffixedExp, int a, int n) {
         if (suffixedExp.getSuffixedContent() == null) {

@@ -25,7 +25,7 @@ public class ExprStatement extends Statement{
         lefts.add(suffixedExp);
     }
     @Override
-    public void generate(InstructionGenerator generator, int a, int n) {
-        generator.generate(this,a,n);
+    public void generate(InstructionGenerator ins) {
+        ins.generate(this);
     }
 }

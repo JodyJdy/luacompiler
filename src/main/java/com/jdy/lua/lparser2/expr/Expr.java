@@ -11,4 +11,9 @@ public abstract class Expr implements Generator {
     public void generate(InstructionGenerator generator, int a, int n) {
        generator.generate(this,a,n);
     }
+
+    @Override
+    public void generate(InstructionGenerator ins) {
+        // do nothing
+    }
 }

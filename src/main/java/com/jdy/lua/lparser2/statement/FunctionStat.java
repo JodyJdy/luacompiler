@@ -23,7 +23,7 @@ public class FunctionStat extends Statement{
     }
 
     @Override
-    public void generate(InstructionGenerator generator, int a, int n) {
-       generator.generate(this,a,n);
+    public void generate(InstructionGenerator ins) {
+        ins.generate(this);
     }
 }
