@@ -2,10 +2,12 @@ package com.jdy.lua.lparser2.expr;
 
 import com.jdy.lua.lcodes2.GenerateInfo;
 import com.jdy.lua.lcodes2.InstructionGenerator;
+import lombok.Getter;
 
 import java.util.ArrayList;
 import java.util.List;
 
+@Getter
 public class TableConstructor  extends Expr{
     // [x]=x
     private List<TableField> fields = new ArrayList<>();
