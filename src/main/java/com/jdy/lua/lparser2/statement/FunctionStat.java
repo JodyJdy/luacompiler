@@ -22,6 +22,7 @@ public class FunctionStat extends Statement{
     public FunctionStat(NameExpr funcName, BlockStatement blockStatement, ParList parList) {
         this.funcName = funcName;
         this.functionBody = new FunctionBody(blockStatement,parList);
+        this.functionBody.setMethod(true);
     }
 
     @Override
