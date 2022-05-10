@@ -20,7 +20,7 @@ import static com.jdy.lua.lparser2.LParser.block;
 
 public class Test {
     public static void main(String[] args) throws Exception {
-        func4();
+        func5();
     }
     public static void func1() throws FileNotFoundException {
         Scanner scanner = new Scanner(new FileInputStream(new File("src/test/A.TXT")));
@@ -64,12 +64,12 @@ public class Test {
         BlockStatement b = block(lexState);
       FunctionInfo fi = new FunctionInfo();
       InstructionGenerator generator = new InstructionGenerator(fi);
-      SubExpr expr = (SubExpr)((LocalStatement)b.getStatList().getStatements().get(0)).getExprList().getExprList().get(0);
-      expr.generate(generator,0,0);
-      for(Instruction c : fi.getInstructions()){
-          System.out.println(c);
-      }
-      System.out.println();
+//      SubExpr expr = (SubExpr)((LocalStatement)b.getStatList().getStatements().get(0)).getExprList().getExprList().get(0);
+//      expr.generate(generator,0,0);
+//      for(Instruction c : fi.getInstructions()){
+//          System.out.println(c);
+//      }
+//      System.out.println();
 
     }
 }

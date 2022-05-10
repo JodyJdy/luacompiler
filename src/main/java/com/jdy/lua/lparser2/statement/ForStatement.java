@@ -5,9 +5,13 @@ import com.jdy.lua.lcodes2.InstructionGenerator;
 import com.jdy.lua.lparser2.expr.Expr;
 import com.jdy.lua.lparser2.expr.ExprList;
 import com.jdy.lua.lparser2.expr.NameExpr;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.util.List;
 
+@Getter
+@Setter
 public class ForStatement extends Statement{
     boolean isGeneric;
 

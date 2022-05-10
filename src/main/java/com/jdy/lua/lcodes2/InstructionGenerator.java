@@ -13,6 +13,7 @@ import com.jdy.lua.lparser2.expr.*;
 import com.jdy.lua.lparser2.statement.*;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import static com.jdy.lua.lparser2.expr.SuffixedExp.SuffixedContent;
@@ -51,6 +52,26 @@ public class InstructionGenerator {
     public void generate(Statement statement) {
 
     }
+
+    public void generate(LocalFuncStat funcStat){
+        int r = fi.addLocVar(funcStat.getStr(),fi.getPc()+2);
+        funcStat.getFunctionBody().generate(this,r,0);
+    }
+
+    public void generate(FunctionStat functionStat){
+
+    }
+
+
+    public void generate(StatList statList){
+        for(Statement statement : statList.getStatements()){
+            statement.generate(this);
+        }
+    }
+    public void generate(BlockStatement blockStatement,FunctionInfo fi){
+        blockStatement.getStatList().generate(this);
+    }
+
 
     public void generate(RepeatStatement repeatStatement){
         fi.enterScope(true);
@@ -266,6 +287,19 @@ public class InstructionGenerator {
         loadRegs();
     }
 
+    public void generate(FunctionBody functionBody,int a,int n){
+        FunctionInfo subFunc = new FunctionInfo();
+        InstructionGenerator instructionGenerator = new InstructionGenerator(subFunc);
+        fi.addFunc(subFunc);
+        for(NameExpr nameExpr : functionBody.getParList().getNameExprs()){
+            subFunc.addLocVar(nameExpr.getName(),0);
+        }
+        functionBody.getBlock().generate(instructionGenerator,subFunc);
+        subFunc.exitScope(subFunc.getPc()+2);
+        Lcodes.emitCodeABC(subFunc,OpCode.OP_RETURN,0,1,0);
+        int bx = fi.getSubFuncs().size() -1;
+        Lcodes.emitCodeABx(fi,OpCode.OP_CLOSURE,a,bx);
+    }
     public void generate(LocalStatement statement){
        removeTailNils(statement.getExprList());
        storeRegs();
@@ -371,8 +405,86 @@ public class InstructionGenerator {
         }
 
     }
-    public void generate(ForStatement forStatement){
+    private LocalStatement forNum2LocalStatement(ForStatement forStatement){
+        LocalStatement localStatement = new LocalStatement();
+        NameExpr name1 = new NameExpr("(for index)");
+        NameExpr name2 = new NameExpr("(for limit)");
+        NameExpr name3 = new NameExpr("(for step)");
+        localStatement.getNameExprList().addAll(Arrays.asList(name1,name2,name3));
+        localStatement.getExprList().addExpr(forStatement.getExpr1());
+        localStatement.getExprList().addExpr(forStatement.getExpr2());
+        localStatement.getExprList().addExpr(forStatement.getExpr3());
+        return localStatement;
+    }
+    private void forNum(ForStatement forStatement){
+        if(forStatement.getExpr3() == null){
+            //默认步长
+            Expr expr = new IntExpr(1L);
+            forStatement.setExpr3(expr);
+        }
 
+        fi.enterScope(true);
+        //定义循环用的变量
+        LocalStatement localStatement = forNum2LocalStatement(forStatement);
+        generate(localStatement);
+        fi.addLocVar(forStatement.getName1().getName(),fi.getPc() + 2);
+
+        int a =fi.getUsedRegs() - 4;
+        int pcForPrep = Lcodes.emitCodeABx(fi,OpCode.OP_FORPREP,a,0);
+        forStatement.getBlock().generate(this);
+        fi.closeOpnUpval();
+
+        int pcForLoop = Lcodes.emitCodeABx(fi,OpCode.OP_FORLOOP,a,0);
+
+        Instruction prep = fi.getInstruction(pcForPrep);
+        Instruction loop = fi.getInstruction(pcForLoop);
+        Instructions.setArgsBx(prep,pcForLoop-pcForPrep-1);
+        Instructions.setArgsBx(loop,pcForPrep-pcForLoop);
+
+        fi.exitScope(fi.getPc());
+
+        fi.fixEndPC("(for index)",1);
+        fi.fixEndPC("(for limit)",1);
+        fi.fixEndPC("(for step)",1);
+
+    }
+    private LocalStatement forIn2Localstatement(ForStatement forStatement){
+        LocalStatement localStatement = new LocalStatement();
+        NameExpr name1 = new NameExpr("(for generator)");
+        NameExpr name2 = new NameExpr("(for state)");
+        NameExpr name3 = new NameExpr("(for control)");
+        localStatement.getNameExprList().addAll(Arrays.asList(name1,name2,name3));
+        localStatement.setExprList(forStatement.getExprList());
+        return localStatement;
+    }
+    private void forIn(ForStatement forStatement){
+        fi.enterScope(true);
+        LocalStatement localStatement = forIn2Localstatement(forStatement);
+        localStatement.generate(this);
+        for(NameExpr expr : forStatement.getNameExprList()){
+            fi.addLocVar(expr.getName(),fi.getPc() + 2);
+        }
+        int pcJmpToTFC = Lcodes.emitCodeJump(fi,0,0);
+        forStatement.getBlock().generate(this);
+        fi.closeOpnUpval();
+        Instruction tfcIns = fi.getInstruction(pcJmpToTFC);
+        Instructions.setArgsJ(tfcIns,fi.getPc() - pcJmpToTFC);
+
+        int rGenerator = fi.slotOfLocVar("(for generator)");
+        Lcodes.emitCodeABC(fi,OpCode.OP_TFORCALL,rGenerator,forStatement.getNameExprList().size(),0);
+        Lcodes.emitCodeABx(fi,OpCode.OP_TFORLOOP,rGenerator+2,pcJmpToTFC - fi.getPc() -1);
+        fi.exitScope(fi.getPc() - 1);
+        fi.fixEndPC("(for generator)",2);
+        fi.fixEndPC("(for state)",2);
+        fi.fixEndPC("(for control)",2);
+
+    }
+    public void generate(ForStatement forStatement){
+       if(forStatement.isGeneric()){
+           forIn(forStatement);
+       } else{
+           forNum(forStatement);
+       }
     }
 
     public void generate(SuffixedExp suffixedExp, int a, int n) {

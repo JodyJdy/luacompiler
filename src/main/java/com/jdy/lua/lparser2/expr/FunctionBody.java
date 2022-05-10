@@ -1,14 +1,17 @@
 package com.jdy.lua.lparser2.expr;
 
-import com.jdy.lua.lcodes2.GenerateInfo;
 import com.jdy.lua.lcodes2.InstructionGenerator;
 import com.jdy.lua.lparser2.statement.BlockStatement;
+import lombok.Getter;
 
+@Getter
 public class FunctionBody  extends Expr{
     private BlockStatement block;
+    private ParList parList;
 
-    public FunctionBody(BlockStatement block) {
+    public FunctionBody(BlockStatement block,ParList parList) {
         this.block = block;
+        this.parList = parList;
     }
 
     @Override

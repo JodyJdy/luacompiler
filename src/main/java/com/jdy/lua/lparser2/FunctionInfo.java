@@ -1,6 +1,5 @@
 package com.jdy.lua.lparser2;
 
-import com.jdy.lua.lcodes.LCodes;
 import com.jdy.lua.lcodes2.Lcodes;
 import com.jdy.lua.lobjects.TValue;
 import com.jdy.lua.lopcodes.Instruction;
@@ -42,6 +41,7 @@ public class FunctionInfo {
     private List<List<Integer>> breaks = new ArrayList<>();
     private FunctionInfo parent;
     private List<Instruction> instructions = new ArrayList<>();
+    private List<FunctionInfo> subFuncs = new ArrayList<>();
     int line;
     int lastLine;
     int numParams;
@@ -261,5 +261,19 @@ public class FunctionInfo {
         }
 
         throw new RuntimeException("<break> at line ? not inside a loop!");
+    }
+
+    public void fixEndPC(String name, int delta) {
+        for (int i = localVars.size() - 1; i >= 0; i--) {
+            LocVarInfo locVar = localVars.get(i);
+            if (locVar.name.equals(name)) {
+                locVar.endPC += delta;
+                return;
+            }
+        }
+    }
+
+    public void addFunc(FunctionInfo functionInfo){
+        subFuncs.add(functionInfo);
     }
 }

@@ -1,8 +1,10 @@
 package com.jdy.lua.lparser2;
 
+import com.github.zxh0.luago.compiler.ast.exps.NameExp;
 import com.jdy.lua.lcodes.BinOpr;
 import com.jdy.lua.lcodes.UnOpr;
 import com.jdy.lua.lex.LexState;
+import com.jdy.lua.lex.TokenEnum;
 import com.jdy.lua.lparser2.expr.*;
 import com.jdy.lua.lparser2.statement.*;
 
@@ -191,15 +193,17 @@ public class LParser {
             exprs.add(new NameExpr(ls.getCurrTk().getS()));
             isMethod = true;
         }
+        checkNext(ls,SMALL_LEFT);
+        ParList parList = parList(ls);
         BlockStatement blockStatement = block(ls);
         checkNext(ls,END);
         //单纯的函数名称
         if(exprs.size() == 1){
-            return new FunctionStat(exprs.get(0),blockStatement);
+            return new FunctionStat(exprs.get(0),blockStatement,parList);
         } else{
             // a.b.c.d:XX() 这种，最后一个是函数名称
             NameExpr funName = exprs.remove(exprs.size() - 1);
-            FunctionStat stat = new FunctionStat(funName,blockStatement);
+            FunctionStat stat = new FunctionStat(funName,blockStatement,parList);
             stat.setMethod(isMethod);
             stat.setFieldDesc(exprs);
             return stat;
@@ -231,11 +235,30 @@ public class LParser {
         }
         return localStatement;
     }
+
+    public static ParList parList(LexState ls){
+        List<NameExpr> nameExprs = new ArrayList<>();
+        boolean hasVararg = false;
+        do{
+            if(ls.getCurTokenEnum() == NAME){
+                nameExprs.add(new NameExpr(ls.getCurrTk().getS()));
+            } else if(ls.getCurTokenEnum() == VARARG){
+                hasVararg = true;
+            }
+            luaX_Next(ls);
+        }while(ls.getCurTokenEnum() != SMALL_RIGHT);
+        ParList parList = new ParList(hasVararg);
+        parList.setNameExprs(nameExprs);
+        luaX_Next(ls);
+        return parList;
+    }
     public static LocalFuncStat localFunc(LexState ls,int line){
        String name = ls.getCurrTk().getS();
+       checkNext(ls,SMALL_LEFT);
+       ParList parList = parList(ls);
        BlockStatement blockStatement = block(ls);
        checkNext(ls,END);
-       return new  LocalFuncStat(name,blockStatement);
+       return new  LocalFuncStat(name,parList,blockStatement);
     }
     public static LabelStatement labelStat(LexState ls,int line){
         checkNext(ls,DOU_COLON);
@@ -403,8 +426,10 @@ public class LParser {
 
             case FUNCTION: {
                  luaX_Next(ls);
+                 checkNext(ls,SMALL_LEFT);
+                 ParList parList = parList(ls);
                  BlockStatement st = block(ls);
-                 expr = new FunctionBody(st);
+                 expr = new FunctionBody(st,parList);
                  break;
             }
             default: {
