@@ -52,7 +52,7 @@ public class InstructionGenerator {
             List<StringExpr> stringExprs = functionStat.getFieldDesc();
             //将结果存储在寄存器a里面
             int a = fi.allocReg();
-            //a.b.c.d=xx， 先生成 a[b] b[c] c[d],再调整最后一个为c[d] =xx
+            //a.b.c.d=xx，先生成 a[b] b[c] c[d],再调整最后一个为c[d] =xx
             tableAccess(functionStat.getVar(),stringExprs.get(0),a);
             //getfield不占用寄存器
             for(int i=1;i<stringExprs.size();i++){
@@ -101,7 +101,7 @@ public class InstructionGenerator {
             int env = fi.slotOfLocVar("_ENV");
             if (env >= 0) {
                 b =  fi.indexOfConstant(TValue.strValue(varName));
-                Lcodes.emitCodeABC(fi, OpCode.OP_SETFIELD, env, b,funcReg );
+                Lcodes.emitCodeABC(fi, OpCode.OP_SETFIELD, env, b,funcReg);
                 return;
             }
             //全局变量
