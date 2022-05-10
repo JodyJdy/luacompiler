@@ -58,6 +58,10 @@ public class InstructionGenerator {
         funcStat.getFunctionBody().generate(this, r, 0);
     }
 
+    private SuffixedExp suffixedExp(FunctionStat fs){
+
+    }
+
     /**
      *
      */
@@ -572,13 +576,13 @@ public class InstructionGenerator {
         SuffixedContent content = suffixedExp.getSuffixedContent();
         //a.b
         if (content.isHasDot()) {
-            tableAccess(primary, content.getNameExpr(), a);
+            tableAccess(primary, content.getStringExpr(), a);
             //a[b]
         } else if (content.getTableIndex() != null) {
             tableAccess(primary, content.getTableIndex().getExpr(), a);
             //a:b()
         } else if (content.isHasColon()) {
-            methodCall(primary, content.getNameExpr(), content.getFuncArgs(), a, n);
+            methodCall(primary, content.getStringExpr(), content.getFuncArgs(), a, n);
             //a()
         } else if(content.getFuncArgs() != null) {
             funcCall(primary, content.getFuncArgs(), a, n);
@@ -600,7 +604,7 @@ public class InstructionGenerator {
         return false;
     }
 
-    private int prepareFuncCall(Expr expr, NameExpr name, FuncArgs args, int a, int n) {
+    private int prepareFuncCall(Expr expr, StringExpr name, FuncArgs args, int a, int n) {
         List<Expr> exprList = new ArrayList<>();
         //函数参数有三种类型 a "hello"  a(x,x,x)  a{a=1,b=2,c=3}
         if (args.getExpr1().size() != 0) {
@@ -643,8 +647,8 @@ public class InstructionGenerator {
         return nArgs;
     }
 
-    private void methodCall(Expr expr, NameExpr name, FuncArgs args, int a, int n) {
-        int nArgs = prepareFuncCall(expr, name, args, a, n);
+    private void methodCall(Expr expr, StringExpr stringExpr, FuncArgs args, int a, int n) {
+        int nArgs = prepareFuncCall(expr, stringExpr, args, a, n);
         //b c 分别为参数数量 和 函数的返回值数量
         Lcodes.emitCodeABC(fi, OpCode.OP_CALL, a, nArgs + 1, n + 1);
 
@@ -812,6 +816,27 @@ public class InstructionGenerator {
      * 将 表达式进行处理，结果存储在 返回的 ArgAndKind对象里面 kind表示，存储的类型，
      */
     public ArgAndKind exp2ArgAndKind(FunctionInfo fi, Expr expr, int kind) {
+
+        if ((kind & ArgAndKind.ARG_CONST) > 0) {
+            int idx = -1;
+            if (expr instanceof NilExpr) {
+                idx = fi.indexOfConstant(TValue.nilValue());
+            } else if (expr instanceof FalseExpr) {
+                idx = fi.indexOfConstant(TValue.falseValue());
+            } else if (expr instanceof TrueExpr) {
+                idx = fi.indexOfConstant(TValue.trueValue());
+            } else if (expr instanceof IntExpr) {
+                idx = fi.indexOfConstant(TValue.intValue(((IntExpr) expr).getI()));
+            } else if (expr instanceof FloatExpr) {
+                idx = fi.indexOfConstant(TValue.doubleValue(((FloatExpr) expr).getF()));
+            } else if (expr instanceof StringExpr) {
+                idx = fi.indexOfConstant(TValue.strValue(((StringExpr) expr).getStr()));
+            }
+            if (idx >= 0 && idx <= 0xFF) {
+                return new ArgAndKind(0x100 + idx,ArgAndKind.ARG_CONST);
+            }
+        }
+
         if (expr instanceof NameExpr) {
             //从函数的 localVar中查找变量
             if ((kind & ArgAndKind.ARG_REG) != 0) {

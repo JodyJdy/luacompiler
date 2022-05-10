@@ -474,11 +474,11 @@ public class LParser {
         return null;
     }
 
-    public static NameExpr fieldSel(LexState ls){
+    public static StringExpr fieldSel(LexState ls){
         luaX_Next(ls);
-        NameExpr nameExpr =new NameExpr(ls.getCurrTk().getS());
+        StringExpr stringExpr =new StringExpr(ls.getCurrTk().getS());
         luaX_Next(ls);
-        return  nameExpr;
+        return  stringExpr;
     }
     public static SuffixedExp suffixedExp(LexState ls){
         /* suffixedexp -> primaryexp { '.' NAME | '[' exp ']' | ':' NAME funcargs | funcargs } */
@@ -490,8 +490,8 @@ public class LParser {
         for(;;){
             switch (ls.getCurTokenEnum()){
                 case DOT:
-                    NameExpr nameExpr = fieldSel(ls);
-                    suffixedExp = new SuffixedExp(suffixedExp,new SuffixedContent(nameExpr));
+                    StringExpr stringExpr = fieldSel(ls);
+                    suffixedExp = new SuffixedExp(suffixedExp,new SuffixedContent(stringExpr));
                     break;
                 case MID_LEFT: {
                     TableIndex tableIndex = tableIndex(ls);
@@ -499,9 +499,9 @@ public class LParser {
                     break;
                 }
                 case COLON: {
-                    NameExpr nameExpr1 = fieldSel(ls);
+                    StringExpr stringExpr2 = fieldSel(ls);
                     FuncArgs funcArgs = funcArgs(ls);
-                    suffixedExp = new SuffixedExp(suffixedExp,new SuffixedContent(nameExpr1,funcArgs));
+                    suffixedExp = new SuffixedExp(suffixedExp,new SuffixedContent(stringExpr2,funcArgs));
                     break;
                 }
                 case SMALL_LEFT: case BIG_LEFT: case STRING:

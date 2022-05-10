@@ -29,7 +29,7 @@ public class SuffixedExp extends Expr{
 
     @Getter
     public static class SuffixedContent {
-        private NameExpr nameExpr;
+        private StringExpr stringExpr;
         private FuncArgs funcArgs;
         private TableIndex tableIndex;
         private boolean hasDot;
@@ -38,8 +38,8 @@ public class SuffixedExp extends Expr{
         /**
          * primaryExpr.nameExpr
          */
-        public SuffixedContent(NameExpr nameExpr){
-            this.nameExpr = nameExpr;
+        public SuffixedContent(StringExpr stringExpr){
+            this.stringExpr = stringExpr;
             this.hasDot = true;
         }
 
@@ -53,8 +53,8 @@ public class SuffixedExp extends Expr{
         /**
          * primaryExpr:name(a,b,c)
          */
-        public SuffixedContent(NameExpr nameExpr, FuncArgs funcArgs){
-            this.nameExpr = nameExpr;
+        public SuffixedContent(StringExpr stringExpr, FuncArgs funcArgs){
+            this.stringExpr = stringExpr;
             this.funcArgs = funcArgs;
             this.hasColon = true;
         }
@@ -71,8 +71,8 @@ public class SuffixedExp extends Expr{
         if(suffixedContent == null){
             return null;
         }
-        if(suffixedContent.hasDot && suffixedContent.getNameExpr() != null){
-            return new TableAccess(primaryExr,suffixedContent.getNameExpr());
+        if(suffixedContent.hasDot && suffixedContent.getStringExpr() != null){
+            return new TableAccess(primaryExr,suffixedContent.getStringExpr());
         }
         if(suffixedContent.getTableIndex() != null){
             return new TableAccess(primaryExr,suffixedContent.getTableIndex().getExpr());
