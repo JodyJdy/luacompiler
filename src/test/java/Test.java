@@ -64,6 +64,7 @@ public class Test {
         BlockStatement b = block(lexState);
       FunctionInfo fi = new FunctionInfo();
       InstructionGenerator generator = new InstructionGenerator(fi);
+      System.out.println();
 //      SubExpr expr = (SubExpr)((LocalStatement)b.getStatList().getStatements().get(0)).getExprList().getExprList().get(0);
 //      expr.generate(generator,0,0);
 //      for(Instruction c : fi.getInstructions()){

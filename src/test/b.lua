@@ -1,7 +1,4 @@
 
+return
 
-a={}
-function x()
-
-
-end
+local a =1;

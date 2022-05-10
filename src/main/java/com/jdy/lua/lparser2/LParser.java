@@ -267,6 +267,11 @@ public class LParser {
         return labelStatement;
     }
     public static ReturnStatement retStat(LexState ls,int line){
+        ExprList exprList = exprList(ls);
+        //无返回值
+        if(exprList.getExprList().size() ==1 && exprList.getExprList().get(0) == null){
+            return new ReturnStatement();
+        }
         return new ReturnStatement(exprList(ls));
     }
     public static BreakStatement breakStat(LexState ls,int line){
@@ -339,7 +344,11 @@ public class LParser {
     }
 
     public static SubExpr subExpr(LexState ls,int limit){
-        return subExprWithOp(ls,limit).getSubExpr();
+        SubExprWithOp subExprWithOp = subExprWithOp(ls,limit);
+        if(subExprWithOp == null){
+            return null;
+        }
+        return subExprWithOp.getSubExpr();
     }
 
     /**
@@ -357,6 +366,9 @@ public class LParser {
             subExpr = new SubExpr(uop,exp);
         } else{
             SimpleExpr expr = simpleExp(ls);
+            if(expr == null){
+                return null;
+            }
             subExpr = new SubExpr(expr);
         }
         op = getBinopr(ls.getCurTokenEnum());
@@ -438,6 +450,9 @@ public class LParser {
             }
 
         }
+        if(expr == null){
+            return null;
+        }
         return new SimpleExpr(expr);
     }
 
@@ -468,6 +483,9 @@ public class LParser {
     public static SuffixedExp suffixedExp(LexState ls){
         /* suffixedexp -> primaryexp { '.' NAME | '[' exp ']' | ':' NAME funcargs | funcargs } */
         Expr suffixedExp = primaryExpr(ls);
+        if(suffixedExp == null){
+            return null;
+        }
 
         for(;;){
             switch (ls.getCurTokenEnum()){

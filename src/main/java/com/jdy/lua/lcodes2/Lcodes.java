@@ -99,7 +99,7 @@ public class Lcodes {
                     case OPR_LT:emitCodeABCK(fi,OP_LT,b,c,0,1);break;
                     case OPR_LE:emitCodeABCK(fi,OP_LE,b,c,0,0);break;
                     case OPR_GE:emitCodeABCK(fi,OP_LT,b,c,0,0);break;
-                    case OPR_GT:emitCodeABCK(fi,OP_LE,b,c,0,0);break;
+                    case OPR_GT:emitCodeABCK(fi,OP_LE,b,c,0,1);break;
                     default:break;
                 }
                 emitCodeJump(fi,1,0);

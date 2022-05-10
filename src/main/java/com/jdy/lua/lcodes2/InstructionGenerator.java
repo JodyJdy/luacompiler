@@ -86,6 +86,50 @@ public class InstructionGenerator {
         fi.exitScope(fi.getPc() + 1);
     }
 
+    public void generate(ReturnStatement returnStatement){
+        if(returnStatement.getExprList() == null){
+            Lcodes.emitCodeABC(fi,OpCode.OP_RETURN,0,1,0);
+            return;
+        }
+        List<Expr> exprs = returnStatement.getExprList().getExprList();
+        int nExprs = exprs.size();
+        if (nExprs == 1) {
+            if (exprs.get(0) instanceof NameExpr) {
+                NameExpr nameExp = (NameExpr) exprs.get(0);
+                int r = fi.slotOfLocVar(nameExp.getName());
+                if (r >= 0) {
+                    Lcodes.emitCodeABC(fi,OpCode.OP_RETURN,r,2,0);
+                    return;
+                }
+            }
+            if(exprs.get(0) instanceof SuffixedExp) {
+                //有可能时函数调用
+
+                return;
+            }
+
+        }
+
+        boolean multRet = hasMultiRet(exprs.get(exprs.size() - 1));
+        for (int i = 0; i < nExprs; i++) {
+            Expr expr = exprs.get(i);
+            int r = fi.allocReg();
+            if (i == nExprs-1 && multRet) {
+                expr.generate(this,r,-1);
+            } else {
+                expr.generate(this,r,1);
+            }
+        }
+        fi.freeReg(nExprs);
+
+        int a = fi.getUsedRegs();
+        if (multRet) {
+            Lcodes.emitCodeABC(fi,OpCode.OP_RETURN,a,0,0);
+        } else {
+            Lcodes.emitCodeABC(fi,OpCode.OP_RETURN,a,nExprs + 1,0);
+        }
+    }
+
     public void generate(BreakStatement breakStatement){
         int pc = Lcodes.emitCodeJump(fi, 0,0);
         fi.addBreakJmp(pc);
