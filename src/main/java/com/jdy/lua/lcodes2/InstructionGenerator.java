@@ -26,24 +26,8 @@ public class InstructionGenerator {
         this.fi = fi;
     }
 
-    /**
-     * 用于 存储 fi中的寄存器数量
-     */
-    private int oldRegs;
+   
 
-    /**
-     * 存储寄存器
-     */
-    public void storeRegs() {
-        oldRegs = fi.getUsedRegs();
-    }
-
-    /**
-     * 还原寄存器
-     */
-    public void loadRegs() {
-        fi.setUsedRegs(oldRegs);
-    }
 
 
     public void generate(Expr expr, int a, int n) {
@@ -58,31 +42,74 @@ public class InstructionGenerator {
         funcStat.getFunctionBody().generate(this, r, 0);
     }
 
-    private SuffixedExp suffixedExp(FunctionStat fs){
-
-    }
 
     /**
      *
      */
     public void generate(FunctionStat functionStat) {
-        storeRegs();
+        int oldRegs = fi.getUsedRegs();
         if(functionStat.getFieldDesc() != null && functionStat.getFieldDesc().size() > 0){
-            List<NameExpr> nameExprs = functionStat.getFieldDesc();
+            List<StringExpr> stringExprs = functionStat.getFieldDesc();
+            //将结果存储在寄存器a里面
             int a = fi.allocReg();
-            //将结果都存放在a
-            tableAccess(nameExprs.get(0),nameExprs.get(1),a);
-            for(int i=1;i<nameExprs.size();i++){
-                int c = exp2ArgAndKind(fi,)
+            //a.b.c.d=xx， 先生成 a[b] b[c] c[d],再调整最后一个为c[d] =xx
+            tableAccess(functionStat.getVar(),stringExprs.get(0),a);
+            //getfield不占用寄存器
+            for(int i=1;i<stringExprs.size();i++){
+                int key = exp2ArgAndKind(fi,stringExprs.get(i),ArgAndKind.ARG_CONST).getArg();
+                Lcodes.emitCodeABC(fi,OpCode.OP_GETFIELD,a,a,key);
+            }
+            //获取上个指令
+            Instruction lastIns = fi.getInstruction(fi.getPc() -1);
+            int argB = Instructions.getArgB(lastIns);
+            int argC = Instructions.getArgC(lastIns);
+            int funcReg = fi.allocReg();
+            //tableAccess还原了寄存器，这里要防止有冲突
+            if(funcReg == argC){
+                funcReg =fi.allocReg();
+            }
+            functionStat.getFunctionBody().generate(this,funcReg,0);
+           
+            OpCode code = Instructions.getOpCode(lastIns);
+            if(code == OpCode.OP_GETTABLE){
+                Instructions.setOpCode(lastIns,OpCode.OP_SETTABLE);
+            } else if(code == OpCode.OP_GETTABUP){
+                Instructions.setOpCode(lastIns,OpCode.OP_SETTABUP);
+            } else {
+                Instructions.setOpCode(lastIns,OpCode.OP_SETFIELD);
+            }
+            Instructions.setArgA(lastIns,argB);
+            Instructions.setArgB(lastIns,argC);
+            Instructions.setArgC(lastIns,funcReg);
+            fi.setUsedRegs(oldRegs);
+        } else{
+            String varName = functionStat.getVar().getName();
+            int funcReg =fi.allocReg();
+            functionStat.getFunctionBody().generate(this,funcReg,0);
+            fi.freeReg();
+            int a = fi.slotOfLocVar(varName);
+            if (a >= 0) {
+                Lcodes.emitCodeABC(fi, OpCode.OP_MOVE, a, funcReg, 0);
+                return;
             }
 
+            int b = fi.indexOfUpval(varName);
+            if (b >= 0) {
+                Lcodes.emitCodeABC(fi, OpCode.OP_SETUPVAL, funcReg, b, 0);
+                return;
+            }
+            int env = fi.slotOfLocVar("_ENV");
+            if (env >= 0) {
+                b =  fi.indexOfConstant(TValue.strValue(varName));
+                Lcodes.emitCodeABC(fi, OpCode.OP_SETFIELD, env, b,funcReg );
+                return;
+            }
+            //全局变量
+            env = fi.indexOfUpval("_ENV");
+            Lcodes.emitCodeABC(fi, OpCode.OP_SETFIELD, env, b, funcReg);
 
-        } else{
-           NameExpr a;
         }
 
-
-        loadRegs();
 
     }
 
@@ -102,9 +129,9 @@ public class InstructionGenerator {
         fi.enterScope(true);
         int pcBeforeBlock = fi.getPc();
         repeatStatement.getBlock().generate(this);
-        storeRegs();
+        int oldRegs = fi.getUsedRegs();
         int a = exp2ArgAndKind(fi, repeatStatement.getCond(), ArgAndKind.ARG_REG).getArg();
-        loadRegs();
+        fi.setUsedRegs(oldRegs);
         Lcodes.emitCodeABC(fi, OpCode.OP_TEST, a, 0, 0);
         Lcodes.emitCodeJump(fi, pcBeforeBlock - fi.getPc() - 1, 0);
         fi.closeOpnUpval();
@@ -129,10 +156,17 @@ public class InstructionGenerator {
             }
             if (exprs.get(0) instanceof SuffixedExp) {
                 //有可能是函数调用
-
-                return;
+                SuffixedExp sf = (SuffixedExp)exprs.get(0);
+                SuffixedContent content =sf.getSuffixedContent();
+                if(content != null){
+                    int r = fi.allocReg();
+                    int nArgs = prepareFuncCall(sf.getPrimaryExr(),content.getStringExpr(),content.getFuncArgs(),r);
+                    Lcodes.emitCodeABC(fi,OpCode.OP_TAILCALL,r,nArgs+1,0);
+                    fi.freeReg();
+                    Lcodes.emitCodeABC(fi,OpCode.OP_RETURN,r,0,0);
+                    return;
+                }
             }
-
         }
 
         boolean multRet = hasMultiRet(exprs.get(exprs.size() - 1));
@@ -162,9 +196,9 @@ public class InstructionGenerator {
 
     public void generate(WhileStatement whileStatement) {
         int pcBeforeExp = fi.getPc();
-        storeRegs();
+        int oldRegs = fi.getUsedRegs();
         int a = exp2ArgAndKind(fi, whileStatement.getCond(), ArgAndKind.ARG_REG).getArg();
-        loadRegs();
+        fi.setUsedRegs(oldRegs);
         Lcodes.emitCodeABC(fi, OpCode.OP_TEST, a, 0, 0);
         int pcJmpToEnd = Lcodes.emitCodeJump(fi, 0, 0);
         fi.enterScope(true);
@@ -193,9 +227,9 @@ public class InstructionGenerator {
                 Instruction jmpIns = fi.getInstruction(pcJmpToNextExp);
                 Instructions.setArgsJ(jmpIns, fi.getPc() - pcJmpToNextExp);
             }
-            storeRegs();
+            int oldRegs = fi.getUsedRegs();
             int a = exp2ArgAndKind(fi, expr, ArgAndKind.ARG_REG).getArg();
-            loadRegs();
+            fi.setUsedRegs(oldRegs);
 
             Lcodes.emitCodeABC(fi, OpCode.OP_TEST, a, 0, 0);
             pcJmpToNextExp = Lcodes.emitCodeJump(fi, 0, 0);
@@ -259,7 +293,7 @@ public class InstructionGenerator {
         int[] keyRegs = new int[nVars];
         //将值存放到varRegs
         int[] varRegs = new int[nVars];
-        storeRegs();
+        int oldRegs = fi.getUsedRegs();
 
         for (int i = 0; i < vars.size(); i++) {
             SuffixedExp suffixedExp = vars.get(i);
@@ -356,7 +390,7 @@ public class InstructionGenerator {
             }
 
         }
-        loadRegs();
+        fi.setUsedRegs(oldRegs);
     }
 
     public void generate(FunctionBody functionBody, int a, int n) {
@@ -378,7 +412,7 @@ public class InstructionGenerator {
 
     public void generate(LocalStatement statement) {
         removeTailNils(statement.getExprList());
-        storeRegs();
+        int oldRegs = fi.getUsedRegs();
         List<Expr> exprList = statement.getExprList().getExprList();
         List<NameExpr> nameExprs = statement.getNameExprList();
         int nExps = exprList.size();
@@ -423,7 +457,7 @@ public class InstructionGenerator {
                 Lcodes.emitCodeABC(fi, OpCode.OP_LOADNIL, tempReg, nilNum - 1, 0);
             }
         }
-        loadRegs();
+        fi.setUsedRegs(oldRegs);
         int startPc = fi.getPc() + 1;
         for (NameExpr expr : nameExprs) {
             fi.addLocVar(expr.getName(), startPc);
@@ -605,7 +639,7 @@ public class InstructionGenerator {
         return false;
     }
 
-    private int prepareFuncCall(Expr expr, StringExpr name, FuncArgs args, int a, int n) {
+    private int prepareFuncCall(Expr expr, StringExpr name, FuncArgs args, int a) {
         List<Expr> exprList = new ArrayList<>();
         //函数参数有三种类型 a "hello"  a(x,x,x)  a{a=1,b=2,c=3}
         if (args.getExpr1().size() != 0) {
@@ -649,14 +683,14 @@ public class InstructionGenerator {
     }
 
     private void methodCall(Expr expr, StringExpr stringExpr, FuncArgs args, int a, int n) {
-        int nArgs = prepareFuncCall(expr, stringExpr, args, a, n);
+        int nArgs = prepareFuncCall(expr, stringExpr, args, a);
         //b c 分别为参数数量 和 函数的返回值数量
         Lcodes.emitCodeABC(fi, OpCode.OP_CALL, a, nArgs + 1, n + 1);
 
     }
 
     private void funcCall(Expr exp, FuncArgs args, int a, int n) {
-        int nArgs = prepareFuncCall(exp, null, args, a, n);
+        int nArgs = prepareFuncCall(exp, null, args, a);
         Lcodes.emitCodeABC(fi, OpCode.OP_CALL, a, nArgs + 1, n + 1);
     }
 
@@ -668,7 +702,7 @@ public class InstructionGenerator {
      * exrp[key] =valu
      */
     private void tableSet(Expr t,Expr k,Expr v){
-        storeRegs();
+        int oldRegs = fi.getUsedRegs();
         ArgAndKind argAndKind = exp2ArgAndKind(fi,t,ArgAndKind.ARG_RU);
         int a = argAndKind.getArg();
         int b = exp2ArgAndKind(fi,k,ArgAndKind.ARG_RK).getArg();
@@ -678,23 +712,28 @@ public class InstructionGenerator {
         } else{
             Lcodes.emitCodeABC(fi,OpCode.OP_SETTABUP,a,b,c);
         }
-        loadRegs();
+        fi.setUsedRegs(oldRegs);
     }
     /**
      * exp[key]
      */
     private void tableAccess(Expr exp, Expr key, int a) {
-        storeRegs();
+        int oldRegs = fi.getUsedRegs();
         ArgAndKind argAndKindB = exp2ArgAndKind(fi, exp, ArgAndKind.ARG_RU);
         int b = argAndKindB.getArg();
+        ArgAndKind argAndKindC = exp2ArgAndKind(fi,exp,ArgAndKind.ARG_RK);
         int c = exp2ArgAndKind(fi, key, ArgAndKind.ARG_RK).getArg();
-        storeRegs();
+        fi.setUsedRegs(oldRegs);
         if (argAndKindB.getKind() == ArgAndKind.ARG_REG) {
-            Lcodes.emitCodeABC(fi, OpCode.OP_GETTABLE, a, b, c);
+            if(argAndKindC.getKind() == ArgAndKind.ARG_REG) {
+                Lcodes.emitCodeABC(fi, OpCode.OP_GETTABLE, a, b, c);
+            } else{
+                Lcodes.emitCodeABC(fi,OpCode.OP_GETFIELD,a,b,c);
+            }
         } else {
             Lcodes.emitCodeABC(fi, OpCode.OP_GETTABUP, a, b, c);
         }
-        loadRegs();
+       
     }
 
     public void generate(NameExpr expr, int a, int n) {
@@ -717,9 +756,10 @@ public class InstructionGenerator {
         int b = -1;
         //有单个操作符，需要优先进行处理
         if (subExpr.getUnOpr() != null && subExpr.getUnOpr() != UnOpr.OPR_NOUNOPR) {
-            storeRegs();
+            int oldRegs = fi.getUsedRegs();
             //将表达式存进寄存器b里面去
             b = exp2ArgAndKind(fi, subExpr.getSubExpr1(), ArgAndKind.ARG_REG).getArg();
+           
             switch (subExpr.getUnOpr()) {
                 case OPR_NOT:
                     Lcodes.emitCodeABC(fi, OpCode.OP_NOT, a, b, 0);
@@ -736,7 +776,7 @@ public class InstructionGenerator {
                 default:
                     break;
             }
-            loadRegs();
+            fi.setUsedRegs(oldRegs);
         }
         // subExpr只有，一个表达式，无任何运算符号
         if (b == -1 && subExpr.getBinOpr() == null && subExpr.getUnOpr() == null && subExpr.getSubExpr2() == null) {
@@ -748,9 +788,9 @@ public class InstructionGenerator {
         if (subExpr.getBinOpr() == BinOpr.OPR_AND || subExpr.getBinOpr() == BinOpr.OPR_OR) {
             //表示左边的第一个表达式还未处理
             if (b == -1) {
-                storeRegs();
+                int oldRegs = fi.getUsedRegs();
                 b = exp2ArgAndKind(fi, subExpr.getSubExpr1(), ArgAndKind.ARG_REG).getArg();
-                loadRegs();
+                fi.setUsedRegs(oldRegs);
             }
             //and 和 or 的跳转方向相反
             if (subExpr.getBinOpr() == BinOpr.OPR_AND) {
@@ -759,22 +799,22 @@ public class InstructionGenerator {
                 Lcodes.emitCodeABC(fi, OpCode.OP_TESTSET, a, b, 1);
             }
             int jmpPc = Lcodes.emitCodeJump(fi, 0, 0);
-
+            int oldRegs = fi.getUsedRegs();
             b = exp2ArgAndKind(fi, subExpr.getSubExpr2(), ArgAndKind.ARG_REG).getArg();
-            loadRegs();
+            fi.setUsedRegs(oldRegs);
             Lcodes.emitCodeABC(fi, OpCode.OP_MOVE, a, b, 0);
             //获取当前指令的位置
             int curPc = fi.getPc();
             Instructions.setArgsJ(fi.getInstruction(jmpPc), curPc);
             //统一处理其他操作符
         } else {
+            int oldRegs = fi.getUsedRegs();
             if (b == -1) {
-                storeRegs();
                 b = exp2ArgAndKind(fi, subExpr.getSubExpr1(), ArgAndKind.ARG_REG).getArg();
             }
             int c = exp2ArgAndKind(fi, subExpr.getSubExpr2(), ArgAndKind.ARG_REG).getArg();
             Lcodes.emitBinaryOp(fi, subExpr.getBinOpr(), a, b, c);
-            loadRegs();
+            fi.setUsedRegs(oldRegs);
         }
     }
 
@@ -834,7 +874,7 @@ public class InstructionGenerator {
                 idx = fi.indexOfConstant(TValue.strValue(((StringExpr) expr).getStr()));
             }
             if (idx >= 0 && idx <= 0xFF) {
-                return new ArgAndKind(0x100 + idx,ArgAndKind.ARG_CONST);
+                return new ArgAndKind(idx,ArgAndKind.ARG_CONST);
             }
         }
 

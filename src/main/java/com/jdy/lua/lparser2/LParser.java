@@ -10,6 +10,7 @@ import com.jdy.lua.lparser2.statement.*;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static com.jdy.lua.lcodes.BinOpr.*;
 import static com.jdy.lua.lex.Lex.*;
@@ -181,33 +182,29 @@ public class LParser {
     public static FunctionStat funcStat(LexState ls, int line){
         luaX_Next(ls);
 
-        List<NameExpr> exprs = new ArrayList<>();
-        exprs.add(new NameExpr(ls.getCurrTk().getS()));
+
+        List<String> exprs = new ArrayList<>();
+        // nameExpr总是存储第一个变量
+        NameExpr nameExpr = new NameExpr(ls.getCurrTk().getS());
+        exprs.add(ls.getCurrTk().getS());
         boolean isMethod = false;
         while(ls.getCurTokenEnum() == DOT){
             luaX_Next(ls);
-            exprs.add(new NameExpr(ls.getCurrTk().getS()));
+            exprs.add(ls.getCurrTk().getS());
         }
         if(ls.getCurTokenEnum() == COLON){
             luaX_Next(ls);
-            exprs.add(new NameExpr(ls.getCurrTk().getS()));
+            exprs.add(ls.getCurrTk().getS());
             isMethod = true;
         }
         checkNext(ls,SMALL_LEFT);
         ParList parList = parList(ls);
         BlockStatement blockStatement = block(ls);
         checkNext(ls,END);
-        //单纯的函数名称
-        if(exprs.size() == 1){
-            return new FunctionStat(exprs.get(0),blockStatement,parList);
-        } else{
-            // a.b.c.d:XX() 这种，最后一个是函数名称
-            NameExpr funName = exprs.remove(exprs.size() - 1);
-            FunctionStat stat = new FunctionStat(funName,blockStatement,parList);
-            stat.setMethod(isMethod);
-            stat.setFieldDesc(exprs);
-            return stat;
-        }
+        FunctionStat fs =  new FunctionStat(nameExpr,blockStatement,parList);
+        fs.setFieldDesc(exprs.stream().map(StringExpr::new).collect(Collectors.toList()));
+        fs.setMethod(isMethod);
+        return fs;
     }
     public static LocalStatement localStat(LexState ls,int line){
         LocalStatement localStatement = new LocalStatement();
