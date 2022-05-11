@@ -797,9 +797,14 @@ public class InstructionGenerator {
             }
             int jmpPc = Lcodes.emitCodeJump(fi, 0, 0);
             int oldRegs = fi.getUsedRegs();
-            b = exp2ArgAndKind(fi, subExpr.getSubExpr2(), ArgAndKind.ARG_REG).getArg();
+            ArgAndKind bArgAndKind =  exp2ArgAndKind(fi, subExpr.getSubExpr2(), ArgAndKind.ARG_RK);
+            b = bArgAndKind.getArg();
             fi.setUsedRegs(oldRegs);
-            Lcodes.emitCodeABC(fi, OpCode.OP_MOVE, a, b, 0);
+            if(bArgAndKind.getKind() == ArgAndKind.ARG_REG) {
+                Lcodes.emitCodeABC(fi, OpCode.OP_MOVE, a, b, 0);
+            } else{
+                Lcodes.emitCodeABx(fi, OpCode.OP_LOADK, a, b);
+            }
             //获取当前指令的位置
             int curPc = fi.getPc();
             Instructions.setArgsJ(fi.getInstruction(jmpPc), curPc - jmpPc);
