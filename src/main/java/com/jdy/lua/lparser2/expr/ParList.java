@@ -1,12 +1,9 @@
 package com.jdy.lua.lparser2.expr;
 
-import com.jdy.lua.lcodes2.GenerateInfo;
 import com.jdy.lua.lcodes2.InstructionGenerator;
 import lombok.Data;
-import lombok.Setter;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 @Data

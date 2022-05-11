@@ -26,10 +26,6 @@ public class InstructionGenerator {
         this.fi = fi;
     }
 
-   
-
-
-
     public void generate(Expr expr, int a, int n) {
     }
 
@@ -44,7 +40,7 @@ public class InstructionGenerator {
 
 
     /**
-     *
+     * 函数定义
      */
     public void generate(FunctionStat functionStat) {
         int oldRegs = fi.getUsedRegs();
