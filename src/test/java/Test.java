@@ -65,6 +65,10 @@ public class Test {
       FunctionInfo fi = new FunctionInfo();
       InstructionGenerator generator = new InstructionGenerator(fi);
       System.out.println();
+      b.generate(generator);
+      for(Instruction ins : fi.getInstructions()){
+          System.out.println(ins);
+      }
 //      SubExpr expr = (SubExpr)((LocalStatement)b.getStatList().getStatements().get(0)).getExprList().getExprList().get(0);
 //      expr.generate(generator,0,0);
 //      for(Instruction c : fi.getInstructions()){

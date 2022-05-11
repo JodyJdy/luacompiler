@@ -1,13 +1,9 @@
 package com.jdy.lua.lparser2.expr;
 
-import com.github.zxh0.luago.compiler.ast.exps.TableAccessExp;
 import com.jdy.lua.lcodes2.InstructionGenerator;
 import com.jdy.lua.lparser2.TableAccess;
 import lombok.Data;
 import lombok.Getter;
-
-import java.util.ArrayList;
-import java.util.List;
 
 @Data
 public class SuffixedExp extends Expr{

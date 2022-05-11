@@ -5,6 +5,7 @@ import com.jdy.lua.lobjects.Proto;
 import com.jdy.lua.lobjects.TValue;
 import com.jdy.lua.lobjects.Value;
 import com.jdy.lua.lopcodes.Instruction;
+import com.jdy.lua.lopcodes.Instructions;
 import com.jdy.lua.lopcodes.OpCode;
 import com.jdy.lua.lopcodes.OpMode;
 import com.jdy.lua.lparser.*;
@@ -1803,12 +1804,13 @@ public class LCodes {
 
     public static void main(String[] args) {
 
-        ExpDesc expDesc = new ExpDesc();
-        expDesc.setK(VK);
-        expDesc.setIval(1L);
-
-        ExpDesc e2 = (ExpDesc)expDesc.clone();
-        System.out.println();
+        int j = -1 + OFFSET_sJ;
+      Instruction ins =  create_sJ(OP_JMP.getCode(),j,0);
+        System.out.println(Instructions.getArgsJ(ins));
+      Instruction instruction = new Instruction();
+      Instructions.setOpCode(instruction, OP_JMP);
+        Instructions.setArgsJ(instruction,NO_JUMP);
+        System.out.println(Instructions.getArgsJ(instruction));
 
     }
 

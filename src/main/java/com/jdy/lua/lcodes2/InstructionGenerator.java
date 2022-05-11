@@ -32,6 +32,10 @@ public class InstructionGenerator {
     public void generate(Statement statement) {
         statement.generate(this);
     }
+    public void generate(BlockStatement blockStatement){
+        StatList statList = blockStatement.getStatList();
+        statList.generate(this);
+    }
 
     public void generate(LocalFuncStat funcStat) {
         int r = fi.addLocVar(funcStat.getStr(), fi.getPc() + 2);
@@ -798,7 +802,7 @@ public class InstructionGenerator {
             Lcodes.emitCodeABC(fi, OpCode.OP_MOVE, a, b, 0);
             //获取当前指令的位置
             int curPc = fi.getPc();
-            Instructions.setArgsJ(fi.getInstruction(jmpPc), curPc);
+            Instructions.setArgsJ(fi.getInstruction(jmpPc), curPc - jmpPc);
             //统一处理其他操作符
         } else {
             int oldRegs = fi.getUsedRegs();
@@ -851,6 +855,26 @@ public class InstructionGenerator {
      */
     public ArgAndKind exp2ArgAndKind(FunctionInfo fi, Expr expr, int kind) {
 
+        //去掉无用的嵌套，直接执行里层的表达式
+        if(expr instanceof  SimpleExpr){
+            return exp2ArgAndKind(fi,((SimpleExpr) expr).getExpr(),kind);
+        }
+        if(expr instanceof SuffixedExp){
+            SuffixedExp temp = (SuffixedExp)expr;
+            if(temp.getSuffixedContent() == null){
+                return exp2ArgAndKind(fi,temp.getPrimaryExr(),kind);
+            }
+        }
+        if(expr instanceof SubExpr){
+            SubExpr subExpr = (SubExpr)expr;
+            if(subExpr.getSubExpr1() != null && subExpr.getSubExpr2() == null){
+                if((subExpr.getUnOpr() == null || subExpr.getUnOpr() == UnOpr.OPR_NOUNOPR)
+                        &&(subExpr.getBinOpr() == null || subExpr.getBinOpr() == BinOpr.OPR_NOBINOPR)){
+                    return exp2ArgAndKind(fi,subExpr.getSubExpr1(),kind);
+                }
+            }
+        }
+
         if ((kind & ArgAndKind.ARG_CONST) > 0) {
             int idx = -1;
             if (expr instanceof NilExpr) {
@@ -891,6 +915,4 @@ public class InstructionGenerator {
         expr.generate(this, a, 1);
         return new ArgAndKind(a, ArgAndKind.ARG_REG);
     }
-
-
 }
