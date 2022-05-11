@@ -68,6 +68,9 @@ public class FunctionInfo {
 
     public int allocReg(){
         usedRegs++;
+        if (usedRegs > maxRegs) {
+            maxRegs = usedRegs;
+        }
         return usedRegs - 1;
     }
 
@@ -76,6 +79,9 @@ public class FunctionInfo {
     }
     public int allocReg(int n){
         usedRegs+=n;
+        if(usedRegs > maxRegs){
+            maxRegs = usedRegs;
+        }
         return usedRegs-n;
     }
     public void freeReg(int n){

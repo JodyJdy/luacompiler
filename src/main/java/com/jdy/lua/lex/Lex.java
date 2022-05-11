@@ -20,26 +20,6 @@ public class Lex {
 
     public static String LUA_ENV = "_ENV";
 
-
-
-    /**
-     * 保留词
-     */
-    static String luaX_tokens[] = {
-            "and", "break", "do", "else", "elseif",
-            "end", "false", "for", "function", "goto", "if",
-            "in", "local", "nil", "not", "or", "repeat",
-            "return", "then", "true", "until", "while",
-            "//", "..", "...", "==", ">=", "<=", "~=",
-            "<<", ">>", "::", "<eof>",
-            "<number>", "<integer>", "<name>", "<string>"
-    };
-
-    void luaX_Init(LuaState luaState) {
-
-
-    }
-
     void luaX_SetInput(LuaState l, LexState lexState, String source, int firstChar) {
         lexState.L = l;
         lexState.current = firstChar;

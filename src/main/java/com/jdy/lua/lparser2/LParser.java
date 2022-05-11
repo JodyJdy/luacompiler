@@ -1,10 +1,8 @@
 package com.jdy.lua.lparser2;
 
-import com.github.zxh0.luago.compiler.ast.exps.NameExp;
 import com.jdy.lua.lcodes.BinOpr;
 import com.jdy.lua.lcodes.UnOpr;
 import com.jdy.lua.lex.LexState;
-import com.jdy.lua.lex.TokenEnum;
 import com.jdy.lua.lparser2.expr.*;
 import com.jdy.lua.lparser2.statement.*;
 
@@ -12,7 +10,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static com.jdy.lua.lcodes.BinOpr.*;
+import static com.jdy.lua.lcodes.BinOpr.OPR_NOBINOPR;
+import static com.jdy.lua.lcodes.BinOpr.getBinopr;
 import static com.jdy.lua.lex.Lex.*;
 import static com.jdy.lua.lex.TokenEnum.*;
 import static com.jdy.lua.lparser2.expr.SuffixedExp.SuffixedContent;

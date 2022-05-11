@@ -34,7 +34,7 @@ public class InstructionGenerator {
     }
 
     public void generate(Statement statement) {
-
+        statement.generate(this);
     }
 
     public void generate(LocalFuncStat funcStat) {
@@ -107,10 +107,7 @@ public class InstructionGenerator {
             //全局变量
             env = fi.indexOfUpval("_ENV");
             Lcodes.emitCodeABC(fi, OpCode.OP_SETFIELD, env, b, funcReg);
-
         }
-
-
     }
 
 
