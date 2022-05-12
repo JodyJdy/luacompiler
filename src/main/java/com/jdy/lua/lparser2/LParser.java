@@ -279,7 +279,7 @@ public class LParser {
         return gotoStatement;
     }
     public static ExprStatement exprStat(LexState ls,int line){
-        SuffixedExp s = suffixedExp(ls);
+        Expr s = suffixedExp(ls);
         ExprStatement state = new ExprStatement();
         if(ls.getCurTokenEnum() == ASSIGN || ls.getCurTokenEnum() == COMMA){
             state.addLeft(s);
@@ -361,7 +361,7 @@ public class LParser {
             SubExpr exp = subExpr(ls,UNARY_PRIORITY);
             subExpr = new SubExpr(uop,exp);
         } else{
-            SimpleExpr expr = simpleExp(ls);
+            Expr expr = simpleExp(ls);
             if(expr == null){
                 return null;
             }
@@ -390,7 +390,7 @@ public class LParser {
         }
         return new SubExprWithOp(trySimplyfySubExpr(subExpr),op);
     }
-    public static SimpleExpr simpleExp(LexState ls){
+    public static Expr  simpleExp(LexState ls){
          /* simpleexp -> FLT | INT | STRING | NIL | TRUE | FALSE | ... |
                   constructor | FUNCTION body | suffixedexp */
         Expr expr;
@@ -446,10 +446,7 @@ public class LParser {
             }
 
         }
-        if(expr == null){
-            return null;
-        }
-        return new SimpleExpr(expr);
+        return expr;
     }
 
     /**
@@ -476,7 +473,7 @@ public class LParser {
         luaX_Next(ls);
         return  stringExpr;
     }
-    public static SuffixedExp suffixedExp(LexState ls){
+    public static Expr suffixedExp(LexState ls){
         /* suffixedexp -> primaryexp { '.' NAME | '[' exp ']' | ':' NAME funcargs | funcargs } */
         Expr suffixedExp = primaryExpr(ls);
         if(suffixedExp == null){
@@ -504,10 +501,7 @@ public class LParser {
                     suffixedExp = new SuffixedExp(suffixedExp,new SuffixedContent(funcArgs(ls)));
                     break;
                 default:
-                    if(suffixedExp instanceof SuffixedExp){
-                       return (SuffixedExp)suffixedExp;
-                    }
-                    return new SuffixedExp(suffixedExp);
+                   return suffixedExp;
             }
         }
 

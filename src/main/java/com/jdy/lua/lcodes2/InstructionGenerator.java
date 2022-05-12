@@ -280,7 +280,7 @@ public class InstructionGenerator {
             fi.freeReg();
             return;
         }
-        List<SuffixedExp> vars = exprStatement.getLefts();
+        List<Expr> vars = exprStatement.getLefts();
         List<Expr> exprs = exprStatement.getRight().getExprList();
         //赋值 a,b,c=1,2,3
         removeTailNils(exprStatement.getRight());
@@ -293,17 +293,21 @@ public class InstructionGenerator {
         int oldRegs = fi.getUsedRegs();
 
         for (int i = 0; i < vars.size(); i++) {
-            SuffixedExp suffixedExp = vars.get(i);
-            suffixedExp = simplify(suffixedExp);
-            TableAccess tableAccess = suffixedExp.tryTrans2TableAccess();
+            Expr expr = vars.get(i);
+            SuffixedExp suffixedExp;
+            TableAccess tableAccess = null;
+            if(expr instanceof SuffixedExp){
+                suffixedExp = simplify((SuffixedExp)expr);
+                tableAccess = suffixedExp.tryTrans2TableAccess();
+            }
             if (tableAccess != null) {
                 //存放 table
                 tableRegs[i] = fi.allocReg();
                 tableAccess.getTable().generate(this, tableRegs[i], 1);
                 keyRegs[i] = fi.allocReg();
                 tableAccess.getKey().generate(this, keyRegs[i], 1);
-            } else {
-                NameExpr nameExpr = (NameExpr) suffixedExp.getPrimaryExr();
+            } else if(expr instanceof NameExpr){
+                NameExpr nameExpr = (NameExpr)expr;
                 String name = nameExpr.getName();
                 if (fi.slotOfLocVar(name) < 0 && fi.indexOfUpval(name) < 0) {
                     keyRegs[i] = -1;
@@ -312,6 +316,8 @@ public class InstructionGenerator {
                         keyRegs[i] = fi.allocReg();
                     }
                 }
+            } else{
+                System.err.println("错误的ExprStatement");
             }
         }
         //实现存储好变量值的寄存器，后面才会 alloc
@@ -349,12 +355,19 @@ public class InstructionGenerator {
             }
         }
         for (int i = 0; i < nVars; i++) {
-            SuffixedExp suffixedExp = simplify(vars.get(i));
-            if (suffixedExp.tryTrans2TableAccess() != null) {
+
+            Expr expr = vars.get(i);
+            SuffixedExp suffixedExp;
+            TableAccess tableAccess = null;
+            if(expr instanceof SuffixedExp){
+                suffixedExp = simplify((SuffixedExp)expr);
+                tableAccess = suffixedExp.tryTrans2TableAccess();
+            }
+            if (tableAccess != null) {
                 Lcodes.emitCodeABC(fi, OpCode.OP_SETTABLE, tableRegs[i], keyRegs[i], varRegs[i]);
                 continue;
             }
-            NameExpr nameExpr = (NameExpr) suffixedExp.getPrimaryExr();
+            NameExpr nameExpr = (NameExpr) expr;
             String varName = nameExpr.getName();
             int a = fi.slotOfLocVar(varName);
             if (a >= 0) {
@@ -820,9 +833,7 @@ public class InstructionGenerator {
         }
     }
 
-    public void generate(SimpleExpr expr, int a, int n) {
-        expr.getExpr().generate(this, a, n);
-    }
+
 
     public void generate(VarargExpr expr, int a, int n) {
         Lcodes.emitCodeABC(fi, OpCode.OP_VARARG, a, n + 1, 0);
@@ -861,9 +872,7 @@ public class InstructionGenerator {
     public ArgAndKind exp2ArgAndKind(FunctionInfo fi, Expr expr, int kind) {
 
         //去掉无用的嵌套，直接执行里层的表达式
-        if(expr instanceof  SimpleExpr){
-            return exp2ArgAndKind(fi,((SimpleExpr) expr).getExpr(),kind);
-        }
+
         if(expr instanceof SuffixedExp){
             SuffixedExp temp = (SuffixedExp)expr;
             if(temp.getSuffixedContent() == null){
