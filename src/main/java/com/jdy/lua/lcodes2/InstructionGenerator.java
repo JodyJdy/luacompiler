@@ -31,6 +31,25 @@ public class InstructionGenerator {
     private boolean isStatement(){
         return exprLevel == 0;
     }
+
+    /**
+     * 返回true 表示最后一个jump 在 true label中
+     */
+    public boolean lastJmpInTrueLabel(VirtualLabel trueLabel,VirtualLabel falseLable){
+        int maxTrue = 0,maxFalse = 0;
+        for(Integer i : trueLabel.getInsPcs()){
+            if(maxTrue < i){
+                maxTrue = i;
+            }
+        }
+        for(Integer i : falseLable.getInsPcs()){
+            if(maxFalse < i){
+                maxFalse = i;
+            }
+        }
+        return maxTrue > maxFalse;
+
+    }
     public void generateLogicExpr(Expr expr,VirtualLabel trueLabel,VirtualLabel falseLabel,VirtualLabel endLabel,ExprDesc desc){
         exprLevel++;
         desc.setTrueLabel(trueLabel);
@@ -38,13 +57,20 @@ public class InstructionGenerator {
         desc.setEndLabel(endLabel);
         expr.generate(this,desc);
         exprLevel--;
-        //最后一个jump特殊处理
-        Instruction lastJmp = fi.getInstruction(fi.getPc());
-        int falseJmp = Lcodes.emitCodeABC(fi, OP_LFALSESKIP, desc.getReg(), 0, 0);
-        falseLabel.fixJump2Pc(falseJmp);
-        int trueJmp = Lcodes.emitCodeABC(fi,OP_LOADTRUE,desc.getReg(),0,0);
-        trueLabel.fixJump2Pc(trueJmp);
-        Instructions.setArgsJ(lastJmp,1);
+
+        if(lastJmpInTrueLabel(trueLabel,falseLabel)) {
+            int falseJmp = Lcodes.emitCodeABC(fi, OP_LFALSESKIP, desc.getReg(), 0, 0);
+            falseLabel.fixJump2Pc(falseJmp);
+            int trueJmp = Lcodes.emitCodeABC(fi, OP_LOADTRUE, desc.getReg(), 0, 0);
+            trueLabel.fixJump2Pc(trueJmp);
+        } else{
+            int trueJmp = Lcodes.emitCodeABC(fi,OP_LOADTRUE,desc.getReg(),0,0);
+            trueLabel.fixJump2Pc(trueJmp);
+            Lcodes.emitCodeJump(fi,1,0);
+            int falseJmp = Lcodes.emitCodeABC(fi,OP_LOADFALSE,desc.getReg(),0,0);
+            falseLabel.fixJump2Pc(falseJmp);
+        }
+
 
     }
     public ExprDesc generateExpr(Expr expr){
@@ -923,8 +949,8 @@ public class InstructionGenerator {
             //TEST运算
             testOp(left,logicExpr.getLeft());
         }
-
-        curLabel.fixJump2Pc(fi.getPc());
+        //pc指向的是jmp，应该跳转到jmp的下一条
+        curLabel.fixJump2Pc(fi.getPc() + 1);
 
         if(logicExpr.getOp() == OPR_AND){
             if(left.getJmp() != -1){
