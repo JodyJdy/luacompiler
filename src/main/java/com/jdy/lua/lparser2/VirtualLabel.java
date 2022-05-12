@@ -22,13 +22,23 @@ public class VirtualLabel {
         instructionList.add(ins);
         insPcs.add(pc);
     }
+    public void addInstructionList(VirtualLabel label){
+        if(this.equals(label)){
+            return;
+        }
+        instructionList.addAll(label.getInstructionList());
+        insPcs.addAll(label.getInsPcs());
+    }
 
     /**
      * jump指令都跳转到pc1
+     *  当执行到jmp时，pc在下一条，因此要-1
      */
     public void fixJump2Pc(int pc){
         for(int i=0;i<instructionList.size();i++){
-            Instructions.setArgsJ(instructionList.get(i),pc - insPcs.get(i) - 1);
+            Instructions.setArgsJ(instructionList.get(i),pc-1 - insPcs.get(i));
         }
+        instructionList.clear();
+        insPcs.clear();
     }
 }

@@ -17,9 +17,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import static com.jdy.lua.lcodes.BinOpr.*;
+import static com.jdy.lua.lcodes.BinOpr.OPR_ADD;
+import static com.jdy.lua.lcodes.BinOpr.OPR_AND;
 import static com.jdy.lua.lopcodes.OpCode.*;
-import static com.jdy.lua.lopcodes.OpCode.OP_LOADTRUE;
 import static com.jdy.lua.lparser2.expr.SuffixedExp.SuffixedContent;
 
 public class InstructionGenerator {
@@ -38,10 +38,13 @@ public class InstructionGenerator {
         desc.setEndLabel(endLabel);
         expr.generate(this,desc);
         exprLevel--;
-        Lcodes.emitCodeABC(fi, OP_LFALSESKIP, desc.getReg(), 0, 0);
-        falseLabel.fixJump2Pc(fi.getPc());
-        Lcodes.emitCodeABC(fi,OP_LOADTRUE,desc.getReg(),0,0);
-        trueLabel.fixJump2Pc(fi.getPc());
+        //最后一个jump特殊处理
+        Instruction lastJmp = fi.getInstruction(fi.getPc());
+        int falseJmp = Lcodes.emitCodeABC(fi, OP_LFALSESKIP, desc.getReg(), 0, 0);
+        falseLabel.fixJump2Pc(falseJmp);
+        int trueJmp = Lcodes.emitCodeABC(fi,OP_LOADTRUE,desc.getReg(),0,0);
+        trueLabel.fixJump2Pc(trueJmp);
+        Instructions.setArgsJ(lastJmp,1);
 
     }
     public ExprDesc generateExpr(Expr expr){
@@ -872,50 +875,85 @@ public class InstructionGenerator {
     }
 
 
-    public void testOp(boolean isAnd,ExprDesc exprDesc,Expr expr){
+    public void testOp(ExprDesc exprDesc,Expr expr){
         int b = exp2ArgAndKind(fi,expr,ArgAndKind.ARG_REG).getArg();
         if(!isStatement()) {
-            Lcodes.emitCodeABCK(fi, OP_TESTSET, exprDesc.getReg(), b, 0, isAnd?0:1);
+            Lcodes.emitCodeABCK(fi, OP_TESTSET, exprDesc.getReg(), b, 0,0);
         } else {
-            Lcodes.emitCodeABCK(fi, OP_TEST, b, 0, 0, isAnd?0:1);
+            Lcodes.emitCodeABCK(fi, OP_TEST, b, 0, 0, 0);
         }
         int jmp = Lcodes.emitCodeJump(fi,0,0);
-          if(!isAnd) {
-              exprDesc.getTrueLabel().addInstruction(fi.getInstruction(jmp), jmp);
-          } else {
-              exprDesc.getFalseLabel().addInstruction(fi.getInstruction(jmp), jmp);
-          }
+        exprDesc.setJmp(jmp);
+    }
+    public ExprDesc createDesc(){
+        ExprDesc exprDesc = new ExprDesc();
+        exprDesc.setTrueLabel(new VirtualLabel());
+        exprDesc.setFalseLabel(new VirtualLabel());
+        exprDesc.setEndLabel(new VirtualLabel());
+        exprDesc.setJmp(-1);
+        return exprDesc;
     }
 
+    /**
+     *  反转指令s
+     */
+    public void negative(int jmp){
+        Instruction jmpControl = fi.getInstruction(jmp -1 );
+        Instructions.setArgk(jmpControl,Instructions.getArgk(jmpControl)^1);
+    }
     public  void generate(LogicExpr logicExpr,ExprDesc exprDesc){
 
-        ExprDesc left = new ExprDesc();
-        VirtualLabel cur = new VirtualLabel();
-        int oldRegs = fi.getUsedRegs();
-        boolean leftIsLogic = logicExpr.getLeft() instanceof LogicExpr || logicExpr.getLeft() instanceof RelationExpr ;
-        boolean rightIsLogic = logicExpr.getRight() instanceof LogicExpr || logicExpr.getRight() instanceof RelationExpr;
-        boolean isAnd = logicExpr.getOp() == OPR_AND;
-        if (isAnd) {
-            left.setTrueLabel(cur);
+        ExprDesc left = createDesc();
+        VirtualLabel curLabel = new VirtualLabel();
+        if(logicExpr.getOp() == OPR_AND){
+            left.setTrueLabel(curLabel);
             left.setFalseLabel(exprDesc.getFalseLabel());
-            left.setEndLabel(exprDesc.getEndLabel());
-        } else {
-            left.setFalseLabel(cur);
+        } else{
+            left.setFalseLabel(curLabel);
             left.setTrueLabel(exprDesc.getTrueLabel());
-            left.setEndLabel(exprDesc.getEndLabel());
         }
+        left.setEndLabel(exprDesc.getEndLabel());
+        int oldRegs = fi.getUsedRegs();
+
+
         //逻辑运算
-        if(leftIsLogic) {
-            logicExpr.getLeft().generate(this, left);
-        } else{
+        if(logicExpr.getLeft() instanceof LogicExpr){
+           logicExpr.getLeft().generate(this, left);
+        } else {
             //TEST运算
-            testOp(isAnd,left,logicExpr.getLeft());
+            testOp(left,logicExpr.getLeft());
         }
-        cur.fixJump2Pc(fi.getPc());
-        if(rightIsLogic) {
-            logicExpr.getRight().generate(this, exprDesc);
+
+        curLabel.fixJump2Pc(fi.getPc());
+
+        if(logicExpr.getOp() == OPR_AND){
+            if(left.getJmp() != -1){
+               negative(left.getJmp());
+               exprDesc.getFalseLabel().addInstruction(fi.getInstruction(left.getJmp()),left.getJmp());
+            }
+            exprDesc.getFalseLabel().addInstructionList(left.getFalseLabel());
+
         } else{
-           testOp(isAnd,exprDesc,logicExpr.getRight());
+            if(left.getJmp() != -1){
+                exprDesc.getTrueLabel().addInstruction(fi.getInstruction(left.getJmp()),left.getJmp());
+            }
+            exprDesc.getTrueLabel().addInstructionList(left.getTrueLabel());
+        }
+
+
+        if(logicExpr.getRight() instanceof LogicExpr){
+            logicExpr.getRight().generate(this,exprDesc);
+        } else{
+            testOp(exprDesc,logicExpr.getRight());
+        }
+        if(logicExpr.getOp() == OPR_AND){
+            if(exprDesc.getJmp() != -1){
+                exprDesc.getFalseLabel().addInstruction(fi.getInstruction(exprDesc.getJmp()),exprDesc.getJmp());
+            }
+        } else{
+            if(exprDesc.getJmp() != -1){
+                exprDesc.getTrueLabel().addInstruction(fi.getInstruction(exprDesc.getJmp()),exprDesc.getJmp());
+            }
         }
         fi.setUsedRegs(oldRegs);
     }
@@ -932,8 +970,8 @@ public class InstructionGenerator {
             default:break;
         }
         fi.freeReg(2);
-        int pc = Lcodes.emitCodeJump(fi,0,0);
-        exprDesc.getFalseLabel().addInstruction(fi.getInstruction(pc),pc);
+        int jmp = Lcodes.emitCodeJump(fi,0,0);
+        exprDesc.setJmp(jmp);
     }
     public void generate(BinaryExpr binaryExpr,ExprDesc exprDesc){
         int b = exp2ArgAndKind(fi,binaryExpr.getLeft(),ArgAndKind.ARG_REG).getArg();
