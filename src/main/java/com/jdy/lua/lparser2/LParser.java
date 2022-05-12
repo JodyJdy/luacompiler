@@ -3,6 +3,7 @@ package com.jdy.lua.lparser2;
 import com.jdy.lua.lcodes.BinOpr;
 import com.jdy.lua.lcodes.UnOpr;
 import com.jdy.lua.lex.LexState;
+import com.jdy.lua.lex.TokenEnum;
 import com.jdy.lua.lparser2.expr.*;
 import com.jdy.lua.lparser2.statement.*;
 
@@ -345,6 +346,100 @@ public class LParser {
             return null;
         }
         return subExprWithOp.getSubExpr();
+    }
+    public static Expr logicOrExpr(LexState ls){
+        Expr expr = logicAndExpr(ls);
+        while(ls.getCurTokenEnum() == OR){
+            luaX_Next(ls);
+            expr = new LogicExpr(expr,logicAndExpr(ls), BinOpr.OPR_OR);
+        }
+        return expr;
+    }
+    public static Expr logicAndExpr(LexState ls){
+        Expr expr = relExpr(ls);
+        while(ls.getCurTokenEnum() == AND){
+            luaX_Next(ls);
+            expr = new LogicExpr(expr,relExpr(ls), BinOpr.OPR_AND);
+        }
+        return expr;
+    }
+    private static boolean isRelation(TokenEnum tokenEnum){
+        return tokenEnum == EQ || tokenEnum == LE || tokenEnum == GT || tokenEnum == GE || tokenEnum == NE || tokenEnum == LT;
+    }
+    public static Expr relExpr(LexState ls){
+       Expr expr = pow(ls);
+       while(isRelation(ls.getCurTokenEnum())){
+           BinOpr op = getBinopr(ls.getCurTokenEnum());
+           luaX_Next(ls);
+           expr = new RelationExpr(expr,pow(ls),op);
+       }
+       return expr;
+    }
+    public static Expr pow(LexState ls){
+        Expr expr = shift(ls);
+        while(ls.getCurTokenEnum() == POW){
+            luaX_Next(ls);
+            expr = new BinaryExpr(expr,shift(ls),BinOpr.OPR_POW);
+        }
+        return expr;
+    }
+    public static Expr shift(LexState ls){
+        Expr expr = bitOr(ls);
+        while(ls.getCurTokenEnum() == LSHIFT || ls.getCurTokenEnum() == RSHIFT){
+            BinOpr opr =  getBinopr(ls.getCurTokenEnum());
+            luaX_Next(ls);
+            expr = new BinaryExpr(expr,bitOr(ls),opr);
+        }
+        return expr;
+    }
+    public static Expr bitOr(LexState ls){
+        Expr expr = bitXor(ls);
+        while(ls.getCurTokenEnum() == BITOR){
+            luaX_Next(ls);
+            expr = new BinaryExpr(expr,bitXor(ls),BinOpr.OPR_BOR);
+        }
+        return expr;
+
+    }
+    public static Expr bitXor(LexState ls){
+        Expr expr = bitAnd(ls);
+        while(ls.getCurTokenEnum() == BITXOR){
+            luaX_Next(ls);
+            expr = new BinaryExpr(expr,bitAnd(ls),BinOpr.OPR_BXOR);
+        }
+        return expr;
+
+    }
+    public static Expr bitAnd(LexState ls){
+        Expr expr = addSub(ls);
+        while(ls.getCurTokenEnum() == BITAND){
+            luaX_Next(ls);
+            expr = new BinaryExpr(expr,addSub(ls),BinOpr.OPR_BAND);
+        }
+        return expr;
+    }
+
+    public static Expr addSub(LexState ls){
+        Expr expr = mulDivMod(ls);
+        while(ls.getCurTokenEnum() == ADD || ls.getCurTokenEnum() == SUB){
+            BinOpr opr =  getBinopr(ls.getCurTokenEnum());
+            luaX_Next(ls);
+            expr = new BinaryExpr(expr,mulDivMod(ls),opr);
+        }
+        return expr;
+
+    }
+    public static Expr mulDivMod(LexState ls){
+        Expr expr = simple(ls);
+        while(ls.getCurTokenEnum() == MUL || ls.getCurTokenEnum() == DIV || ls.getCurTokenEnum() == IDIV || ls.getCurTokenEnum() == MOD){
+            BinOpr opr =  getBinopr(ls.getCurTokenEnum());
+            luaX_Next(ls);
+            expr = new BinaryExpr(expr,simple(ls),opr);
+        }
+        return expr;
+    }
+    public static Expr simple(LexState ls){
+        return simpleExp(ls);
     }
 
     /**

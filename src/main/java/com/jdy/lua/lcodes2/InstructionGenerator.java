@@ -9,6 +9,7 @@ import com.jdy.lua.lopcodes.OpCode;
 import com.jdy.lua.lparser2.ArgAndKind;
 import com.jdy.lua.lparser2.FunctionInfo;
 import com.jdy.lua.lparser2.TableAccess;
+import com.jdy.lua.lparser2.VirtualLabel;
 import com.jdy.lua.lparser2.expr.*;
 import com.jdy.lua.lparser2.statement.*;
 
@@ -866,6 +867,10 @@ public class InstructionGenerator {
         Lcodes.emitCodeK(fi, a, k);
     }
 
+    public void exp2JumpInstruction(FunctionInfo fi, Expr expr, VirtualLabel trueLabel,VirtualLabel falseLabel,VirtualLabel endLabel,boolean needStore,int store){
+        int i = Lcodes.emitCodeJump(fi,1,0);
+
+    }
     /**
      * 将 表达式进行处理，结果存储在 返回的 ArgAndKind对象里面 kind表示，存储的类型，
      */
