@@ -9,7 +9,7 @@ import java.util.List;
 public enum TokenEnum {
 
     ADD('+'),SUB('-'),MUL('*'),DIV('/'),MOD('%'),GT('>'),
-    LT('<'), BITXOR('~'),BITOR('|'),BITAND('&'),POW('^'),
+    LT('<'), BITNOT('~'),BITOR('|'),BITAND('&'),POW('^'),
     COLON(':'),LEN('#'),
     ASSIGN('='),BIG_LEFT('{'),BIG_RIGHT('}'),MID_LEFT('['),
     MID_RIGHT(']'),SMALL_LEFT('('),SMALL_RIGHT(')'),DOT('.'),

@@ -4,7 +4,7 @@ import com.jdy.lua.lcodes.BinOpr;
 
 public class NotExpr extends LogicExpr{
 
-    public NotExpr(Expr left, Expr right, BinOpr op) {
+    public NotExpr(Expr left) {
         super(left,null,null);
     }
 }

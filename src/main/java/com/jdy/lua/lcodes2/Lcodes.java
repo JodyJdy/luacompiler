@@ -84,7 +84,6 @@ public class Lcodes {
             case OPR_POW:
             case OPR_BAND:
             case OPR_BOR:
-            case OPR_BXOR:
             case OPR_SHL:
             case OPR_SHR:
                 OpCode opCode = OpCode.getOpCode(op.getOp() - OPR_ADD.getOp() + OP_ADD.getCode());

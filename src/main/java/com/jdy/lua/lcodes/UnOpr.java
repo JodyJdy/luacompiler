@@ -29,7 +29,7 @@ public enum UnOpr {
     public static UnOpr getUnopr(TokenEnum op){
         switch (op){
             case SUB:return UnOpr.OPR_MINUS;
-            case BITXOR: return UnOpr.OPR_BNOT;
+            case BITNOT: return UnOpr.OPR_BNOT;
             case LEN: return UnOpr.OPR_LEN;
             case NOT:return UnOpr.OPR_NOT;
             default:

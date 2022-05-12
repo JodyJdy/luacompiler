@@ -393,23 +393,15 @@ public class LParser {
         return expr;
     }
     public static Expr bitOr(LexState ls){
-        Expr expr = bitXor(ls);
+        Expr expr = bitAnd(ls);
         while(ls.getCurTokenEnum() == BITOR){
             luaX_Next(ls);
-            expr = new BinaryExpr(expr,bitXor(ls),BinOpr.OPR_BOR);
+            expr = new BinaryExpr(expr,bitAnd(ls),BinOpr.OPR_BOR);
         }
         return expr;
 
     }
-    public static Expr bitXor(LexState ls){
-        Expr expr = bitAnd(ls);
-        while(ls.getCurTokenEnum() == BITXOR){
-            luaX_Next(ls);
-            expr = new BinaryExpr(expr,bitAnd(ls),BinOpr.OPR_BXOR);
-        }
-        return expr;
 
-    }
     public static Expr bitAnd(LexState ls){
         Expr expr = addSub(ls);
         while(ls.getCurTokenEnum() == BITAND){
@@ -430,15 +422,25 @@ public class LParser {
 
     }
     public static Expr mulDivMod(LexState ls){
-        Expr expr = simple(ls);
+        Expr expr = unary(ls);
         while(ls.getCurTokenEnum() == MUL || ls.getCurTokenEnum() == DIV || ls.getCurTokenEnum() == IDIV || ls.getCurTokenEnum() == MOD){
             BinOpr opr =  getBinopr(ls.getCurTokenEnum());
             luaX_Next(ls);
-            expr = new BinaryExpr(expr,simple(ls),opr);
+            expr = new BinaryExpr(expr,unary(ls),opr);
         }
         return expr;
     }
-    public static Expr simple(LexState ls){
+
+    public static Expr unary(LexState ls){
+        UnOpr op = UnOpr.getUnopr(ls.getCurTokenEnum());
+        if(op != UnOpr.OPR_NOUNOPR){
+            luaX_Next(ls);
+            if(op == UnOpr.OPR_NOT){
+                return new NotExpr(simpleExp(ls));
+            } else{
+                return new UnaryExpr(op,simpleExp(ls));
+            }
+        }
         return simpleExp(ls);
     }
 
@@ -604,7 +606,6 @@ public class LParser {
     public static TableConstructor constructor(LexState ls){
         TableConstructor cons  = new TableConstructor();
         checkNext(ls,BIG_LEFT);
-
         do {
             if(ls.getCurTokenEnum() == BIG_RIGHT){
                 break;
@@ -617,7 +618,6 @@ public class LParser {
             }
 
         }while(testNext(ls,COMMA) || testNext(ls,SEMICON));
-
 
         checkNext(ls,BIG_RIGHT);
         return cons;

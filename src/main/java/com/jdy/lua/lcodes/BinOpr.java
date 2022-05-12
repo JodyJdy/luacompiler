@@ -8,7 +8,7 @@ public enum BinOpr {
     OPR_ADD(0), OPR_SUB(1), OPR_MUL(2), OPR_MOD(3), OPR_POW(4),
     OPR_DIV(5), OPR_IDIV(6),
     /* bitwise operators */
-    OPR_BAND(7), OPR_BOR(8), OPR_BXOR(9),
+    OPR_BAND(7), OPR_BOR(8), OPR_BNOT(9),
     OPR_SHL(10), OPR_SHR(11),
     /* string operator */
     OPR_CONCAT(12),
@@ -53,7 +53,7 @@ public enum BinOpr {
             case DIV: return OPR_DIV;
             case BITAND: return OPR_BAND;
             case BITOR: return OPR_BOR;
-            case BITXOR: return OPR_BXOR;
+            case BITNOT: return OPR_BNOT;
             case LT: return OPR_LT;
             case GT: return OPR_GT;
             case IDIV: return OPR_IDIV;
