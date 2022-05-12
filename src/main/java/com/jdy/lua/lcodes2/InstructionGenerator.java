@@ -893,7 +893,6 @@ public class InstructionGenerator {
                 }
             }
         }
-
         if ((kind & ArgAndKind.ARG_CONST) > 0) {
             int idx = -1;
             if (expr instanceof NilExpr) {

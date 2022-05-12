@@ -854,7 +854,7 @@ public class LCodes {
             }
         }
         //拼接真出口
-        luaK_Concat(fs,e,pc,true);/* insert new jump in 'currTk' list */
+        luaK_Concat(fs,e,pc,true);/* insert new jump in 't' list */
         //处理假出口
         luaK_patchToHere(fs, e.getFJmp());  /* false list jumps to here (to go through) */
         e.setFJmp(NO_JUMP);
@@ -1008,7 +1008,7 @@ public class LCodes {
         switch (op){
             case OPR_BAND: res.setI(a & b);break;
             case OPR_BOR:res.setI(a | b);break;
-            case OPR_BXOR:res.setI(a ^ b);break;
+            case OPR_BNOT:res.setI(a ^ b);break;
             case OPR_SHL: res.setI(a << b);break;
             case OPR_SHR: res.setI(a >> b);break;
             case OPR_IDIV: res.setI(a/b);break;
@@ -1045,7 +1045,7 @@ public class LCodes {
         BinOpr o =BinOpr.getBinOpr(op);
         res.setValueType(LUA_TNUMINT);
         switch (o){
-            case OPR_BAND: case OPR_BOR: case OPR_BXOR:
+            case OPR_BAND: case OPR_BOR: case OPR_BNOT:
             case OPR_SHL: case OPR_SHR: case OPR_IDIV:
                 long num1 = v1.getI();
                 long num2 = v2.getI();
@@ -1329,7 +1329,7 @@ public class LCodes {
             case OPR_POW:
             case OPR_BAND:
             case OPR_BOR:
-            case OPR_BXOR:
+            case OPR_BNOT:
             case OPR_SHL:
             case OPR_SHR: {
                 if (!tonumeral(v, null))
@@ -1422,7 +1422,7 @@ public class LCodes {
                 codeArith(fs, opr, e1, e2, 0, line);
                 break;
             }
-            case OPR_BAND: case OPR_BOR: case OPR_BXOR: {
+            case OPR_BAND: case OPR_BOR: case OPR_BNOT: {
                 codeBitWise(fs, opr, e1, e2, line);
                 break;
             }

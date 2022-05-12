@@ -3,5 +3,7 @@
 local b =11
 local c = 12
 
-print(b^c)
+
+local a = not b and c;
+print(a)
 
