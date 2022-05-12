@@ -1,5 +1,6 @@
 package com.jdy.lua.lparser2.expr;
 
+import com.jdy.lua.lcodes2.ExprDesc;
 import com.jdy.lua.lcodes2.InstructionGenerator;
 import lombok.Getter;
 
@@ -27,8 +28,8 @@ public class FuncArgs extends Expr{
         expr1.addAll(e.getExprList());
     }
     @Override
-    public void generate(InstructionGenerator generator, int a, int n) {
-        generator.generate(this,a,n);
+    public void generate(InstructionGenerator generator, ExprDesc exprDesc) {
+        generator.generate(this,exprDesc);
     }
 
 }

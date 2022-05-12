@@ -2,6 +2,7 @@ package com.jdy.lua.lparser2.expr;
 
 import com.jdy.lua.lcodes.BinOpr;
 import com.jdy.lua.lcodes.UnOpr;
+import com.jdy.lua.lcodes2.ExprDesc;
 import com.jdy.lua.lcodes2.InstructionGenerator;
 import lombok.Data;
 
@@ -22,8 +23,8 @@ public class SubExpr extends Expr{
         this.subExpr1 = subExpr;
     }
     @Override
-    public void generate(InstructionGenerator generator, int a, int n) {
-        generator.generate(this,a,n);
+    public void generate(InstructionGenerator generator, ExprDesc exprDesc) {
+        generator.generate(this,exprDesc);
     }
 
 }

@@ -17,17 +17,58 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import static com.jdy.lua.lcodes.BinOpr.*;
+import static com.jdy.lua.lopcodes.OpCode.*;
+import static com.jdy.lua.lopcodes.OpCode.OP_LOADTRUE;
 import static com.jdy.lua.lparser2.expr.SuffixedExp.SuffixedContent;
 
 public class InstructionGenerator {
 
     private FunctionInfo fi;
 
+    private int exprLevel = 0;
+
+    private boolean isStatement(){
+        return exprLevel == 0;
+    }
+    public void generateLogicExpr(Expr expr,VirtualLabel trueLabel,VirtualLabel falseLabel,VirtualLabel endLabel,ExprDesc desc){
+        exprLevel++;
+        desc.setTrueLabel(trueLabel);
+        desc.setFalseLabel(falseLabel);
+        desc.setEndLabel(endLabel);
+        expr.generate(this,desc);
+        exprLevel--;
+        Lcodes.emitCodeABC(fi, OP_LFALSESKIP, desc.getReg(), 0, 0);
+        falseLabel.fixJump2Pc(fi.getPc());
+        Lcodes.emitCodeABC(fi,OP_LOADTRUE,desc.getReg(),0,0);
+        trueLabel.fixJump2Pc(fi.getPc());
+
+    }
+    public ExprDesc generateExpr(Expr expr){
+        exprLevel++;
+        expr.generate(this);
+        ExprDesc desc = new ExprDesc();
+        exprLevel--;
+        return desc;
+    }
+    public void generateLogicStatement(Expr expr,VirtualLabel trueLabel,VirtualLabel falseLabel,VirtualLabel endLabel,ExprDesc desc){
+        desc.setTrueLabel(trueLabel);
+        desc.setFalseLabel(falseLabel);
+        desc.setEndLabel(endLabel);
+        expr.generate(this);
+    }
+    public ExprDesc generateStatement(Expr expr){
+        expr.generate(this);
+        return null;
+    }
+
+
     public InstructionGenerator(FunctionInfo fi) {
         this.fi = fi;
     }
 
-    public void generate(Expr expr, int a, int n) {
+    public void generate(Expr expr,ExprDesc exprDesc) {
+       //
     }
 
     public void generate(Statement statement) {
@@ -40,7 +81,7 @@ public class InstructionGenerator {
 
     public void generate(LocalFuncStat funcStat) {
         int r = fi.addLocVar(funcStat.getStr(), fi.getPc() + 2);
-        funcStat.getFunctionBody().generate(this, r, 0);
+        funcStat.getFunctionBody().generate(this,createDesc( r, 0));
     }
 
 
@@ -69,7 +110,7 @@ public class InstructionGenerator {
             if(funcReg == argC){
                 funcReg =fi.allocReg();
             }
-            functionStat.getFunctionBody().generate(this,funcReg,0);
+            functionStat.getFunctionBody().generate(this,createDesc(funcReg,0));
            
             OpCode code = Instructions.getOpCode(lastIns);
             if(code == OpCode.OP_GETTABLE){
@@ -86,7 +127,7 @@ public class InstructionGenerator {
         } else{
             String varName = functionStat.getVar().getName();
             int funcReg =fi.allocReg();
-            functionStat.getFunctionBody().generate(this,funcReg,0);
+            functionStat.getFunctionBody().generate(this,createDesc(funcReg,0));
             fi.freeReg();
             int a = fi.slotOfLocVar(varName);
             if (a >= 0) {
@@ -172,9 +213,9 @@ public class InstructionGenerator {
             Expr expr = exprs.get(i);
             int r = fi.allocReg();
             if (i == nExprs - 1 && multRet) {
-                expr.generate(this, r, -1);
+                expr.generate(this, createDesc(r, -1));
             } else {
-                expr.generate(this, r, 1);
+                expr.generate(this,createDesc( r, 1));
             }
         }
         fi.freeReg(nExprs);
@@ -200,7 +241,7 @@ public class InstructionGenerator {
         Lcodes.emitCodeABC(fi, OpCode.OP_TEST, a, 0, 0);
         int pcJmpToEnd = Lcodes.emitCodeJump(fi, 0, 0);
         fi.enterScope(true);
-        whileStatement.getBlock().generate(this, 0, 0);
+        whileStatement.getBlock().generate(this,createDesc(0,0));
         fi.closeOpnUpval();
         Lcodes.emitCodeJump(fi, pcBeforeExp - fi.getPc() - 1, 0);
         fi.exitScope(fi.getPc());
@@ -233,9 +274,9 @@ public class InstructionGenerator {
             pcJmpToNextExp = Lcodes.emitCodeJump(fi, 0, 0);
             fi.enterScope(false);
             if (i == 0) {
-                ifStatement.getBlockStatement().generate(this, 0, 0);
+                ifStatement.getBlockStatement().generate(this, createDesc(0, 0));
             } else {
-                ifStatement.getElseThenBlock().get(i - 1).generate(this, 0, 0);
+                ifStatement.getElseThenBlock().get(i - 1).generate(this, createDesc(0, 0));
             }
             fi.closeOpnUpval();
             fi.exitScope(fi.getPc() + 1);
@@ -249,7 +290,7 @@ public class InstructionGenerator {
         //如果有else
         if (ifStatement.getElseBlock() != null) {
             fi.enterScope(false);
-            ifStatement.getElseBlock().generate(this, 0, 0);
+            ifStatement.getElseBlock().generate(this, createDesc(0,0));
             fi.closeOpnUpval();
             fi.exitScope(fi.getPc() + 1);
         }
@@ -277,7 +318,7 @@ public class InstructionGenerator {
         //函数调用
         if (exprStatement.getFunc() != null) {
             int r = fi.allocReg();
-            exprStatement.getFunc().generate(this, r, 0);
+            exprStatement.getFunc().generate(this,createDesc(r, 0) );
             fi.freeReg();
             return;
         }
@@ -304,9 +345,9 @@ public class InstructionGenerator {
             if (tableAccess != null) {
                 //存放 table
                 tableRegs[i] = fi.allocReg();
-                tableAccess.getTable().generate(this, tableRegs[i], 1);
+                tableAccess.getTable().generate(this, createDesc(tableRegs[i], 1));
                 keyRegs[i] = fi.allocReg();
-                tableAccess.getKey().generate(this, keyRegs[i], 1);
+                tableAccess.getKey().generate(this,createDesc( keyRegs[i], 1));
             } else if(expr instanceof NameExpr){
                 NameExpr nameExpr = (NameExpr)expr;
                 String name = nameExpr.getName();
@@ -330,9 +371,9 @@ public class InstructionGenerator {
                 Expr exp = exprs.get(i);
                 int a = fi.allocReg();
                 if (i >= nVars && i == nExps - 1 && hasMultiRet(exp)) {
-                    exp.generate(this, a, 0);
+                    exp.generate(this,createDesc( a, 0));
                 } else {
-                    exp.generate(this, a, 1);
+                    exp.generate(this,createDesc(a, 1));
                 }
             }
         } else {
@@ -343,10 +384,10 @@ public class InstructionGenerator {
                 if (i == nExps - 1 && hasMultiRet(exp)) {
                     multRet = true;
                     int n = nVars - nExps + 1;
-                    exp.generate(this, a, n);
+                    exp.generate(this, createDesc(a, n));
                     fi.allocReg(n - 1);
                 } else {
-                    exp.generate(this, a, 1);
+                    exp.generate(this, createDesc(a, 1));
                 }
             }
             if (!multRet) {
@@ -433,16 +474,16 @@ public class InstructionGenerator {
         if (nExps == nNames) {
             for (Expr expr : exprList) {
                 int tempReg = fi.allocReg();
-                expr.generate(this, tempReg, 1);
+                expr.generate(this,createDesc( tempReg, 1));
             }
         } else if (nExps > nNames) {
             for (int i = 0; i < nExps; i++) {
                 Expr expr = exprList.get(i);
                 int tempReg = fi.allocReg();
                 if (i == nExps - 1 && hasMultiRet(expr)) {
-                    expr.generate(this, tempReg, 0);
+                    expr.generate(this, createDesc(tempReg, 0));
                 } else {
-                    expr.generate(this, tempReg, 1);
+                    expr.generate(this, createDesc(tempReg, 1));
                 }
             }
 
@@ -454,11 +495,11 @@ public class InstructionGenerator {
                 if (i == nExps - 1 && hasMultiRet(expr)) {
                     hasMulRet = true;
                     int tempReg2 = nNames - nExps + 1;
-                    expr.generate(this, tempReg, tempReg2);
+                    expr.generate(this,createDesc( tempReg, tempReg2));
                     //为多个返回值，分配空间
                     fi.allocReg(tempReg2 - 1);
                 } else {
-                    expr.generate(this, tempReg, 1);
+                    expr.generate(this,createDesc( tempReg, 1));
                 }
             }
             //置nil
@@ -475,7 +516,7 @@ public class InstructionGenerator {
         }
     }
 
-    public void generate(TableConstructor constructor, int a, int n) {
+    public void generate(TableConstructor constructor, ExprDesc exprDesc) {
         //数组部分大小
         int nArr = constructor.getListFields().size();
         //map部分大小
@@ -488,15 +529,15 @@ public class InstructionGenerator {
         if (nExp != 0) {
             hasMulRet = hasMulRet || hasMultiRet(constructor.getFields().get(0));
         }
-        Lcodes.emitCodeABC(fi, OpCode.OP_NEWTABLE, a, nArr, nExp);
+        Lcodes.emitCodeABC(fi, OpCode.OP_NEWTABLE,exprDesc.getReg(), nArr, nExp);
         //处理数组部分
         for (int i = 1; i <= nArr; i++) {
             Expr listField = constructor.getListFields().get(i - 1).getExpr();
             int tmp = fi.allocReg();
             if (i == nArr && hasMulRet) {
-                listField.generate(this, tmp, -1);
+                listField.generate(this, createDesc(tmp,-1));
             } else {
-                listField.generate(this, tmp, 1);
+                listField.generate(this,createDesc(tmp,1));
             }
             if (i % 50 == 0 || i == nArr) {
                 int reg = i % 50;
@@ -506,9 +547,9 @@ public class InstructionGenerator {
                 fi.freeReg(reg);
                 int c = (i - 1) / 50 + 1;
                 if (i == nArr && hasMulRet) {
-                    Lcodes.emitCodeABC(fi, OpCode.OP_SETLIST, a, 0, c);
+                    Lcodes.emitCodeABC(fi, OpCode.OP_SETLIST, exprDesc.getReg(), 0, c);
                 } else {
-                    Lcodes.emitCodeABC(fi, OpCode.OP_SETLIST, a, reg, c);
+                    Lcodes.emitCodeABC(fi, OpCode.OP_SETLIST,exprDesc.getReg(), reg, c);
                 }
             }
         }
@@ -518,11 +559,11 @@ public class InstructionGenerator {
             Expr left = field.getLeft();
             Expr right = field.getRight();
             int b = fi.allocReg();
-            left.generate(this, b, 1);
+            left.generate(this, createDesc(b,1));
             int c = fi.allocReg();
-            right.generate(this, c, 1);
+            right.generate(this, createDesc(c,1));
             fi.freeReg(2);
-            Lcodes.emitCodeABC(fi, OpCode.OP_SETTABLE, a, b, c);
+            Lcodes.emitCodeABC(fi, OpCode.OP_SETTABLE, exprDesc.getReg(), b, c);
         }
 
     }
@@ -613,25 +654,25 @@ public class InstructionGenerator {
         }
     }
 
-    public void generate(SuffixedExp suffixedExp, int a, int n) {
+    public void generate(SuffixedExp suffixedExp, ExprDesc exprDesc) {
         if (suffixedExp.getSuffixedContent() == null) {
-            suffixedExp.getPrimaryExr().generate(this, a, n);
+            suffixedExp.getPrimaryExr().generate(this, exprDesc);
             return;
         }
         Expr primary = suffixedExp.getPrimaryExr();
         SuffixedContent content = suffixedExp.getSuffixedContent();
         //a.b
         if (content.isHasDot()) {
-            tableAccess(primary, content.getStringExpr(), a);
+            tableAccess(primary, content.getStringExpr(), exprDesc.getReg());
             //a[b]
         } else if (content.getTableIndex() != null) {
-            tableAccess(primary, content.getTableIndex().getExpr(), a);
+            tableAccess(primary, content.getTableIndex().getExpr(),  exprDesc.getReg());
             //a:b()
         } else if (content.isHasColon()) {
-            methodCall(primary, content.getStringExpr(), content.getFuncArgs(), a, n);
+            methodCall(primary, content.getStringExpr(), content.getFuncArgs(),  exprDesc.getReg(), exprDesc.getN());
             //a()
         } else if(content.getFuncArgs() != null) {
-            funcCall(primary, content.getFuncArgs(), a, n);
+            funcCall(primary, content.getFuncArgs(),  exprDesc.getReg(), exprDesc.getN());
         }
     }
 
@@ -663,7 +704,7 @@ public class InstructionGenerator {
         int nArgs = exprList.size();
         boolean hasMultiRet = false;
 
-        expr.generate(this, a, 1);
+        expr.generate(this,createDesc(a,1));
         //method Call
         if (name != null) {
             fi.allocReg();
@@ -676,9 +717,9 @@ public class InstructionGenerator {
             int tempReg = fi.allocReg();
             if (i == exprList.size() - 1 && hasMultiRet(ex)) {
                 hasMultiRet = true;
-                ex.generate(this, tempReg, -1);
+                ex.generate(this, createDesc(tempReg,-1));
             } else {
-                ex.generate(this, tempReg, 1);
+                ex.generate(this,  createDesc(tempReg,-1));
             }
         }
         fi.freeReg(nArgs);
@@ -789,11 +830,7 @@ public class InstructionGenerator {
             }
             fi.setUsedRegs(oldRegs);
         }
-        // subExpr只有，一个表达式，无任何运算符号
-        if (b == -1 && subExpr.getBinOpr() == null && subExpr.getUnOpr() == null && subExpr.getSubExpr2() == null) {
-            subExpr.getSubExpr1().generate(this, a, n);
-            return;
-        }
+
 
         //接着处理第二个操作数, and 和 or单独处理
         if (subExpr.getBinOpr() == BinOpr.OPR_AND || subExpr.getBinOpr() == BinOpr.OPR_OR) {
@@ -835,62 +872,134 @@ public class InstructionGenerator {
     }
 
 
-
-    public void generate(VarargExpr expr, int a, int n) {
-        Lcodes.emitCodeABC(fi, OpCode.OP_VARARG, a, n + 1, 0);
+    public void testOp(boolean isAnd,ExprDesc exprDesc,Expr expr){
+        int b = exp2ArgAndKind(fi,expr,ArgAndKind.ARG_REG).getArg();
+        if(!isStatement()) {
+            Lcodes.emitCodeABCK(fi, OP_TESTSET, exprDesc.getReg(), b, 0, isAnd?0:1);
+        } else {
+            Lcodes.emitCodeABCK(fi, OP_TEST, b, 0, 0, isAnd?0:1);
+        }
+        int jmp = Lcodes.emitCodeJump(fi,0,0);
+          if(!isAnd) {
+              exprDesc.getTrueLabel().addInstruction(fi.getInstruction(jmp), jmp);
+          } else {
+              exprDesc.getFalseLabel().addInstruction(fi.getInstruction(jmp), jmp);
+          }
     }
 
-    public void generate(NilExpr expr, int a, int n) {
-        Lcodes.emitCodeABC(fi, OpCode.OP_LOADNIL, a, n - 1, 0);
+    public  void generate(LogicExpr logicExpr,ExprDesc exprDesc){
+
+        ExprDesc left = new ExprDesc();
+        VirtualLabel cur = new VirtualLabel();
+        int oldRegs = fi.getUsedRegs();
+        boolean leftIsLogic = logicExpr.getLeft() instanceof LogicExpr || logicExpr.getLeft() instanceof RelationExpr ;
+        boolean rightIsLogic = logicExpr.getRight() instanceof LogicExpr || logicExpr.getRight() instanceof RelationExpr;
+        boolean isAnd = logicExpr.getOp() == OPR_AND;
+        if (isAnd) {
+            left.setTrueLabel(cur);
+            left.setFalseLabel(exprDesc.getFalseLabel());
+            left.setEndLabel(exprDesc.getEndLabel());
+        } else {
+            left.setFalseLabel(cur);
+            left.setTrueLabel(exprDesc.getTrueLabel());
+            left.setEndLabel(exprDesc.getEndLabel());
+        }
+        //逻辑运算
+        if(leftIsLogic) {
+            logicExpr.getLeft().generate(this, left);
+        } else{
+            //TEST运算
+            testOp(isAnd,left,logicExpr.getLeft());
+        }
+        cur.fixJump2Pc(fi.getPc());
+        if(rightIsLogic) {
+            logicExpr.getRight().generate(this, exprDesc);
+        } else{
+           testOp(isAnd,exprDesc,logicExpr.getRight());
+        }
+        fi.setUsedRegs(oldRegs);
+    }
+    public void generate(RelationExpr relationExpr,ExprDesc exprDesc){
+        int b = exp2ArgAndKind(fi,relationExpr.getLeft(),ArgAndKind.ARG_REG).getArg();
+        int c = exp2ArgAndKind(fi,relationExpr.getRight(),ArgAndKind.ARG_REG).getArg();
+        switch (relationExpr.getOp()){
+            case OPR_EQ:Lcodes.emitCodeABCK(fi,OP_EQ,b,c,0,1);break;
+            case OPR_NE:Lcodes.emitCodeABCK(fi,OP_EQ,b,c,0,0);break;
+            case OPR_LT:Lcodes.emitCodeABCK(fi,OP_LT,b,c,0,1);break;
+            case OPR_LE:Lcodes.emitCodeABCK(fi,OP_LE,b,c,0,0);break;
+            case OPR_GE:Lcodes.emitCodeABCK(fi,OP_LT,b,c,0,0);break;
+            case OPR_GT:Lcodes.emitCodeABCK(fi,OP_LE,b,c,0,1);break;
+            default:break;
+        }
+        fi.freeReg(2);
+        int pc = Lcodes.emitCodeJump(fi,0,0);
+        exprDesc.getFalseLabel().addInstruction(fi.getInstruction(pc),pc);
+    }
+    public void generate(BinaryExpr binaryExpr,ExprDesc exprDesc){
+        int b = exp2ArgAndKind(fi,binaryExpr.getLeft(),ArgAndKind.ARG_REG).getArg();
+        int c = exp2ArgAndKind(fi,binaryExpr.getRight(),ArgAndKind.ARG_REG).getArg();
+        switch (binaryExpr.getOp()){
+            case OPR_ADD:
+            case OPR_SUB:
+            case OPR_MUL:
+            case OPR_DIV:
+            case OPR_IDIV:
+            case OPR_MOD:
+            case OPR_POW:
+            case OPR_BAND:
+            case OPR_BOR:
+            case OPR_SHL:
+            case OPR_SHR:
+                OpCode opCode = OpCode.getOpCode(binaryExpr.getOp().getOp() - OPR_ADD.getOp() + OP_ADD.getCode());
+                if(isStatement()){
+                    Lcodes.emitCodeABC(fi,opCode,b,b,c);
+                }else{
+                    Lcodes.emitCodeABC(fi,opCode,exprDesc.getReg(),b,c);
+                }
+                break;
+        }
+      fi.freeReg(2);
     }
 
-    public void generate(TrueExpr expr, int a, int n) {
-        Lcodes.emitCodeABC(fi, OpCode.OP_LOADTRUE, a, 0, 0);
+    public void generate(VarargExpr expr, ExprDesc exprDesc) {
+        Lcodes.emitCodeABC(fi, OpCode.OP_VARARG, exprDesc.getReg(), exprDesc.getN() + 1, 0);
     }
 
-    public void generate(FalseExpr expr, int a, int n) {
-        Lcodes.emitCodeABC(fi, OpCode.OP_LOADFALSE, a, 0, 0);
+    public void generate(NilExpr expr, ExprDesc exprDesc) {
+        Lcodes.emitCodeABC(fi, OpCode.OP_LOADNIL,exprDesc.getReg(), exprDesc.getN() - 1, 0);
+
     }
 
-    public void generate(FloatExpr expr, int a, int n) {
+    public void generate(TrueExpr expr, ExprDesc exprDesc) {
+        Lcodes.emitCodeABC(fi, OpCode.OP_LOADTRUE, exprDesc.getReg(), 0, 0);
+    }
+
+    public void generate(FalseExpr expr,ExprDesc exprDesc) {
+        Lcodes.emitCodeABC(fi, OpCode.OP_LOADFALSE, exprDesc.getReg(), 0, 0);
+    }
+
+    public void generate(FloatExpr expr, ExprDesc exprDesc) {
         int k = fi.indexOfConstant(TValue.doubleValue(expr.getF()));
-        Lcodes.emitCodeK(fi, a, k);
+        Lcodes.emitCodeK(fi,exprDesc.getReg(), k);
     }
 
-    public void generate(IntExpr expr, int a, int n) {
+    public void generate(IntExpr expr, ExprDesc exprDesc) {
         int k = fi.indexOfConstant(TValue.intValue(expr.getI()));
-        Lcodes.emitCodeK(fi, a, k);
+        Lcodes.emitCodeK(fi, exprDesc.getReg(), k);
     }
 
-    public void generate(StringExpr expr, int a, int n) {
+    public void generate(StringExpr expr,ExprDesc exprDesc) {
         int k = fi.indexOfConstant(TValue.strValue(expr.getStr()));
-        Lcodes.emitCodeK(fi, a, k);
+        Lcodes.emitCodeK(fi,exprDesc.getReg(), k);
     }
 
-    public void exp2JumpInstruction(FunctionInfo fi, Expr expr, VirtualLabel trueLabel,VirtualLabel falseLabel,VirtualLabel endLabel,boolean needStore,int store){
-        int i = Lcodes.emitCodeJump(fi,1,0);
-
-    }
-    /**
-     * 将 表达式进行处理，结果存储在 返回的 ArgAndKind对象里面 kind表示，存储的类型，
-     */
-    public ArgAndKind exp2ArgAndKind(FunctionInfo fi, Expr expr, int kind) {
-
+    public ArgAndKind exp2ArgAndKind(FunctionInfo fi,Expr expr,int kind,ExprDesc exprDesc){
         //去掉无用的嵌套，直接执行里层的表达式
 
         if(expr instanceof SuffixedExp){
             SuffixedExp temp = (SuffixedExp)expr;
             if(temp.getSuffixedContent() == null){
                 return exp2ArgAndKind(fi,temp.getPrimaryExr(),kind);
-            }
-        }
-        if(expr instanceof SubExpr){
-            SubExpr subExpr = (SubExpr)expr;
-            if(subExpr.getSubExpr1() != null && subExpr.getSubExpr2() == null){
-                if((subExpr.getUnOpr() == null || subExpr.getUnOpr() == UnOpr.OPR_NOUNOPR)
-                        &&(subExpr.getBinOpr() == null || subExpr.getBinOpr() == BinOpr.OPR_NOBINOPR)){
-                    return exp2ArgAndKind(fi,subExpr.getSubExpr1(),kind);
-                }
             }
         }
         if ((kind & ArgAndKind.ARG_CONST) > 0) {
@@ -930,7 +1039,20 @@ public class InstructionGenerator {
             }
         }
         int a = fi.allocReg();
-        expr.generate(this, a, 1);
+        expr.generate(this,exprDesc != null ? exprDesc : createDesc(a,1));
         return new ArgAndKind(a, ArgAndKind.ARG_REG);
+    }
+    /**
+     * 将 表达式进行处理，结果存储在 返回的 ArgAndKind对象里面 kind表示，存储的类型，
+     */
+    public ArgAndKind exp2ArgAndKind(FunctionInfo fi, Expr expr, int kind) {
+        return exp2ArgAndKind(fi,expr,kind,null);
+    }
+
+    public ExprDesc createDesc(int a,int n){
+        ExprDesc exprDesc = new ExprDesc();
+        exprDesc.setReg(a);
+        exprDesc.setN(n);
+        return exprDesc;
     }
 }

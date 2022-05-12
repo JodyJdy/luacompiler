@@ -385,7 +385,7 @@ public class Lex {
                 case '~': {
                     next(ls);
                     if (check_next1(ls, '=')) return NE;  /* '~=' */
-                    else return BITXOR;
+                    else return BITNOT;
                 }
                 case ':': {
                     next(ls);

@@ -4,7 +4,7 @@ public interface Generator {
       /**
        * 用于expr使用，a, n一般 作为生成指令中的 A,B
        */
-     void generate(InstructionGenerator generator, int a, int n);
+     void generate(InstructionGenerator generator,ExprDesc exprDesc);
 
     /**
      * Statement不需要 参数

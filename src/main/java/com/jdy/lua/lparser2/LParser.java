@@ -305,7 +305,7 @@ public class LParser {
         return exprList;
     }
     public static Expr expr(LexState ls){
-        return subExpr(ls,0);
+        return logicOrExpr(ls);
     }
 
     /**

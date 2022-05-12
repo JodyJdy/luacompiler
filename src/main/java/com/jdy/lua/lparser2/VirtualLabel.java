@@ -2,6 +2,7 @@ package com.jdy.lua.lparser2;
 
 import com.jdy.lua.lopcodes.Instruction;
 import com.jdy.lua.lopcodes.Instructions;
+import lombok.Getter;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -9,6 +10,7 @@ import java.util.List;
 /**
  * 用于回填指令
  */
+@Getter
 public class VirtualLabel {
     /**
      * 存储 jump指令和jump指令的pc
@@ -26,7 +28,7 @@ public class VirtualLabel {
      */
     public void fixJump2Pc(int pc){
         for(int i=0;i<instructionList.size();i++){
-            Instructions.setArgsJ(instructionList.get(i),pc - insPcs.get(i));
+            Instructions.setArgsJ(instructionList.get(i),pc - insPcs.get(i) - 1);
         }
     }
 }

@@ -1,9 +1,7 @@
 
 
-local b =11
-local c = 12
+
+local a =  2>1 or 4 > 3
 
 
-local a = not b and c;
-print(a)
 
