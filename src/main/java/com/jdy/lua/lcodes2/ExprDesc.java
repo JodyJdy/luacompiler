@@ -14,7 +14,6 @@ public class ExprDesc {
     boolean isAnd;
     VirtualLabel trueLabel;
     VirtualLabel falseLabel;
-    VirtualLabel endLabel;
     /**
      * 是否是jump指令
      */
@@ -29,11 +28,10 @@ public class ExprDesc {
         desc.setN(n);
         return desc;
     }
-    public static ExprDesc createExprDesc(VirtualLabel trueLabel,VirtualLabel falseLabel,VirtualLabel endLabel){
+    public static ExprDesc createExprDesc(VirtualLabel trueLabel,VirtualLabel falseLabel){
         ExprDesc desc = new ExprDesc();
         desc.setTrueLabel(trueLabel);
         desc.setFalseLabel(falseLabel);
-        desc.setEndLabel(endLabel);
         return desc;
     }
 }

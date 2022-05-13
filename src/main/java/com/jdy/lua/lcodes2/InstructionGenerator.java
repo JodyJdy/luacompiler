@@ -35,7 +35,6 @@ public class InstructionGenerator {
         exprLevel++;
         desc.setTrueLabel(new VirtualLabel());
         desc.setFalseLabel(new VirtualLabel());
-        desc.setEndLabel(new VirtualLabel());
         if(expr instanceof LogicExpr) {
             expr.generate(this, desc);
         } else{
@@ -58,10 +57,9 @@ public class InstructionGenerator {
         exprLevel--;
         return desc;
     }
-    public void generateLogicStatement(Expr expr,VirtualLabel trueLabel,VirtualLabel falseLabel,VirtualLabel endLabel,ExprDesc desc,boolean followIsTrue){
+    public void generateLogicStatement(Expr expr,VirtualLabel trueLabel,VirtualLabel falseLabel,ExprDesc desc){
         desc.setTrueLabel(trueLabel);
         desc.setFalseLabel(falseLabel);
-        desc.setEndLabel(endLabel);
         expr.generate(this);
         if(expr instanceof LogicExpr) {
             expr.generate(this, desc);
@@ -188,7 +186,7 @@ public class InstructionGenerator {
         fi.enterScope(true);
         int beforeRepeat = fi.getPc();
         repeatStatement.getBlock().generate(this);
-        generateLogicStatement(repeatStatement.getCond(),trueLabel,falseLabel,new VirtualLabel(),new ExprDesc(),false);
+        generateLogicStatement(repeatStatement.getCond(),trueLabel,falseLabel,new ExprDesc());
         //跳到 repeat的block部分
         Lcodes.emitCodeJump(fi,beforeRepeat - fi.getPc()-1,0);
         trueLabel.fixJump2Pc(fi.getPc());
@@ -256,7 +254,7 @@ public class InstructionGenerator {
         int beforeWhile = fi.getPc();
         VirtualLabel trueLabel = new VirtualLabel();
         VirtualLabel falseLabel = new VirtualLabel();
-        generateLogicStatement(whileStatement.getCond(),trueLabel,falseLabel, new VirtualLabel(),new ExprDesc(),true);
+        generateLogicStatement(whileStatement.getCond(),trueLabel,falseLabel, new ExprDesc());
         fi.enterScope(true);
         trueLabel.fixJump2Pc(fi.getPc() + 1);
         whileStatement.getBlock().generate(this);
@@ -267,6 +265,9 @@ public class InstructionGenerator {
         falseLabel.fixJump2Pc(fi.getPc()+1);
     }
 
+    public void generate2(IfStatement ifStatement){
+        VirtualLabel endLabel = new VirtualLabel();
+    }
     public void generate(IfStatement ifStatement) {
         int expNum = 1 + ifStatement.getElseThenConds().size();
         int[] pcJumpsToEnds = new int[expNum];
@@ -863,7 +864,6 @@ public class InstructionGenerator {
             left.setFalseLabel(curLabel);
             left.setTrueLabel(exprDesc.getTrueLabel());
         }
-        left.setEndLabel(exprDesc.getEndLabel());
         int oldRegs = fi.getUsedRegs();
 
 

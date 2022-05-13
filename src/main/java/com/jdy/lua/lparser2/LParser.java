@@ -115,6 +115,7 @@ public class LParser {
         while(ls.getCurTokenEnum() == ELSEIF){
             checkNext(ls,ELSEIF);
             ifStatement.addElseThenCond(expr(ls));
+            checkNext(ls,THEN);
             ifStatement.addElseThenBlock(block(ls));
         }
         if(testNext(ls,ELSE)){
