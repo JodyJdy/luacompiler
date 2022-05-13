@@ -68,15 +68,16 @@ public class Test {
       FunctionInfo fi = new FunctionInfo();
       InstructionGenerator generator = new InstructionGenerator(fi);
       System.out.println();
+      generator.generate(b);
 //      b.generate(generator);
 //      for(Instruction ins : fi.getInstructions()){
 //          System.out.println(ins);
 //      }
-      Expr expr = ((LocalStatement)b.getStatList().getStatements().get(0)).getExprList().getExprList().get(0);
-       VirtualLabel truel = new VirtualLabel();
-       VirtualLabel fals = new VirtualLabel();
-       VirtualLabel end = new VirtualLabel();
-        generator.generateLogicExpr(expr,truel,fals,end,generator.createDesc(0,0));
+//      Expr expr = ((LocalStatement)b.getStatList().getStatements().get(0)).getExprList().getExprList().get(0);
+//       VirtualLabel truel = new VirtualLabel();
+//       VirtualLabel fals = new VirtualLabel();
+//       VirtualLabel end = new VirtualLabel();
+//        generator.generateLogicExpr(expr,generator.createDesc(0,0));
 
       for(Instruction c : fi.getInstructions()){
           System.out.println(c);
