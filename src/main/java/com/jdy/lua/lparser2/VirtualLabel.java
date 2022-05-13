@@ -19,7 +19,13 @@ public class VirtualLabel {
     private List<Instruction> instructionList = new ArrayList<>();
     private List<Integer> insPcs = new ArrayList<>();
 
-    public void addInstruction(Instruction ins,int pc){
+    public void addInstruction(FunctionInfo fi,int pc){
+        addInstruction(fi.getInstruction(pc),pc);
+    }
+    private void addInstruction(Instruction ins,int pc){
+        if(instructionList.contains(ins)){
+            return;
+        }
         instructionList.add(ins);
         insPcs.add(pc);
     }
@@ -43,6 +49,11 @@ public class VirtualLabel {
         for(int i=0;i<instructionList.size();i++){
             Instructions.setArgsJ(instructionList.get(i),pc-1 - insPcs.get(i));
         }
+        instructionList.clear();
+        insPcs.clear();
+    }
+
+    public void clear(){
         instructionList.clear();
         insPcs.clear();
     }

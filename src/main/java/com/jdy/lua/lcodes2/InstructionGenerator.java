@@ -43,7 +43,7 @@ public class InstructionGenerator {
         executeLogicExpr(expr,desc);
         exprLevel--;
         if (desc.isJump()) {
-            desc.getTrueLabel().addInstruction(fi.getInstruction(desc.getInfo()), desc.getInfo());
+            desc.getTrueLabel().addInstruction(fi, desc.getInfo());
         }
         int falseJmp = Lcodes.emitCodeABC(fi, OP_LFALSESKIP, desc.getReg(), 0, 0);
         desc.getFalseLabel().fixJump2Pc(falseJmp);
@@ -65,7 +65,7 @@ public class InstructionGenerator {
         executeLogicExpr(expr,desc);
         // expr结尾是 loadFalse,loadTrue， statement结尾处理成 trueConditin,falseCondition 反过来
         if (desc.isJump()) {
-            desc.getFalseLabel().addInstruction(fi.getInstruction(desc.getInfo()), desc.getInfo());
+            desc.getFalseLabel().addInstruction(fi,desc.getInfo());
         }
         //反转上个jump指令
         int pc = fi.getPc();
@@ -280,7 +280,7 @@ public class InstructionGenerator {
             trueLabel = new VirtualLabel();
             falseLabel = new VirtualLabel();
             generateLogicStatement(conds.get(i), trueLabel, falseLabel, new ExprDesc());
-            trueLabel.fixJump2Pc(fi.getPc());
+            trueLabel.fixJump2Pc(fi.getPc()+1);
             fi.enterScope(true);
             blocks.get(i).generate(this);
             fi.closeOpnUpval();
@@ -289,7 +289,7 @@ public class InstructionGenerator {
             if (ifStatement.getElseBlock() != null || i != n - 1) {
                 //添加一条跳出if语句的jmp，没有else block就不再生成最后一个jmp
                 int jmp2End = Lcodes.emitCodeJump(fi, 0, 0);
-                endLabel.addInstruction(fi.getInstruction(jmp2End), jmp2End);
+                endLabel.addInstruction(fi, jmp2End);
             }
         }
         if (falseLabel != null) {
@@ -806,17 +806,23 @@ public class InstructionGenerator {
     }
 
     public void generate(NotExpr notExpr,ExprDesc exprDesc){
-
         Expr expr =notExpr.getLeft();
         if(expr instanceof LogicExpr){
             expr.generate(this,exprDesc);
         } else{
             testOp(exprDesc,expr);
         }
-//        if(exprDesc.isJump()){
-//            negative(exprDesc.getInfo());
-//        }
-//        exprDesc.exchangeLabel();
+        if(exprDesc.isJump()){
+            exprDesc.setJump(false);
+            //根据是statement还是expr加入不同的lable中
+            if(!isStatement()) {
+                exprDesc.getFalseLabel().addInstruction(fi, exprDesc.getInfo());
+            } else{
+                exprDesc.getTrueLabel().addInstruction(fi,exprDesc.getInfo());
+            }
+        }
+        negative(exprDesc.getInfo());
+        exprDesc.exchangeLabel();
     }
 
     public void jumpCond(ExprDesc exprDesc, Expr expr, boolean cond) {
@@ -881,11 +887,11 @@ public class InstructionGenerator {
                 left.setJump(false);
             }
             exprDesc.getFalseLabel().addInstructionList(left.getFalseLabel());
-            exprDesc.getFalseLabel().addInstruction(fi.getInstruction(left.getInfo()), left.getInfo());
+            exprDesc.getFalseLabel().addInstruction(fi, left.getInfo());
         } else {
             left.setJump(false);
             exprDesc.getTrueLabel().addInstructionList(left.getTrueLabel());
-            exprDesc.getTrueLabel().addInstruction(fi.getInstruction(left.getInfo()), left.getInfo());
+            exprDesc.getTrueLabel().addInstruction(fi, left.getInfo());
         }
 
         if (logicExpr.getRight() instanceof LogicExpr) {
@@ -894,9 +900,9 @@ public class InstructionGenerator {
             testOp(exprDesc, logicExpr.getRight());
         }
         if (logicExpr.getOp() == OPR_AND) {
-            exprDesc.getFalseLabel().addInstruction(fi.getInstruction(exprDesc.getInfo()), exprDesc.getInfo());
+            exprDesc.getFalseLabel().addInstruction(fi, exprDesc.getInfo());
         } else {
-            exprDesc.getTrueLabel().addInstruction(fi.getInstruction(exprDesc.getInfo()), exprDesc.getInfo());
+            exprDesc.getTrueLabel().addInstruction(fi, exprDesc.getInfo());
         }
         fi.setUsedRegs(oldRegs);
     }

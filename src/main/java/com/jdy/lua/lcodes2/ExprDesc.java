@@ -19,10 +19,20 @@ public class ExprDesc {
      */
     boolean isJump;
 
+    /**
+     * 不能使用交换引用的方式，因为在Statement中，label是手动创建的
+     * Label true ; Label false;
+     * 即使 ExprDesc 里面进行了交换，也不影响外部对其的的真假label的认定，因此要交换内容！！！
+     */
     public void exchangeLabel(){
-        VirtualLabel temp = trueLabel;
-        this.setTrueLabel(falseLabel);
-        this.setFalseLabel(temp);
+        VirtualLabel temp1 = new VirtualLabel();
+        temp1.addInstructionList(trueLabel);
+        VirtualLabel temp2 = new VirtualLabel();
+        temp2.addInstructionList(falseLabel);
+        trueLabel.clear();
+        falseLabel.clear();
+        trueLabel.addInstructionList(temp2);
+        falseLabel.addInstructionList(temp1);
     }
 
 
