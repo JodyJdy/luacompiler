@@ -227,7 +227,9 @@ public class FunctionInfo {
 
     public void closeOpnUpval(){
         int a = findMaxClosedUpVal();
-        Lcodes.emitCodeABC(this, OpCode.OP_CLOSE,a,0,0);
+        if(a > 0) {
+            Lcodes.emitCodeABC(this, OpCode.OP_CLOSE, a, 0, 0);
+        }
     }
 
     /**

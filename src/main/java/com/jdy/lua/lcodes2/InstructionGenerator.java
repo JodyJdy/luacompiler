@@ -43,7 +43,6 @@ public class InstructionGenerator {
             testOp(desc,expr);
         }
         exprLevel--;
-        System.out.println(desc.isJump);
         if(desc.isJump()){
             desc.getTrueLabel().addInstruction(fi.getInstruction(desc.getInfo()),desc.getInfo());
         }
@@ -59,7 +58,7 @@ public class InstructionGenerator {
         exprLevel--;
         return desc;
     }
-    public void generateLogicStatement(Expr expr,VirtualLabel trueLabel,VirtualLabel falseLabel,VirtualLabel endLabel,ExprDesc desc){
+    public void generateLogicStatement(Expr expr,VirtualLabel trueLabel,VirtualLabel falseLabel,VirtualLabel endLabel,ExprDesc desc,boolean followIsTrue){
         desc.setTrueLabel(trueLabel);
         desc.setFalseLabel(falseLabel);
         desc.setEndLabel(endLabel);
@@ -70,6 +69,16 @@ public class InstructionGenerator {
             //为普通表达式生成 test指令
             testOp(desc,expr);
         }
+        //由于语句后面跟着的都是true condition，而expr后面紧跟的是 loadFalse，这里做不同的处理
+        if(desc.isJump()){
+            desc.getFalseLabel().addInstruction(fi.getInstruction(desc.getInfo()), desc.getInfo());
+        }
+        //反转上个jump指令
+        if(followIsTrue){
+            negative(fi.getPc());
+        }
+
+        //反转后要调整 jump所在的 label
     }
     public ExprDesc generateStatement(Expr expr){
         expr.generate(this);
@@ -177,19 +186,31 @@ public class InstructionGenerator {
         blockStatement.getStatList().generate(this);
     }
 
-
-    public void generate(RepeatStatement repeatStatement) {
+    public void generate(RepeatStatement repeatStatement){
+        VirtualLabel trueLabel = new VirtualLabel();
+        VirtualLabel falseLabel = new VirtualLabel();
         fi.enterScope(true);
-        int pcBeforeBlock = fi.getPc();
+        int beforeRepeat = fi.getPc();
         repeatStatement.getBlock().generate(this);
-        int oldRegs = fi.getUsedRegs();
-        int a = exp2ArgAndKind(fi, repeatStatement.getCond(), ArgAndKind.ARG_REG).getArg();
-        fi.setUsedRegs(oldRegs);
-        Lcodes.emitCodeABC(fi, OpCode.OP_TEST, a, 0, 0);
-        Lcodes.emitCodeJump(fi, pcBeforeBlock - fi.getPc() - 1, 0);
+        generateLogicStatement(repeatStatement.getCond(),trueLabel,falseLabel,new VirtualLabel(),new ExprDesc(),false);
+        trueLabel.fixJump2Pc(beforeRepeat+1);
         fi.closeOpnUpval();
         fi.exitScope(fi.getPc() + 1);
+        falseLabel.fixJump2Pc(fi.getPc()+ 1);
     }
+//    public void generate(RepeatStatement repeatStatement) {
+//        fi.enterScope(true);
+//        int pcBeforeBlock = fi.getPc();
+//        repeatStatement.getBlock().generate(this);
+//        int oldRegs = fi.getUsedRegs();
+//        int a = exp2ArgAndKind(fi, repeatStatement.getCond(), ArgAndKind.ARG_REG).getArg();
+//        fi.setUsedRegs(oldRegs);
+//        Lcodes.emitCodeABC(fi, OpCode.OP_TEST, a, 0, 0);
+//        Lcodes.emitCodeJump(fi, pcBeforeBlock - fi.getPc() - 1, 0);
+//        fi.closeOpnUpval();
+//        fi.exitScope(fi.getPc() + 1);
+//
+//    }
 
     public void generate(ReturnStatement returnStatement) {
         if (returnStatement.getExprList() == null) {
@@ -246,21 +267,19 @@ public class InstructionGenerator {
         int pc = Lcodes.emitCodeJump(fi, 0, 0);
         fi.addBreakJmp(pc);
     }
-
-    public void generate(WhileStatement whileStatement) {
-        int pcBeforeExp = fi.getPc();
-        int oldRegs = fi.getUsedRegs();
-        int a = exp2ArgAndKind(fi, whileStatement.getCond(), ArgAndKind.ARG_REG).getArg();
-        fi.setUsedRegs(oldRegs);
-        Lcodes.emitCodeABC(fi, OpCode.OP_TEST, a, 0, 0);
-        int pcJmpToEnd = Lcodes.emitCodeJump(fi, 0, 0);
+    public void generate(WhileStatement whileStatement){
+        int beforeWhile = fi.getPc();
+        VirtualLabel trueLabel = new VirtualLabel();
+        VirtualLabel falseLabel = new VirtualLabel();
+        generateLogicStatement(whileStatement.getCond(),trueLabel,falseLabel, new VirtualLabel(),new ExprDesc(),true);
         fi.enterScope(true);
+        trueLabel.fixJump2Pc(fi.getPc() + 1);
         whileStatement.getBlock().generate(this);
+        //跳转到While开头
+        Lcodes.emitCodeJump(fi, beforeWhile   - 1 - fi.getPc(), 0);
         fi.closeOpnUpval();
-        Lcodes.emitCodeJump(fi, pcBeforeExp   - 1 - fi.getPc(), 0);
         fi.exitScope(fi.getPc());
-        Instruction ins = fi.getInstruction(pcJmpToEnd);
-        Instructions.setArgsJ(ins, fi.getPc() - pcJmpToEnd);
+        falseLabel.fixJump2Pc(fi.getPc()+1);
     }
 
     public void generate(IfStatement ifStatement) {
@@ -487,8 +506,7 @@ public class InstructionGenerator {
         //表达式数量和变量数量一致
         if (nExps == nNames) {
             for (Expr expr : exprList) {
-                int tempReg = fi.allocReg();
-                expr.generate(this,createDesc( tempReg, 1));
+                int tempReg = exp2ArgAndKind(fi,expr,ArgAndKind.ARG_REG).getArg();
             }
         } else if (nExps > nNames) {
             for (int i = 0; i < nExps; i++) {
