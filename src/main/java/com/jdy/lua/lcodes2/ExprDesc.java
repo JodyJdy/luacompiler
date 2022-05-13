@@ -10,12 +10,13 @@ public class ExprDesc {
     int n;
     int k;
     int kind;
+    int info;
     boolean isAnd;
     VirtualLabel trueLabel;
     VirtualLabel falseLabel;
     VirtualLabel endLabel;
     /**
-     * 跳转指令pc
+     * 是否是jump指令
      */
-    int jmp;
+    boolean isJump;
 }

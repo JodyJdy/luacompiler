@@ -17,8 +17,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import static com.jdy.lua.lcodes.BinOpr.OPR_ADD;
-import static com.jdy.lua.lcodes.BinOpr.OPR_AND;
+import static com.jdy.lua.lcodes.BinOpr.*;
 import static com.jdy.lua.lopcodes.OpCode.*;
 import static com.jdy.lua.lparser2.expr.SuffixedExp.SuffixedContent;
 
@@ -57,21 +56,14 @@ public class InstructionGenerator {
         desc.setEndLabel(endLabel);
         expr.generate(this,desc);
         exprLevel--;
-
-        if(lastJmpInTrueLabel(trueLabel,falseLabel)) {
-            int falseJmp = Lcodes.emitCodeABC(fi, OP_LFALSESKIP, desc.getReg(), 0, 0);
-            falseLabel.fixJump2Pc(falseJmp);
-            int trueJmp = Lcodes.emitCodeABC(fi, OP_LOADTRUE, desc.getReg(), 0, 0);
-            trueLabel.fixJump2Pc(trueJmp);
-        } else{
-            int trueJmp = Lcodes.emitCodeABC(fi,OP_LOADTRUE,desc.getReg(),0,0);
-            trueLabel.fixJump2Pc(trueJmp);
-            Lcodes.emitCodeJump(fi,1,0);
-            int falseJmp = Lcodes.emitCodeABC(fi,OP_LOADFALSE,desc.getReg(),0,0);
-            falseLabel.fixJump2Pc(falseJmp);
+        System.out.println(desc.isJump);
+        if(desc.isJump()){
+            trueLabel.addInstruction(fi.getInstruction(desc.getInfo()),desc.getInfo());
         }
-
-
+        int falseJmp = Lcodes.emitCodeABC(fi, OP_LFALSESKIP, desc.getReg(), 0, 0);
+        falseLabel.fixJump2Pc(falseJmp);
+        int trueJmp = Lcodes.emitCodeABC(fi, OP_LOADTRUE, desc.getReg(), 0, 0);
+        trueLabel.fixJump2Pc(trueJmp);
     }
     public ExprDesc generateExpr(Expr expr){
         exprLevel++;
@@ -900,23 +892,33 @@ public class InstructionGenerator {
         }
     }
 
+    public void jumpCond(ExprDesc exprDesc,Expr expr,boolean cond){
+        int b = exp2ArgAndKind(fi,expr,ArgAndKind.ARG_REG).getArg();
+        if(!isStatement()) {
+            Lcodes.emitCodeABCK(fi, OP_TESTSET, exprDesc.getReg(), b, 0,cond?1:0);
+        } else {
+            Lcodes.emitCodeABCK(fi, OP_TEST, b, 0, 0, cond?1:0);
+        }
+        int jmp = Lcodes.emitCodeJump(fi,0,0);
+        exprDesc.setInfo(jmp);
+    }
 
     public void testOp(ExprDesc exprDesc,Expr expr){
         int b = exp2ArgAndKind(fi,expr,ArgAndKind.ARG_REG).getArg();
         if(!isStatement()) {
-            Lcodes.emitCodeABCK(fi, OP_TESTSET, exprDesc.getReg(), b, 0,0);
+            Lcodes.emitCodeABCK(fi, OP_TESTSET, exprDesc.getReg(), b, 0,1);
         } else {
-            Lcodes.emitCodeABCK(fi, OP_TEST, b, 0, 0, 0);
+            Lcodes.emitCodeABCK(fi, OP_TEST, b, 0, 0, 1);
         }
         int jmp = Lcodes.emitCodeJump(fi,0,0);
-        exprDesc.setJmp(jmp);
+        exprDesc.setInfo(jmp);
+        exprDesc.setJump(true);
     }
     public ExprDesc createDesc(){
         ExprDesc exprDesc = new ExprDesc();
         exprDesc.setTrueLabel(new VirtualLabel());
         exprDesc.setFalseLabel(new VirtualLabel());
         exprDesc.setEndLabel(new VirtualLabel());
-        exprDesc.setJmp(-1);
         return exprDesc;
     }
 
@@ -931,6 +933,7 @@ public class InstructionGenerator {
 
         ExprDesc left = createDesc();
         VirtualLabel curLabel = new VirtualLabel();
+
         if(logicExpr.getOp() == OPR_AND){
             left.setTrueLabel(curLabel);
             left.setFalseLabel(exprDesc.getFalseLabel());
@@ -947,25 +950,23 @@ public class InstructionGenerator {
            logicExpr.getLeft().generate(this, left);
         } else {
             //TEST运算
-            testOp(left,logicExpr.getLeft());
+            jumpCond(left,logicExpr.getLeft(),logicExpr.getOp() == OPR_OR);
         }
         //pc指向的是jmp，应该跳转到jmp的下一条
         curLabel.fixJump2Pc(fi.getPc() + 1);
 
         if(logicExpr.getOp() == OPR_AND){
-            if(left.getJmp() != -1){
-               negative(left.getJmp());
-               exprDesc.getFalseLabel().addInstruction(fi.getInstruction(left.getJmp()),left.getJmp());
+            if(left.isJump()){
+               negative(left.getInfo());
+               left.setJump(false);
             }
             exprDesc.getFalseLabel().addInstructionList(left.getFalseLabel());
-
+            exprDesc.getFalseLabel().addInstruction(fi.getInstruction(left.getInfo()),left.getInfo());
         } else{
-            if(left.getJmp() != -1){
-                exprDesc.getTrueLabel().addInstruction(fi.getInstruction(left.getJmp()),left.getJmp());
-            }
+            left.setJump(false);
             exprDesc.getTrueLabel().addInstructionList(left.getTrueLabel());
+            exprDesc.getTrueLabel().addInstruction(fi.getInstruction(left.getInfo()),left.getInfo());
         }
-
 
         if(logicExpr.getRight() instanceof LogicExpr){
             logicExpr.getRight().generate(this,exprDesc);
@@ -973,13 +974,9 @@ public class InstructionGenerator {
             testOp(exprDesc,logicExpr.getRight());
         }
         if(logicExpr.getOp() == OPR_AND){
-            if(exprDesc.getJmp() != -1){
-                exprDesc.getFalseLabel().addInstruction(fi.getInstruction(exprDesc.getJmp()),exprDesc.getJmp());
-            }
+            exprDesc.getFalseLabel().addInstruction(fi.getInstruction(exprDesc.getInfo()),exprDesc.getInfo());
         } else{
-            if(exprDesc.getJmp() != -1){
-                exprDesc.getTrueLabel().addInstruction(fi.getInstruction(exprDesc.getJmp()),exprDesc.getJmp());
-            }
+            exprDesc.getTrueLabel().addInstruction(fi.getInstruction(exprDesc.getInfo()),exprDesc.getInfo());
         }
         fi.setUsedRegs(oldRegs);
     }
@@ -990,14 +987,15 @@ public class InstructionGenerator {
             case OPR_EQ:Lcodes.emitCodeABCK(fi,OP_EQ,b,c,0,1);break;
             case OPR_NE:Lcodes.emitCodeABCK(fi,OP_EQ,b,c,0,0);break;
             case OPR_LT:Lcodes.emitCodeABCK(fi,OP_LT,b,c,0,1);break;
-            case OPR_LE:Lcodes.emitCodeABCK(fi,OP_LE,b,c,0,0);break;
+            case OPR_LE:Lcodes.emitCodeABCK(fi,OP_LE,b,c,0,1);break;
             case OPR_GE:Lcodes.emitCodeABCK(fi,OP_LT,b,c,0,0);break;
-            case OPR_GT:Lcodes.emitCodeABCK(fi,OP_LE,b,c,0,1);break;
+            case OPR_GT:Lcodes.emitCodeABCK(fi,OP_LE,b,c,0,0);break;
             default:break;
         }
         fi.freeReg(2);
         int jmp = Lcodes.emitCodeJump(fi,0,0);
-        exprDesc.setJmp(jmp);
+        exprDesc.setInfo(jmp);
+        exprDesc.setJump(true);
     }
     public void generate(BinaryExpr binaryExpr,ExprDesc exprDesc){
         int b = exp2ArgAndKind(fi,binaryExpr.getLeft(),ArgAndKind.ARG_REG).getArg();
