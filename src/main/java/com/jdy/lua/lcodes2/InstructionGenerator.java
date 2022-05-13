@@ -66,19 +66,17 @@ public class InstructionGenerator {
         if(expr instanceof LogicExpr) {
             expr.generate(this, desc);
         } else{
-            //为普通表达式生成 test指令
             testOp(desc,expr);
         }
-        //由于语句后面跟着的都是true condition，而expr后面紧跟的是 loadFalse，这里做不同的处理
+        // expr结尾是 loadFalse,loadTrue， statement结尾处理成 trueConditin,falseCondition 反过来
         if(desc.isJump()){
             desc.getFalseLabel().addInstruction(fi.getInstruction(desc.getInfo()), desc.getInfo());
         }
         //反转上个jump指令
-        if(followIsTrue){
-            negative(fi.getPc());
-        }
-
-        //反转后要调整 jump所在的 label
+        int pc = fi.getPc();
+        negative(pc);
+        //如果上个jump指令在 TrueLabel，进行删除
+        desc.getTrueLabel().removeInstruction(pc,fi.getInstruction(pc));
     }
     public ExprDesc generateStatement(Expr expr){
         expr.generate(this);
@@ -106,8 +104,6 @@ public class InstructionGenerator {
         int r = fi.addLocVar(funcStat.getStr(), fi.getPc() + 2);
         funcStat.getFunctionBody().generate(this,createDesc( r, 0));
     }
-
-
     /**
      * 函数定义
      */
@@ -193,24 +189,13 @@ public class InstructionGenerator {
         int beforeRepeat = fi.getPc();
         repeatStatement.getBlock().generate(this);
         generateLogicStatement(repeatStatement.getCond(),trueLabel,falseLabel,new VirtualLabel(),new ExprDesc(),false);
-        trueLabel.fixJump2Pc(beforeRepeat+1);
+        //跳到 repeat的block部分
+        Lcodes.emitCodeJump(fi,beforeRepeat - fi.getPc()-1,0);
+        trueLabel.fixJump2Pc(fi.getPc());
         fi.closeOpnUpval();
         fi.exitScope(fi.getPc() + 1);
         falseLabel.fixJump2Pc(fi.getPc()+ 1);
     }
-//    public void generate(RepeatStatement repeatStatement) {
-//        fi.enterScope(true);
-//        int pcBeforeBlock = fi.getPc();
-//        repeatStatement.getBlock().generate(this);
-//        int oldRegs = fi.getUsedRegs();
-//        int a = exp2ArgAndKind(fi, repeatStatement.getCond(), ArgAndKind.ARG_REG).getArg();
-//        fi.setUsedRegs(oldRegs);
-//        Lcodes.emitCodeABC(fi, OpCode.OP_TEST, a, 0, 0);
-//        Lcodes.emitCodeJump(fi, pcBeforeBlock - fi.getPc() - 1, 0);
-//        fi.closeOpnUpval();
-//        fi.exitScope(fi.getPc() + 1);
-//
-//    }
 
     public void generate(ReturnStatement returnStatement) {
         if (returnStatement.getExprList() == null) {

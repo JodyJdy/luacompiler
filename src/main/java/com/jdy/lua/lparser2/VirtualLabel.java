@@ -30,6 +30,10 @@ public class VirtualLabel {
         instructionList.addAll(label.getInstructionList());
         insPcs.addAll(label.getInsPcs());
     }
+    public void removeInstruction(Integer jmp,Instruction ins){
+        insPcs.remove(jmp);
+        instructionList.remove(ins);
+    }
 
     /**
      * jump指令都跳转到pc1
