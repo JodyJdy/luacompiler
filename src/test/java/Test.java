@@ -5,6 +5,7 @@ import com.jdy.lua.lex.Token;
 import com.jdy.lua.lopcodes.Instruction;
 import com.jdy.lua.lparser2.FunctionInfo;
 import com.jdy.lua.lparser2.VirtualLabel;
+import com.jdy.lua.lparser2.expr.Expr;
 import com.jdy.lua.lparser2.expr.LogicExpr;
 import com.jdy.lua.lparser2.expr.SubExpr;
 import com.jdy.lua.lparser2.statement.BlockStatement;
@@ -71,7 +72,7 @@ public class Test {
 //      for(Instruction ins : fi.getInstructions()){
 //          System.out.println(ins);
 //      }
-      LogicExpr expr = (LogicExpr)((LocalStatement)b.getStatList().getStatements().get(0)).getExprList().getExprList().get(0);
+      Expr expr = ((LocalStatement)b.getStatList().getStatements().get(0)).getExprList().getExprList().get(0);
        VirtualLabel truel = new VirtualLabel();
        VirtualLabel fals = new VirtualLabel();
        VirtualLabel end = new VirtualLabel();

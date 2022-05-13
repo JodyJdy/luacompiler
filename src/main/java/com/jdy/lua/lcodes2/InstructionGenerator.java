@@ -54,7 +54,12 @@ public class InstructionGenerator {
         desc.setTrueLabel(trueLabel);
         desc.setFalseLabel(falseLabel);
         desc.setEndLabel(endLabel);
-        expr.generate(this,desc);
+        if(expr instanceof LogicExpr) {
+            expr.generate(this, desc);
+        } else{
+            //为普通表达式生成 test指令
+            testOp(desc,expr);
+        }
         exprLevel--;
         System.out.println(desc.isJump);
         if(desc.isJump()){
@@ -77,6 +82,12 @@ public class InstructionGenerator {
         desc.setFalseLabel(falseLabel);
         desc.setEndLabel(endLabel);
         expr.generate(this);
+        if(expr instanceof LogicExpr) {
+            expr.generate(this, desc);
+        } else{
+            //为普通表达式生成 test指令
+            testOp(desc,expr);
+        }
     }
     public ExprDesc generateStatement(Expr expr){
         expr.generate(this);

@@ -1,2 +1,2 @@
 
-local a= not 1
+local a= 1

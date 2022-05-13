@@ -19,4 +19,20 @@ public class ExprDesc {
      * 是否是jump指令
      */
     boolean isJump;
+
+
+
+    public static ExprDesc createExprDesc(int reg,int n){
+        ExprDesc desc = new ExprDesc();
+        desc.setReg(reg);
+        desc.setN(n);
+        return desc;
+    }
+    public static ExprDesc createExprDesc(VirtualLabel trueLabel,VirtualLabel falseLabel,VirtualLabel endLabel){
+        ExprDesc desc = new ExprDesc();
+        desc.setTrueLabel(trueLabel);
+        desc.setFalseLabel(falseLabel);
+        desc.setEndLabel(endLabel);
+        return desc;
+    }
 }
