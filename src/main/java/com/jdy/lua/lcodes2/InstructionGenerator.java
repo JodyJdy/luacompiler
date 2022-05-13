@@ -28,17 +28,19 @@ public class InstructionGenerator {
     private boolean isStatement() {
         return exprLevel == 0;
     }
-
-    public void generateLogicExpr(Expr expr, ExprDesc desc) {
-        exprLevel++;
-        desc.setTrueLabel(new VirtualLabel());
-        desc.setFalseLabel(new VirtualLabel());
+    public void executeLogicExpr(Expr expr,ExprDesc desc){
         if (expr instanceof LogicExpr) {
             expr.generate(this, desc);
         } else {
             //为普通表达式生成 test指令
             testOp(desc, expr);
         }
+    }
+    public void generateLogicExpr(Expr expr, ExprDesc desc) {
+        exprLevel++;
+        desc.setTrueLabel(new VirtualLabel());
+        desc.setFalseLabel(new VirtualLabel());
+        executeLogicExpr(expr,desc);
         exprLevel--;
         if (desc.isJump()) {
             desc.getTrueLabel().addInstruction(fi.getInstruction(desc.getInfo()), desc.getInfo());
@@ -60,12 +62,7 @@ public class InstructionGenerator {
     public void generateLogicStatement(Expr expr, VirtualLabel trueLabel, VirtualLabel falseLabel, ExprDesc desc) {
         desc.setTrueLabel(trueLabel);
         desc.setFalseLabel(falseLabel);
-        expr.generate(this);
-        if (expr instanceof LogicExpr) {
-            expr.generate(this, desc);
-        } else {
-            testOp(desc, expr);
-        }
+        executeLogicExpr(expr,desc);
         // expr结尾是 loadFalse,loadTrue， statement结尾处理成 trueConditin,falseCondition 反过来
         if (desc.isJump()) {
             desc.getFalseLabel().addInstruction(fi.getInstruction(desc.getInfo()), desc.getInfo());
@@ -808,6 +805,20 @@ public class InstructionGenerator {
         tableAccess(expr1, expr, a);
     }
 
+    public void generate(NotExpr notExpr,ExprDesc exprDesc){
+
+        Expr expr =notExpr.getLeft();
+        if(expr instanceof LogicExpr){
+            expr.generate(this,exprDesc);
+        } else{
+            testOp(exprDesc,expr);
+        }
+//        if(exprDesc.isJump()){
+//            negative(exprDesc.getInfo());
+//        }
+//        exprDesc.exchangeLabel();
+    }
+
     public void jumpCond(ExprDesc exprDesc, Expr expr, boolean cond) {
         int b = exp2ArgAndKind(fi, expr, ArgAndKind.ARG_REG).getArg();
         if (!isStatement()) {
@@ -890,9 +901,7 @@ public class InstructionGenerator {
         fi.setUsedRegs(oldRegs);
     }
 
-    public void generate(NotExpr notExpr, ExprDesc exprDesc) {
 
-    }
 
     public void generate(RelationExpr relationExpr, ExprDesc exprDesc) {
         int b = exp2ArgAndKind(fi, relationExpr.getLeft(), ArgAndKind.ARG_REG).getArg();

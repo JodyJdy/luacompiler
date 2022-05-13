@@ -19,7 +19,11 @@ public class ExprDesc {
      */
     boolean isJump;
 
-
+    public void exchangeLabel(){
+        VirtualLabel temp = trueLabel;
+        this.setTrueLabel(falseLabel);
+        this.setFalseLabel(temp);
+    }
 
 
     public static ExprDesc createExprDesc(int reg,int n){

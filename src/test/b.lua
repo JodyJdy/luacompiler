@@ -1,10 +1,7 @@
 local a =1
+if not 1
+then
 
-if 1 then
-    a=1
-elseif 1 then
-    a=2
-else
-    a=3
+a=2
+
 end
-
