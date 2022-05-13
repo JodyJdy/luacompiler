@@ -1,7 +1,5 @@
 package com.jdy.lua.lcodes2;
 
-import com.jdy.lua.lcodes.BinOpr;
-import com.jdy.lua.lcodes.UnOpr;
 import com.jdy.lua.lobjects.TValue;
 import com.jdy.lua.lopcodes.Instruction;
 import com.jdy.lua.lopcodes.Instructions;
@@ -27,56 +25,59 @@ public class InstructionGenerator {
 
     private int exprLevel = 0;
 
-    private boolean isStatement(){
+    private boolean isStatement() {
         return exprLevel == 0;
     }
 
-    public void generateLogicExpr(Expr expr,ExprDesc desc){
+    public void generateLogicExpr(Expr expr, ExprDesc desc) {
         exprLevel++;
         desc.setTrueLabel(new VirtualLabel());
         desc.setFalseLabel(new VirtualLabel());
-        if(expr instanceof LogicExpr) {
+        if (expr instanceof LogicExpr) {
             expr.generate(this, desc);
-        } else{
+        } else {
             //为普通表达式生成 test指令
-            testOp(desc,expr);
+            testOp(desc, expr);
         }
         exprLevel--;
-        if(desc.isJump()){
-            desc.getTrueLabel().addInstruction(fi.getInstruction(desc.getInfo()),desc.getInfo());
+        if (desc.isJump()) {
+            desc.getTrueLabel().addInstruction(fi.getInstruction(desc.getInfo()), desc.getInfo());
         }
         int falseJmp = Lcodes.emitCodeABC(fi, OP_LFALSESKIP, desc.getReg(), 0, 0);
         desc.getFalseLabel().fixJump2Pc(falseJmp);
         int trueJmp = Lcodes.emitCodeABC(fi, OP_LOADTRUE, desc.getReg(), 0, 0);
         desc.getTrueLabel().fixJump2Pc(trueJmp);
     }
-    public ExprDesc generateExpr(Expr expr){
+
+    public ExprDesc generateExpr(Expr expr) {
         exprLevel++;
         expr.generate(this);
         ExprDesc desc = new ExprDesc();
         exprLevel--;
         return desc;
     }
-    public void generateLogicStatement(Expr expr,VirtualLabel trueLabel,VirtualLabel falseLabel,ExprDesc desc){
+
+    public void generateLogicStatement(Expr expr, VirtualLabel trueLabel, VirtualLabel falseLabel, ExprDesc desc) {
         desc.setTrueLabel(trueLabel);
         desc.setFalseLabel(falseLabel);
         expr.generate(this);
-        if(expr instanceof LogicExpr) {
+        if (expr instanceof LogicExpr) {
             expr.generate(this, desc);
-        } else{
-            testOp(desc,expr);
+        } else {
+            testOp(desc, expr);
         }
         // expr结尾是 loadFalse,loadTrue， statement结尾处理成 trueConditin,falseCondition 反过来
-        if(desc.isJump()){
+        if (desc.isJump()) {
             desc.getFalseLabel().addInstruction(fi.getInstruction(desc.getInfo()), desc.getInfo());
         }
         //反转上个jump指令
         int pc = fi.getPc();
         negative(pc);
         //如果上个jump指令在 TrueLabel，进行删除
-        desc.getTrueLabel().removeInstruction(pc,fi.getInstruction(pc));
+        desc.getTrueLabel().removeInstruction(pc, fi.getInstruction(pc));
     }
-    public ExprDesc generateStatement(Expr expr){
+
+    public ExprDesc generateStatement(Expr expr) {
         expr.generate(this);
         return null;
     }
@@ -86,65 +87,67 @@ public class InstructionGenerator {
         this.fi = fi;
     }
 
-    public void generate(Expr expr,ExprDesc exprDesc) {
-       //
+    public void generate(Expr expr, ExprDesc exprDesc) {
+        //
     }
 
     public void generate(Statement statement) {
         statement.generate(this);
     }
-    public void generate(BlockStatement blockStatement){
+
+    public void generate(BlockStatement blockStatement) {
         StatList statList = blockStatement.getStatList();
         statList.generate(this);
     }
 
     public void generate(LocalFuncStat funcStat) {
         int r = fi.addLocVar(funcStat.getStr(), fi.getPc() + 2);
-        funcStat.getFunctionBody().generate(this,createDesc( r, 0));
+        funcStat.getFunctionBody().generate(this, createDesc(r, 0));
     }
+
     /**
      * 函数定义
      */
     public void generate(FunctionStat functionStat) {
         int oldRegs = fi.getUsedRegs();
-        if(functionStat.getFieldDesc() != null && functionStat.getFieldDesc().size() > 0){
+        if (functionStat.getFieldDesc() != null && functionStat.getFieldDesc().size() > 0) {
             List<StringExpr> stringExprs = functionStat.getFieldDesc();
             //将结果存储在寄存器a里面
             int a = fi.allocReg();
             //a.b.c.d=xx，先生成 a[b] b[c] c[d],再调整最后一个为c[d] =xx
-            tableAccess(functionStat.getVar(),stringExprs.get(0),a);
+            tableAccess(functionStat.getVar(), stringExprs.get(0), a);
             //getfield不占用寄存器
-            for(int i=1;i<stringExprs.size();i++){
-                int key = exp2ArgAndKind(fi,stringExprs.get(i),ArgAndKind.ARG_CONST).getArg();
-                Lcodes.emitCodeABC(fi,OpCode.OP_GETFIELD,a,a,key);
+            for (int i = 1; i < stringExprs.size(); i++) {
+                int key = exp2ArgAndKind(fi, stringExprs.get(i), ArgAndKind.ARG_CONST).getArg();
+                Lcodes.emitCodeABC(fi, OpCode.OP_GETFIELD, a, a, key);
             }
             //获取上个指令
-            Instruction lastIns = fi.getInstruction(fi.getPc() -1);
+            Instruction lastIns = fi.getInstruction(fi.getPc() - 1);
             int argB = Instructions.getArgB(lastIns);
             int argC = Instructions.getArgC(lastIns);
             int funcReg = fi.allocReg();
             //tableAccess还原了寄存器，这里要防止有冲突
-            if(funcReg == argC){
-                funcReg =fi.allocReg();
+            if (funcReg == argC) {
+                funcReg = fi.allocReg();
             }
-            functionStat.getFunctionBody().generate(this,createDesc(funcReg,0));
-           
+            functionStat.getFunctionBody().generate(this, createDesc(funcReg, 0));
+
             OpCode code = Instructions.getOpCode(lastIns);
-            if(code == OpCode.OP_GETTABLE){
-                Instructions.setOpCode(lastIns,OpCode.OP_SETTABLE);
-            } else if(code == OpCode.OP_GETTABUP){
-                Instructions.setOpCode(lastIns,OpCode.OP_SETTABUP);
+            if (code == OpCode.OP_GETTABLE) {
+                Instructions.setOpCode(lastIns, OpCode.OP_SETTABLE);
+            } else if (code == OpCode.OP_GETTABUP) {
+                Instructions.setOpCode(lastIns, OpCode.OP_SETTABUP);
             } else {
-                Instructions.setOpCode(lastIns,OpCode.OP_SETFIELD);
+                Instructions.setOpCode(lastIns, OpCode.OP_SETFIELD);
             }
-            Instructions.setArgA(lastIns,argB);
-            Instructions.setArgB(lastIns,argC);
-            Instructions.setArgC(lastIns,funcReg);
+            Instructions.setArgA(lastIns, argB);
+            Instructions.setArgB(lastIns, argC);
+            Instructions.setArgC(lastIns, funcReg);
             fi.setUsedRegs(oldRegs);
-        } else{
+        } else {
             String varName = functionStat.getVar().getName();
-            int funcReg =fi.allocReg();
-            functionStat.getFunctionBody().generate(this,createDesc(funcReg,0));
+            int funcReg = fi.allocReg();
+            functionStat.getFunctionBody().generate(this, createDesc(funcReg, 0));
             fi.freeReg();
             int a = fi.slotOfLocVar(varName);
             if (a >= 0) {
@@ -159,8 +162,8 @@ public class InstructionGenerator {
             }
             int env = fi.slotOfLocVar("_ENV");
             if (env >= 0) {
-                b =  fi.indexOfConstant(TValue.strValue(varName));
-                Lcodes.emitCodeABC(fi, OpCode.OP_SETFIELD, env, b,funcReg);
+                b = fi.indexOfConstant(TValue.strValue(varName));
+                Lcodes.emitCodeABC(fi, OpCode.OP_SETFIELD, env, b, funcReg);
                 return;
             }
             //全局变量
@@ -180,19 +183,19 @@ public class InstructionGenerator {
         blockStatement.getStatList().generate(this);
     }
 
-    public void generate(RepeatStatement repeatStatement){
+    public void generate(RepeatStatement repeatStatement) {
         VirtualLabel trueLabel = new VirtualLabel();
         VirtualLabel falseLabel = new VirtualLabel();
         fi.enterScope(true);
         int beforeRepeat = fi.getPc();
         repeatStatement.getBlock().generate(this);
-        generateLogicStatement(repeatStatement.getCond(),trueLabel,falseLabel,new ExprDesc());
+        generateLogicStatement(repeatStatement.getCond(), trueLabel, falseLabel, new ExprDesc());
         //跳到 repeat的block部分
-        Lcodes.emitCodeJump(fi,beforeRepeat - fi.getPc()-1,0);
+        Lcodes.emitCodeJump(fi, beforeRepeat - fi.getPc() - 1, 0);
         trueLabel.fixJump2Pc(fi.getPc());
         fi.closeOpnUpval();
         fi.exitScope(fi.getPc() + 1);
-        falseLabel.fixJump2Pc(fi.getPc()+ 1);
+        falseLabel.fixJump2Pc(fi.getPc() + 1);
     }
 
     public void generate(ReturnStatement returnStatement) {
@@ -213,14 +216,14 @@ public class InstructionGenerator {
             }
             if (exprs.get(0) instanceof SuffixedExp) {
                 //有可能是函数调用
-                SuffixedExp sf = (SuffixedExp)exprs.get(0);
-                SuffixedContent content =sf.getSuffixedContent();
-                if(content != null){
+                SuffixedExp sf = (SuffixedExp) exprs.get(0);
+                SuffixedContent content = sf.getSuffixedContent();
+                if (content != null) {
                     int r = fi.allocReg();
-                    int nArgs = prepareFuncCall(sf.getPrimaryExr(),content.getStringExpr(),content.getFuncArgs(),r);
-                    Lcodes.emitCodeABC(fi,OpCode.OP_TAILCALL,r,nArgs+1,0);
+                    int nArgs = prepareFuncCall(sf.getPrimaryExr(), content.getStringExpr(), content.getFuncArgs(), r);
+                    Lcodes.emitCodeABC(fi, OpCode.OP_TAILCALL, r, nArgs + 1, 0);
                     fi.freeReg();
-                    Lcodes.emitCodeABC(fi,OpCode.OP_RETURN,r,0,0);
+                    Lcodes.emitCodeABC(fi, OpCode.OP_RETURN, r, 0, 0);
                     return;
                 }
             }
@@ -233,7 +236,7 @@ public class InstructionGenerator {
             if (i == nExprs - 1 && multRet) {
                 expr.generate(this, createDesc(r, -1));
             } else {
-                expr.generate(this,createDesc( r, 1));
+                expr.generate(this, createDesc(r, 1));
             }
         }
         fi.freeReg(nExprs);
@@ -250,73 +253,55 @@ public class InstructionGenerator {
         int pc = Lcodes.emitCodeJump(fi, 0, 0);
         fi.addBreakJmp(pc);
     }
-    public void generate(WhileStatement whileStatement){
+
+    public void generate(WhileStatement whileStatement) {
         int beforeWhile = fi.getPc();
         VirtualLabel trueLabel = new VirtualLabel();
         VirtualLabel falseLabel = new VirtualLabel();
-        generateLogicStatement(whileStatement.getCond(),trueLabel,falseLabel, new ExprDesc());
+        generateLogicStatement(whileStatement.getCond(), trueLabel, falseLabel, new ExprDesc());
         fi.enterScope(true);
         trueLabel.fixJump2Pc(fi.getPc() + 1);
         whileStatement.getBlock().generate(this);
         //跳转到While开头
-        Lcodes.emitCodeJump(fi, beforeWhile   - 1 - fi.getPc(), 0);
+        Lcodes.emitCodeJump(fi, beforeWhile - 1 - fi.getPc(), 0);
         fi.closeOpnUpval();
         fi.exitScope(fi.getPc());
-        falseLabel.fixJump2Pc(fi.getPc()+1);
+        falseLabel.fixJump2Pc(fi.getPc() + 1);
     }
 
-    public void generate2(IfStatement ifStatement){
-        VirtualLabel endLabel = new VirtualLabel();
-    }
     public void generate(IfStatement ifStatement) {
-        int expNum = 1 + ifStatement.getElseThenConds().size();
-        int[] pcJumpsToEnds = new int[expNum];
-        int pcJmpToNextExp = -1;
-
-        for (int i = 0; i < expNum; i++) {
-            Expr expr;
-            if (i == 0) {
-                expr = ifStatement.getCond();
-            } else {
-                expr = ifStatement.getElseThenConds().get(i - 1);
+        VirtualLabel endLabel = new VirtualLabel();
+        VirtualLabel trueLabel;
+        VirtualLabel falseLabel = null;
+        List<Expr> conds = ifStatement.getAllConds();
+        List<BlockStatement> blocks = ifStatement.getAllIfBlock();
+        int n = conds.size();
+        for (int i = 0; i < n; i++) {
+            if (falseLabel != null) {
+                falseLabel.fixJump2Pc(fi.getPc() + 1);
             }
-            //调整jump的调整位置，pcJumpToNextExp是上个表达式里jmp指令的pc
-            if (pcJmpToNextExp >= 0) {
-                Instruction jmpIns = fi.getInstruction(pcJmpToNextExp);
-                Instructions.setArgsJ(jmpIns, fi.getPc() - pcJmpToNextExp);
-            }
-            int oldRegs = fi.getUsedRegs();
-            int a = exp2ArgAndKind(fi, expr, ArgAndKind.ARG_REG).getArg();
-            fi.setUsedRegs(oldRegs);
-
-            Lcodes.emitCodeABC(fi, OpCode.OP_TEST, a, 0, 0);
-            pcJmpToNextExp = Lcodes.emitCodeJump(fi, 0, 0);
-            fi.enterScope(false);
-            if (i == 0) {
-                ifStatement.getBlockStatement().generate(this, createDesc(0, 0));
-            } else {
-                ifStatement.getElseThenBlock().get(i - 1).generate(this, createDesc(0, 0));
-            }
+            trueLabel = new VirtualLabel();
+            falseLabel = new VirtualLabel();
+            generateLogicStatement(conds.get(i), trueLabel, falseLabel, new ExprDesc());
+            trueLabel.fixJump2Pc(fi.getPc());
+            fi.enterScope(true);
+            blocks.get(i).generate(this);
             fi.closeOpnUpval();
             fi.exitScope(fi.getPc() + 1);
-            if (i < expNum - 1 || ifStatement.getElseBlock() != null) {
-                pcJumpsToEnds[i] = Lcodes.emitCodeJump(fi, 0, 0);
-            } else {
-                pcJumpsToEnds[i] = pcJmpToNextExp;
-            }
 
+            if (ifStatement.getElseBlock() != null || i != n - 1) {
+                //添加一条跳出if语句的jmp，没有else block就不再生成最后一个jmp
+                int jmp2End = Lcodes.emitCodeJump(fi, 0, 0);
+                endLabel.addInstruction(fi.getInstruction(jmp2End), jmp2End);
+            }
         }
-        //如果有else
+        if (falseLabel != null) {
+            falseLabel.fixJump2Pc(fi.getPc() + 1);
+        }
         if (ifStatement.getElseBlock() != null) {
-            fi.enterScope(false);
-            ifStatement.getElseBlock().generate(this, createDesc(0,0));
-            fi.closeOpnUpval();
-            fi.exitScope(fi.getPc() + 1);
+            ifStatement.getElseBlock().generate(this);
         }
-        for (int pc : pcJumpsToEnds) {
-            Instruction in = fi.getInstruction(pc);
-            Instructions.setArgsJ(in, fi.getPc() - pc);
-        }
+        endLabel.fixJump2Pc(fi.getPc() + 1);
     }
 
     public void removeTailNils(ExprList exprList) {
@@ -337,7 +322,7 @@ public class InstructionGenerator {
         //函数调用
         if (exprStatement.getFunc() != null) {
             int r = fi.allocReg();
-            exprStatement.getFunc().generate(this,createDesc(r, 0) );
+            exprStatement.getFunc().generate(this, createDesc(r, 0));
             fi.freeReg();
             return;
         }
@@ -357,8 +342,8 @@ public class InstructionGenerator {
             Expr expr = vars.get(i);
             SuffixedExp suffixedExp;
             TableAccess tableAccess = null;
-            if(expr instanceof SuffixedExp){
-                suffixedExp = simplify((SuffixedExp)expr);
+            if (expr instanceof SuffixedExp) {
+                suffixedExp = simplify((SuffixedExp) expr);
                 tableAccess = suffixedExp.tryTrans2TableAccess();
             }
             if (tableAccess != null) {
@@ -366,9 +351,9 @@ public class InstructionGenerator {
                 tableRegs[i] = fi.allocReg();
                 tableAccess.getTable().generate(this, createDesc(tableRegs[i], 1));
                 keyRegs[i] = fi.allocReg();
-                tableAccess.getKey().generate(this,createDesc( keyRegs[i], 1));
-            } else if(expr instanceof NameExpr){
-                NameExpr nameExpr = (NameExpr)expr;
+                tableAccess.getKey().generate(this, createDesc(keyRegs[i], 1));
+            } else if (expr instanceof NameExpr) {
+                NameExpr nameExpr = (NameExpr) expr;
                 String name = nameExpr.getName();
                 if (fi.slotOfLocVar(name) < 0 && fi.indexOfUpval(name) < 0) {
                     keyRegs[i] = -1;
@@ -377,7 +362,7 @@ public class InstructionGenerator {
                         keyRegs[i] = fi.allocReg();
                     }
                 }
-            } else{
+            } else {
                 System.err.println("错误的ExprStatement");
             }
         }
@@ -390,9 +375,9 @@ public class InstructionGenerator {
                 Expr exp = exprs.get(i);
                 int a = fi.allocReg();
                 if (i >= nVars && i == nExps - 1 && hasMultiRet(exp)) {
-                    exp.generate(this,createDesc( a, 0));
+                    exp.generate(this, createDesc(a, 0));
                 } else {
-                    exp.generate(this,createDesc(a, 1));
+                    exp.generate(this, createDesc(a, 1));
                 }
             }
         } else {
@@ -420,8 +405,8 @@ public class InstructionGenerator {
             Expr expr = vars.get(i);
             SuffixedExp suffixedExp;
             TableAccess tableAccess = null;
-            if(expr instanceof SuffixedExp){
-                suffixedExp = simplify((SuffixedExp)expr);
+            if (expr instanceof SuffixedExp) {
+                suffixedExp = simplify((SuffixedExp) expr);
                 tableAccess = suffixedExp.tryTrans2TableAccess();
             }
             if (tableAccess != null) {
@@ -471,8 +456,8 @@ public class InstructionGenerator {
         for (NameExpr nameExpr : functionBody.getParList().getNameExprs()) {
             subFunc.addLocVar(nameExpr.getName(), 0);
         }
-        if(functionBody.isMethod()){
-            fi.addLocVar("self",0);
+        if (functionBody.isMethod()) {
+            fi.addLocVar("self", 0);
         }
         functionBody.getBlock().generate(instructionGenerator, subFunc);
         subFunc.exitScope(subFunc.getPc() + 2);
@@ -492,7 +477,7 @@ public class InstructionGenerator {
         //表达式数量和变量数量一致
         if (nExps == nNames) {
             for (Expr expr : exprList) {
-                int tempReg = exp2ArgAndKind(fi,expr,ArgAndKind.ARG_REG).getArg();
+                int tempReg = exp2ArgAndKind(fi, expr, ArgAndKind.ARG_REG).getArg();
             }
         } else if (nExps > nNames) {
             for (int i = 0; i < nExps; i++) {
@@ -513,11 +498,11 @@ public class InstructionGenerator {
                 if (i == nExps - 1 && hasMultiRet(expr)) {
                     hasMulRet = true;
                     int tempReg2 = nNames - nExps + 1;
-                    expr.generate(this,createDesc( tempReg, tempReg2));
+                    expr.generate(this, createDesc(tempReg, tempReg2));
                     //为多个返回值，分配空间
                     fi.allocReg(tempReg2 - 1);
                 } else {
-                    expr.generate(this,createDesc( tempReg, 1));
+                    expr.generate(this, createDesc(tempReg, 1));
                 }
             }
             //置nil
@@ -547,15 +532,15 @@ public class InstructionGenerator {
         if (nExp != 0) {
             hasMulRet = hasMulRet || hasMultiRet(constructor.getFields().get(0));
         }
-        Lcodes.emitCodeABC(fi, OpCode.OP_NEWTABLE,exprDesc.getReg(), nArr, nExp);
+        Lcodes.emitCodeABC(fi, OpCode.OP_NEWTABLE, exprDesc.getReg(), nArr, nExp);
         //处理数组部分
         for (int i = 1; i <= nArr; i++) {
             Expr listField = constructor.getListFields().get(i - 1).getExpr();
             int tmp = fi.allocReg();
             if (i == nArr && hasMulRet) {
-                listField.generate(this, createDesc(tmp,-1));
+                listField.generate(this, createDesc(tmp, -1));
             } else {
-                listField.generate(this,createDesc(tmp,1));
+                listField.generate(this, createDesc(tmp, 1));
             }
             if (i % 50 == 0 || i == nArr) {
                 int reg = i % 50;
@@ -567,7 +552,7 @@ public class InstructionGenerator {
                 if (i == nArr && hasMulRet) {
                     Lcodes.emitCodeABC(fi, OpCode.OP_SETLIST, exprDesc.getReg(), 0, c);
                 } else {
-                    Lcodes.emitCodeABC(fi, OpCode.OP_SETLIST,exprDesc.getReg(), reg, c);
+                    Lcodes.emitCodeABC(fi, OpCode.OP_SETLIST, exprDesc.getReg(), reg, c);
                 }
             }
         }
@@ -577,9 +562,9 @@ public class InstructionGenerator {
             Expr left = field.getLeft();
             Expr right = field.getRight();
             int b = fi.allocReg();
-            left.generate(this, createDesc(b,1));
+            left.generate(this, createDesc(b, 1));
             int c = fi.allocReg();
-            right.generate(this, createDesc(c,1));
+            right.generate(this, createDesc(c, 1));
             fi.freeReg(2);
             Lcodes.emitCodeABC(fi, OpCode.OP_SETTABLE, exprDesc.getReg(), b, c);
         }
@@ -684,13 +669,13 @@ public class InstructionGenerator {
             tableAccess(primary, content.getStringExpr(), exprDesc.getReg());
             //a[b]
         } else if (content.getTableIndex() != null) {
-            tableAccess(primary, content.getTableIndex().getExpr(),  exprDesc.getReg());
+            tableAccess(primary, content.getTableIndex().getExpr(), exprDesc.getReg());
             //a:b()
         } else if (content.isHasColon()) {
-            methodCall(primary, content.getStringExpr(), content.getFuncArgs(),  exprDesc.getReg(), exprDesc.getN());
+            methodCall(primary, content.getStringExpr(), content.getFuncArgs(), exprDesc.getReg(), exprDesc.getN());
             //a()
-        } else if(content.getFuncArgs() != null) {
-            funcCall(primary, content.getFuncArgs(),  exprDesc.getReg(), exprDesc.getN());
+        } else if (content.getFuncArgs() != null) {
+            funcCall(primary, content.getFuncArgs(), exprDesc.getReg(), exprDesc.getN());
         }
     }
 
@@ -722,7 +707,7 @@ public class InstructionGenerator {
         int nArgs = exprList.size();
         boolean hasMultiRet = false;
 
-        expr.generate(this,createDesc(a,1));
+        expr.generate(this, createDesc(a, 1));
         //method Call
         if (name != null) {
             fi.allocReg();
@@ -735,9 +720,9 @@ public class InstructionGenerator {
             int tempReg = fi.allocReg();
             if (i == exprList.size() - 1 && hasMultiRet(ex)) {
                 hasMultiRet = true;
-                ex.generate(this, createDesc(tempReg,-1));
+                ex.generate(this, createDesc(tempReg, -1));
             } else {
-                ex.generate(this,  createDesc(tempReg,-1));
+                ex.generate(this, createDesc(tempReg, -1));
             }
         }
         fi.freeReg(nArgs);
@@ -771,19 +756,20 @@ public class InstructionGenerator {
     /**
      * exrp[key] =valu
      */
-    private void tableSet(Expr t,Expr k,Expr v){
+    private void tableSet(Expr t, Expr k, Expr v) {
         int oldRegs = fi.getUsedRegs();
-        ArgAndKind argAndKind = exp2ArgAndKind(fi,t,ArgAndKind.ARG_RU);
+        ArgAndKind argAndKind = exp2ArgAndKind(fi, t, ArgAndKind.ARG_RU);
         int a = argAndKind.getArg();
-        int b = exp2ArgAndKind(fi,k,ArgAndKind.ARG_RK).getArg();
-        int c = exp2ArgAndKind(fi,v,ArgAndKind.ARG_REG).getArg();
-        if(argAndKind.getKind() == ArgAndKind.ARG_REG){
-            Lcodes.emitCodeABC(fi,OpCode.OP_SETTABLE,a,b,c);
-        } else{
-            Lcodes.emitCodeABC(fi,OpCode.OP_SETTABUP,a,b,c);
+        int b = exp2ArgAndKind(fi, k, ArgAndKind.ARG_RK).getArg();
+        int c = exp2ArgAndKind(fi, v, ArgAndKind.ARG_REG).getArg();
+        if (argAndKind.getKind() == ArgAndKind.ARG_REG) {
+            Lcodes.emitCodeABC(fi, OpCode.OP_SETTABLE, a, b, c);
+        } else {
+            Lcodes.emitCodeABC(fi, OpCode.OP_SETTABUP, a, b, c);
         }
         fi.setUsedRegs(oldRegs);
     }
+
     /**
      * exp[key]
      */
@@ -791,19 +777,19 @@ public class InstructionGenerator {
         int oldRegs = fi.getUsedRegs();
         ArgAndKind argAndKindB = exp2ArgAndKind(fi, exp, ArgAndKind.ARG_RU);
         int b = argAndKindB.getArg();
-        ArgAndKind argAndKindC = exp2ArgAndKind(fi,exp,ArgAndKind.ARG_RK);
+        ArgAndKind argAndKindC = exp2ArgAndKind(fi, exp, ArgAndKind.ARG_RK);
         int c = exp2ArgAndKind(fi, key, ArgAndKind.ARG_RK).getArg();
         fi.setUsedRegs(oldRegs);
         if (argAndKindB.getKind() == ArgAndKind.ARG_REG) {
-            if(argAndKindC.getKind() == ArgAndKind.ARG_REG) {
+            if (argAndKindC.getKind() == ArgAndKind.ARG_REG) {
                 Lcodes.emitCodeABC(fi, OpCode.OP_GETTABLE, a, b, c);
-            } else{
-                Lcodes.emitCodeABC(fi,OpCode.OP_GETFIELD,a,b,c);
+            } else {
+                Lcodes.emitCodeABC(fi, OpCode.OP_GETFIELD, a, b, c);
             }
         } else {
             Lcodes.emitCodeABC(fi, OpCode.OP_GETTABUP, a, b, c);
         }
-       
+
     }
 
     public void generate(NameExpr expr, int a, int n) {
@@ -822,45 +808,46 @@ public class InstructionGenerator {
         tableAccess(expr1, expr, a);
     }
 
-    public void jumpCond(ExprDesc exprDesc,Expr expr,boolean cond){
-        int b = exp2ArgAndKind(fi,expr,ArgAndKind.ARG_REG).getArg();
-        if(!isStatement()) {
-            Lcodes.emitCodeABCK(fi, OP_TESTSET, exprDesc.getReg(), b, 0,cond?1:0);
+    public void jumpCond(ExprDesc exprDesc, Expr expr, boolean cond) {
+        int b = exp2ArgAndKind(fi, expr, ArgAndKind.ARG_REG).getArg();
+        if (!isStatement()) {
+            Lcodes.emitCodeABCK(fi, OP_TESTSET, exprDesc.getReg(), b, 0, cond ? 1 : 0);
         } else {
-            Lcodes.emitCodeABCK(fi, OP_TEST, b, 0, 0, cond?1:0);
+            Lcodes.emitCodeABCK(fi, OP_TEST, b, 0, 0, cond ? 1 : 0);
         }
-        int jmp = Lcodes.emitCodeJump(fi,0,0);
+        int jmp = Lcodes.emitCodeJump(fi, 0, 0);
         exprDesc.setInfo(jmp);
     }
 
-    public void testOp(ExprDesc exprDesc,Expr expr){
-        int b = exp2ArgAndKind(fi,expr,ArgAndKind.ARG_REG).getArg();
-        if(!isStatement()) {
-            Lcodes.emitCodeABCK(fi, OP_TESTSET, exprDesc.getReg(), b, 0,1);
+    public void testOp(ExprDesc exprDesc, Expr expr) {
+        int b = exp2ArgAndKind(fi, expr, ArgAndKind.ARG_REG).getArg();
+        if (!isStatement()) {
+            Lcodes.emitCodeABCK(fi, OP_TESTSET, exprDesc.getReg(), b, 0, 1);
         } else {
             Lcodes.emitCodeABCK(fi, OP_TEST, b, 0, 0, 1);
         }
-        int jmp = Lcodes.emitCodeJump(fi,0,0);
+        int jmp = Lcodes.emitCodeJump(fi, 0, 0);
         exprDesc.setInfo(jmp);
         exprDesc.setJump(true);
     }
 
     /**
-     *  反转指令s
+     * 反转指令s
      */
-    public void negative(int jmp){
-        Instruction jmpControl = fi.getInstruction(jmp -1 );
-        Instructions.setArgk(jmpControl,Instructions.getArgk(jmpControl)^1);
+    public void negative(int jmp) {
+        Instruction jmpControl = fi.getInstruction(jmp - 1);
+        Instructions.setArgk(jmpControl, Instructions.getArgk(jmpControl) ^ 1);
     }
-    public  void generate(LogicExpr logicExpr,ExprDesc exprDesc){
+
+    public void generate(LogicExpr logicExpr, ExprDesc exprDesc) {
 
         ExprDesc left = new ExprDesc();
         VirtualLabel curLabel = new VirtualLabel();
 
-        if(logicExpr.getOp() == OPR_AND){
+        if (logicExpr.getOp() == OPR_AND) {
             left.setTrueLabel(curLabel);
             left.setFalseLabel(exprDesc.getFalseLabel());
-        } else{
+        } else {
             left.setFalseLabel(curLabel);
             left.setTrueLabel(exprDesc.getTrueLabel());
         }
@@ -868,64 +855,80 @@ public class InstructionGenerator {
 
 
         //逻辑运算
-        if(logicExpr.getLeft() instanceof LogicExpr){
-           logicExpr.getLeft().generate(this, left);
+        if (logicExpr.getLeft() instanceof LogicExpr) {
+            logicExpr.getLeft().generate(this, left);
         } else {
             //TEST运算
-            jumpCond(left,logicExpr.getLeft(),logicExpr.getOp() == OPR_OR);
+            jumpCond(left, logicExpr.getLeft(), logicExpr.getOp() == OPR_OR);
         }
         //pc指向的是jmp，应该跳转到jmp的下一条
         curLabel.fixJump2Pc(fi.getPc() + 1);
 
-        if(logicExpr.getOp() == OPR_AND){
-            if(left.isJump()){
-               negative(left.getInfo());
-               left.setJump(false);
+        if (logicExpr.getOp() == OPR_AND) {
+            if (left.isJump()) {
+                negative(left.getInfo());
+                left.setJump(false);
             }
             exprDesc.getFalseLabel().addInstructionList(left.getFalseLabel());
-            exprDesc.getFalseLabel().addInstruction(fi.getInstruction(left.getInfo()),left.getInfo());
-        } else{
+            exprDesc.getFalseLabel().addInstruction(fi.getInstruction(left.getInfo()), left.getInfo());
+        } else {
             left.setJump(false);
             exprDesc.getTrueLabel().addInstructionList(left.getTrueLabel());
-            exprDesc.getTrueLabel().addInstruction(fi.getInstruction(left.getInfo()),left.getInfo());
+            exprDesc.getTrueLabel().addInstruction(fi.getInstruction(left.getInfo()), left.getInfo());
         }
 
-        if(logicExpr.getRight() instanceof LogicExpr){
-            logicExpr.getRight().generate(this,exprDesc);
-        } else{
-            testOp(exprDesc,logicExpr.getRight());
+        if (logicExpr.getRight() instanceof LogicExpr) {
+            logicExpr.getRight().generate(this, exprDesc);
+        } else {
+            testOp(exprDesc, logicExpr.getRight());
         }
-        if(logicExpr.getOp() == OPR_AND){
-            exprDesc.getFalseLabel().addInstruction(fi.getInstruction(exprDesc.getInfo()),exprDesc.getInfo());
-        } else{
-            exprDesc.getTrueLabel().addInstruction(fi.getInstruction(exprDesc.getInfo()),exprDesc.getInfo());
+        if (logicExpr.getOp() == OPR_AND) {
+            exprDesc.getFalseLabel().addInstruction(fi.getInstruction(exprDesc.getInfo()), exprDesc.getInfo());
+        } else {
+            exprDesc.getTrueLabel().addInstruction(fi.getInstruction(exprDesc.getInfo()), exprDesc.getInfo());
         }
         fi.setUsedRegs(oldRegs);
     }
-    public void generate(NotExpr notExpr,ExprDesc exprDesc){
+
+    public void generate(NotExpr notExpr, ExprDesc exprDesc) {
 
     }
-    public void generate(RelationExpr relationExpr,ExprDesc exprDesc){
-        int b = exp2ArgAndKind(fi,relationExpr.getLeft(),ArgAndKind.ARG_REG).getArg();
-        int c = exp2ArgAndKind(fi,relationExpr.getRight(),ArgAndKind.ARG_REG).getArg();
-        switch (relationExpr.getOp()){
-            case OPR_EQ:Lcodes.emitCodeABCK(fi,OP_EQ,b,c,0,1);break;
-            case OPR_NE:Lcodes.emitCodeABCK(fi,OP_EQ,b,c,0,0);break;
-            case OPR_LT:Lcodes.emitCodeABCK(fi,OP_LT,b,c,0,1);break;
-            case OPR_LE:Lcodes.emitCodeABCK(fi,OP_LE,b,c,0,1);break;
-            case OPR_GE:Lcodes.emitCodeABCK(fi,OP_LT,b,c,0,0);break;
-            case OPR_GT:Lcodes.emitCodeABCK(fi,OP_LE,b,c,0,0);break;
-            default:break;
+
+    public void generate(RelationExpr relationExpr, ExprDesc exprDesc) {
+        int b = exp2ArgAndKind(fi, relationExpr.getLeft(), ArgAndKind.ARG_REG).getArg();
+        int c = exp2ArgAndKind(fi, relationExpr.getRight(), ArgAndKind.ARG_REG).getArg();
+        switch (relationExpr.getOp()) {
+            case OPR_EQ:
+                Lcodes.emitCodeABCK(fi, OP_EQ, b, c, 0, 1);
+                break;
+            case OPR_NE:
+                Lcodes.emitCodeABCK(fi, OP_EQ, b, c, 0, 0);
+                break;
+            case OPR_LT:
+                Lcodes.emitCodeABCK(fi, OP_LT, b, c, 0, 1);
+                break;
+            case OPR_LE:
+                Lcodes.emitCodeABCK(fi, OP_LE, b, c, 0, 1);
+                break;
+            case OPR_GE:
+                Lcodes.emitCodeABCK(fi, OP_LT, b, c, 0, 0);
+                break;
+            case OPR_GT:
+                Lcodes.emitCodeABCK(fi, OP_LE, b, c, 0, 0);
+                break;
+            default:
+                break;
         }
         fi.freeReg(2);
-        int jmp = Lcodes.emitCodeJump(fi,0,0);
+        int jmp = Lcodes.emitCodeJump(fi, 0, 0);
         exprDesc.setInfo(jmp);
         exprDesc.setJump(true);
     }
-    public void generate(BinaryExpr binaryExpr,ExprDesc exprDesc){
-        int b = exp2ArgAndKind(fi,binaryExpr.getLeft(),ArgAndKind.ARG_REG).getArg();
-        int c = exp2ArgAndKind(fi,binaryExpr.getRight(),ArgAndKind.ARG_REG).getArg();
-        switch (binaryExpr.getOp()){
+
+    public void generate(BinaryExpr binaryExpr, ExprDesc exprDesc) {
+        int b = exp2ArgAndKind(fi, binaryExpr.getLeft(), ArgAndKind.ARG_REG).getArg();
+        int c = exp2ArgAndKind(fi, binaryExpr.getRight(), ArgAndKind.ARG_REG).getArg();
+        switch (binaryExpr.getOp()) {
             case OPR_ADD:
             case OPR_SUB:
             case OPR_MUL:
@@ -938,14 +941,14 @@ public class InstructionGenerator {
             case OPR_SHL:
             case OPR_SHR:
                 OpCode opCode = OpCode.getOpCode(binaryExpr.getOp().getOp() - OPR_ADD.getOp() + OP_ADD.getCode());
-                if(isStatement()){
-                    Lcodes.emitCodeABC(fi,opCode,b,b,c);
-                }else{
-                    Lcodes.emitCodeABC(fi,opCode,exprDesc.getReg(),b,c);
+                if (isStatement()) {
+                    Lcodes.emitCodeABC(fi, opCode, b, b, c);
+                } else {
+                    Lcodes.emitCodeABC(fi, opCode, exprDesc.getReg(), b, c);
                 }
                 break;
         }
-      fi.freeReg(2);
+        fi.freeReg(2);
     }
 
     public void generate(VarargExpr expr, ExprDesc exprDesc) {
@@ -953,7 +956,7 @@ public class InstructionGenerator {
     }
 
     public void generate(NilExpr expr, ExprDesc exprDesc) {
-        Lcodes.emitCodeABC(fi, OpCode.OP_LOADNIL,exprDesc.getReg(), exprDesc.getN() - 1, 0);
+        Lcodes.emitCodeABC(fi, OpCode.OP_LOADNIL, exprDesc.getReg(), exprDesc.getN() - 1, 0);
 
     }
 
@@ -961,13 +964,13 @@ public class InstructionGenerator {
         Lcodes.emitCodeABC(fi, OpCode.OP_LOADTRUE, exprDesc.getReg(), 0, 0);
     }
 
-    public void generate(FalseExpr expr,ExprDesc exprDesc) {
+    public void generate(FalseExpr expr, ExprDesc exprDesc) {
         Lcodes.emitCodeABC(fi, OpCode.OP_LOADFALSE, exprDesc.getReg(), 0, 0);
     }
 
     public void generate(FloatExpr expr, ExprDesc exprDesc) {
         int k = fi.indexOfConstant(TValue.doubleValue(expr.getF()));
-        Lcodes.emitCodeK(fi,exprDesc.getReg(), k);
+        Lcodes.emitCodeK(fi, exprDesc.getReg(), k);
     }
 
     public void generate(IntExpr expr, ExprDesc exprDesc) {
@@ -975,18 +978,18 @@ public class InstructionGenerator {
         Lcodes.emitCodeK(fi, exprDesc.getReg(), k);
     }
 
-    public void generate(StringExpr expr,ExprDesc exprDesc) {
+    public void generate(StringExpr expr, ExprDesc exprDesc) {
         int k = fi.indexOfConstant(TValue.strValue(expr.getStr()));
-        Lcodes.emitCodeK(fi,exprDesc.getReg(), k);
+        Lcodes.emitCodeK(fi, exprDesc.getReg(), k);
     }
 
-    public ArgAndKind exp2ArgAndKind(FunctionInfo fi,Expr expr,int kind,ExprDesc exprDesc){
+    public ArgAndKind exp2ArgAndKind(FunctionInfo fi, Expr expr, int kind, ExprDesc exprDesc) {
         //去掉无用的嵌套，直接执行里层的表达式
 
-        if(expr instanceof SuffixedExp){
-            SuffixedExp temp = (SuffixedExp)expr;
-            if(temp.getSuffixedContent() == null){
-                return exp2ArgAndKind(fi,temp.getPrimaryExr(),kind);
+        if (expr instanceof SuffixedExp) {
+            SuffixedExp temp = (SuffixedExp) expr;
+            if (temp.getSuffixedContent() == null) {
+                return exp2ArgAndKind(fi, temp.getPrimaryExr(), kind);
             }
         }
         if ((kind & ArgAndKind.ARG_CONST) > 0) {
@@ -1005,7 +1008,7 @@ public class InstructionGenerator {
                 idx = fi.indexOfConstant(TValue.strValue(((StringExpr) expr).getStr()));
             }
             if (idx >= 0 && idx <= 0xFF) {
-                return new ArgAndKind(idx,ArgAndKind.ARG_CONST);
+                return new ArgAndKind(idx, ArgAndKind.ARG_CONST);
             }
         }
 
@@ -1026,21 +1029,22 @@ public class InstructionGenerator {
             }
         }
         int a = fi.allocReg();
-        if(expr instanceof LogicExpr) {
-            generateLogicExpr(expr,createDesc(a,1));
-        } else{
+        if (expr instanceof LogicExpr) {
+            generateLogicExpr(expr, createDesc(a, 1));
+        } else {
             expr.generate(this, exprDesc != null ? exprDesc : createDesc(a, 1));
         }
         return new ArgAndKind(a, ArgAndKind.ARG_REG);
     }
+
     /**
      * 将 表达式进行处理，结果存储在 返回的 ArgAndKind对象里面 kind表示，存储的类型，
      */
     public ArgAndKind exp2ArgAndKind(FunctionInfo fi, Expr expr, int kind) {
-        return exp2ArgAndKind(fi,expr,kind,null);
+        return exp2ArgAndKind(fi, expr, kind, null);
     }
 
-    public ExprDesc createDesc(int a,int n){
+    public ExprDesc createDesc(int a, int n) {
         ExprDesc exprDesc = new ExprDesc();
         exprDesc.setReg(a);
         exprDesc.setN(n);

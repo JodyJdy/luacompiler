@@ -34,4 +34,24 @@ public class IfStatement extends Statement{
     public void generate(InstructionGenerator ins) {
         ins.generate(this);
     }
+
+    /**
+     * 获取所有的cond
+     */
+    public List<Expr> getAllConds(){
+        List<Expr> exprs = new ArrayList<>();
+        exprs.add(cond);
+        exprs.addAll(elseThenConds);
+        return exprs;
+    }
+
+    /**
+     * 获取除了 else block以外的所有block
+     */
+    public List<BlockStatement> getAllIfBlock(){
+        List<BlockStatement> blockStatements = new ArrayList<>();
+        blockStatements.add(blockStatement);
+        blockStatements.addAll(elseThenBlock);
+        return blockStatements;
+    }
 }
