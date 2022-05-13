@@ -11,14 +11,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static com.jdy.lua.lcodes.BinOpr.OPR_NOBINOPR;
 import static com.jdy.lua.lcodes.BinOpr.getBinopr;
 import static com.jdy.lua.lex.Lex.*;
 import static com.jdy.lua.lex.TokenEnum.*;
 import static com.jdy.lua.lparser2.expr.SuffixedExp.SuffixedContent;
 
 public class LParser {
-
     public static boolean blockFollow(LexState ls,boolean withUntil){
         switch (ls.getCurTokenEnum()){
             case ELSE: case ELSEIF:
@@ -340,13 +338,7 @@ public class LParser {
         return subExpr;
     }
 
-    public static SubExpr subExpr(LexState ls,int limit){
-        SubExprWithOp subExprWithOp = subExprWithOp(ls,limit);
-        if(subExprWithOp == null){
-            return null;
-        }
-        return subExprWithOp.getSubExpr();
-    }
+
     public static Expr logicOrExpr(LexState ls){
         Expr expr = logicAndExpr(ls);
         while(ls.getCurTokenEnum() == OR){
@@ -444,49 +436,6 @@ public class LParser {
         return simpleExp(ls);
     }
 
-    /**
-     ** subexpr -> (simpleexp | unop subexpr) { binop subexpr }
-     ** where 'binop' is any binary operator with a priority higher than 'limit'
-     */
-    public static SubExprWithOp subExprWithOp(LexState ls,int limit){
-        BinOpr op;
-        UnOpr uop;
-        SubExpr subExpr;
-        uop = UnOpr.getUnopr(ls.getCurTokenEnum());
-        if(uop != UnOpr.OPR_NOUNOPR){
-            luaX_Next(ls);
-            SubExpr exp = subExpr(ls,UNARY_PRIORITY);
-            subExpr = new SubExpr(uop,exp);
-        } else{
-            Expr expr = simpleExp(ls);
-            if(expr == null){
-                return null;
-            }
-            subExpr = new SubExpr(expr);
-        }
-        op = getBinopr(ls.getCurTokenEnum());
-        while(op != null && op != OPR_NOBINOPR && priority[op.getOp()][0] > limit){
-            luaX_Next(ls);
-            //subexpr2 的 op表示 读取到等级小于limit的符号了，不再递归处理
-            SubExprWithOp subExpr2 = subExprWithOp(ls,priority[op.getOp()][1]);
-            subExpr.setSubExpr2(subExpr2.getSubExpr());
-            subExpr.setBinOpr(op);
-
-            //说明读取结束了
-            //情况 0 + (1 * 1)，返回的一个完整的表达式，说明解析完毕了
-            if(subExpr2.getOpr() == null || subExpr2.getOpr() == OPR_NOBINOPR){
-                return new SubExprWithOp(subExpr,null);
-            }
-
-            //情况 1 * 1 + 1, 解析到 + 号就结束了，因为遇到了比 *运算符等级低的
-            //需要将 1 * 1 + 1，构造成 (1 * 1) + 1，下面的操作就是完成了套一层的操作。
-            //获取下一个操作符
-            subExpr = new SubExpr(subExpr);
-            subExpr.setBinOpr(op);
-            op = subExpr2.getOpr();
-        }
-        return new SubExprWithOp(trySimplyfySubExpr(subExpr),op);
-    }
     public static Expr  simpleExp(LexState ls){
          /* simpleexp -> FLT | INT | STRING | NIL | TRUE | FALSE | ... |
                   constructor | FUNCTION body | suffixedexp */
