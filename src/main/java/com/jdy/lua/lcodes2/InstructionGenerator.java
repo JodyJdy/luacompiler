@@ -980,6 +980,9 @@ public class InstructionGenerator {
         }
         fi.setUsedRegs(oldRegs);
     }
+    public void generate(NotExpr notExpr,ExprDesc exprDesc){
+
+    }
     public void generate(RelationExpr relationExpr,ExprDesc exprDesc){
         int b = exp2ArgAndKind(fi,relationExpr.getLeft(),ArgAndKind.ARG_REG).getArg();
         int c = exp2ArgAndKind(fi,relationExpr.getRight(),ArgAndKind.ARG_REG).getArg();
