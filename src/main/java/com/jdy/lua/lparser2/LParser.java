@@ -454,6 +454,7 @@ public class LParser {
                  checkNext(ls,SMALL_LEFT);
                  ParList parList = parList(ls);
                  BlockStatement st = block(ls);
+                 luaX_Next(ls);
                  expr = new FunctionBody(st,parList);
                  break;
             }

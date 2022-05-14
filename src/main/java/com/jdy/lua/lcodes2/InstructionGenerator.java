@@ -83,11 +83,11 @@ public class InstructionGenerator {
     }
 
     public void generate(Expr expr, ExprDesc exprDesc) {
-        //
+        // do nothindg
     }
 
     public void generate(Statement statement) {
-        statement.generate(this);
+       // do nothing
     }
 
     public void generate(BlockStatement blockStatement) {
@@ -735,8 +735,8 @@ public class InstructionGenerator {
         int oldRegs = fi.getUsedRegs();
         ArgAndKind argAndKindB = exp2ArgAndKind(fi, exp, ArgAndKind.ARG_RU);
         int b = argAndKindB.getArg();
-        ArgAndKind argAndKindC = exp2ArgAndKind(fi, exp, ArgAndKind.ARG_RK);
-        int c = exp2ArgAndKind(fi, key, ArgAndKind.ARG_RK).getArg();
+        ArgAndKind argAndKindC = exp2ArgAndKind(fi, key, ArgAndKind.ARG_RK);
+        int c = argAndKindC.getArg();
         fi.setUsedRegs(oldRegs);
         if (argAndKindB.getKind() == ArgAndKind.ARG_REG) {
             if (argAndKindC.getKind() == ArgAndKind.ARG_REG) {
