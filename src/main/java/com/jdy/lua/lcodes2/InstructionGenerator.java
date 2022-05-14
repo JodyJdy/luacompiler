@@ -108,6 +108,8 @@ public class InstructionGenerator {
      */
     public void generate(FunctionStat functionStat) {
         int oldRegs = fi.getUsedRegs();
+        ExprDesc exprDesc = new ExprDesc();
+        exprDesc.setGlobalFunc(true);
         if (functionStat.getFieldDesc() != null && functionStat.getFieldDesc().size() > 0) {
             List<StringExpr> stringExprs = functionStat.getFieldDesc();
             //将结果存储在寄存器a里面
@@ -120,7 +122,7 @@ public class InstructionGenerator {
                 Lcodes.emitCodeABC(fi, OpCode.OP_GETFIELD, a, a, key);
             }
             //获取上个指令
-            Instruction lastIns = fi.getInstruction(fi.getPc() - 1);
+            Instruction lastIns = fi.getInstruction(fi.getPc());
             int argB = Instructions.getArgB(lastIns);
             int argC = Instructions.getArgC(lastIns);
             int funcReg = fi.allocReg();
@@ -128,7 +130,8 @@ public class InstructionGenerator {
             if (funcReg == argC) {
                 funcReg = fi.allocReg();
             }
-            functionStat.getFunctionBody().generate(this, createDesc(funcReg, 0));
+            exprDesc.setReg(funcReg);
+            functionStat.getFunctionBody().generate(this, exprDesc);
 
             OpCode code = Instructions.getOpCode(lastIns);
             if (code == OpCode.OP_GETTABLE) {
@@ -145,7 +148,8 @@ public class InstructionGenerator {
         } else {
             String varName = functionStat.getVar().getName();
             int funcReg = fi.allocReg();
-            functionStat.getFunctionBody().generate(this, createDesc(funcReg, 0));
+            exprDesc.setReg(funcReg);
+            functionStat.getFunctionBody().generate(this, exprDesc);
             fi.freeReg();
             int a = fi.slotOfLocVar(varName);
             if (a >= 0) {
@@ -166,7 +170,7 @@ public class InstructionGenerator {
             }
             //全局变量
             env = fi.indexOfUpval("_ENV");
-            Lcodes.emitCodeABC(fi, OpCode.OP_SETFIELD, env, b, funcReg);
+            Lcodes.emitCodeABC(fi, OP_SETUPVAL, env, b, funcReg);
         }
     }
 
@@ -388,7 +392,6 @@ public class InstructionGenerator {
             }
         }
         for (int i = 0; i < nVars; i++) {
-
             Expr expr = vars.get(i);
             if (isTableAccess(expr)) {
                 Lcodes.emitCodeABC(fi, OpCode.OP_SETTABLE, tableRegs[i], keyRegs[i], varRegs[i]);
@@ -409,23 +412,14 @@ public class InstructionGenerator {
             }
             int env = fi.slotOfLocVar("_ENV");
             if (env >= 0) {
-                if (keyRegs[i] < 0) {
-                    b = 0x100 + fi.indexOfConstant(TValue.strValue(varName));
-                    Lcodes.emitCodeABC(fi, OpCode.OP_SETFIELD, env, b, varRegs[i]);
-                } else {
-                    Lcodes.emitCodeABC(fi, OpCode.OP_SETTABLE, env, keyRegs[i], varRegs[i]);
-                }
+                b = fi.indexOfConstant(TValue.strValue(varName));
+                Lcodes.emitCodeABC(fi, OpCode.OP_SETFIELD, env, b, varRegs[i]);
                 continue;
             }
             //全局变量
             env = fi.indexOfUpval("_ENV");
-            if (keyRegs[i] < 0) {
-                b = 0x100 + fi.indexOfConstant(TValue.strValue(varName));
-                Lcodes.emitCodeABC(fi, OpCode.OP_SETFIELD, env, b, varRegs[i]);
-            } else {
-                Lcodes.emitCodeABC(fi, OpCode.OP_SETTABLE, env, keyRegs[i], varRegs[i]);
-            }
-
+            b = fi.indexOfConstant(TValue.strValue(varName));
+            Lcodes.emitCodeABC(fi, OP_SETTABUP, env, b, varRegs[i]);
         }
         //赋值表达式没有定义变量，将寄存器还原
         fi.setUsedRegs(oldRegs);
@@ -445,7 +439,10 @@ public class InstructionGenerator {
         subFunc.exitScope(subFunc.getPc() + 2);
         Lcodes.emitCodeABC(subFunc, OpCode.OP_RETURN, 0, 1, 0);
         int bx = fi.getSubFuncs().size() - 1;
-        Lcodes.emitCodeABx(fi, OpCode.OP_CLOSURE,desc.getReg(), bx);
+        //全局函数存放在env里面
+        if(!desc.isGlobalFunc()) {
+            Lcodes.emitCodeABx(fi, OpCode.OP_CLOSURE, desc.getReg(), bx);
+        }
     }
 
     public void generate(LocalStatement statement) {
@@ -761,9 +758,10 @@ public class InstructionGenerator {
             Lcodes.emitCodeABC(fi, OpCode.OP_GETUPVAL,desc.getReg(), r, 0);
             return;
         }
-        //env['name'],env存放全局的东西
+        //env['name'],env存放全局的东西，使用字符串常量去存放内容
+        //同时也有env[env]=env的规则，env是最外层函数的一个'local var'
         NameExpr expr1 = new NameExpr("_ENV");
-        tableAccess(expr1, expr,desc.getReg());
+        tableAccess(expr1, new StringExpr(expr.getName()),desc.getReg());
     }
 
     public void generate(NotExpr notExpr,ExprDesc exprDesc){

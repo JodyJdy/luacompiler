@@ -66,6 +66,7 @@ public class Test {
         Lex.luaX_Next(lexState);
         BlockStatement b = block(lexState);
       FunctionInfo fi = new FunctionInfo();
+      fi.addLocVar("_ENV",0);
       InstructionGenerator generator = new InstructionGenerator(fi);
       System.out.println();
       generator.generate(b);

@@ -187,21 +187,25 @@ public class LParser {
         // nameExpr总是存储第一个变量
         NameExpr nameExpr = new NameExpr(ls.getCurrTk().getS());
         exprs.add(ls.getCurrTk().getS());
+        luaX_Next(ls);
         boolean isMethod = false;
         while(ls.getCurTokenEnum() == DOT){
             luaX_Next(ls);
             exprs.add(ls.getCurrTk().getS());
+            luaX_Next(ls);
         }
         if(ls.getCurTokenEnum() == COLON){
             luaX_Next(ls);
             exprs.add(ls.getCurrTk().getS());
             isMethod = true;
+            luaX_Next(ls);
         }
         checkNext(ls,SMALL_LEFT);
         ParList parList = parList(ls);
         BlockStatement blockStatement = block(ls);
         checkNext(ls,END);
         FunctionStat fs =  new FunctionStat(nameExpr,blockStatement,parList);
+        exprs.remove(0);
         fs.setFieldDesc(exprs.stream().map(StringExpr::new).collect(Collectors.toList()));
         fs.setMethod(isMethod);
         return fs;
@@ -235,6 +239,12 @@ public class LParser {
 
     public static ParList parList(LexState ls){
         List<NameExpr> nameExprs = new ArrayList<>();
+        ParList parList = new ParList();
+        parList.setNameExprs(nameExprs);
+        if(ls.getCurTokenEnum() == SMALL_RIGHT){
+            luaX_Next(ls);
+            return parList;
+        }
         boolean hasVararg = false;
         do{
             if(ls.getCurTokenEnum() == NAME){
@@ -244,8 +254,7 @@ public class LParser {
             }
             luaX_Next(ls);
         }while(ls.getCurTokenEnum() != SMALL_RIGHT);
-        ParList parList = new ParList(hasVararg);
-        parList.setNameExprs(nameExprs);
+        parList.setHasVararg(hasVararg);
         luaX_Next(ls);
         return parList;
     }

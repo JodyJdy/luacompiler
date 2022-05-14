@@ -25,6 +25,11 @@ public class ExprDesc {
     boolean isJump;
 
     /**
+     * 是否是 globalFunc func
+     */
+    boolean globalFunc;
+
+    /**
      * 不能使用交换引用的方式，因为在Statement中，label是手动创建的
      * Label true ; Label false;
      * 即使 ExprDesc 里面进行了交换，也不影响外部对其的的真假label的认定，因此要交换内容！！！

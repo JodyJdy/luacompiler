@@ -12,9 +12,7 @@ public class ParList extends Expr{
     private List<NameExpr> nameExprs = new ArrayList<>();
     private boolean hasVararg = false;
 
-    public ParList(boolean hasVararg) {
-        this.hasVararg = hasVararg;
-    }
+
     public void addNameExpr(NameExpr ex){
         nameExprs.add(ex);
     }
