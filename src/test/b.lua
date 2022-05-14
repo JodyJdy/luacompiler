@@ -1,8 +1,9 @@
 
 local a =1
 
-if not (1 or 1 or 1)
-then
+for a,b,c in 1
+do
 
-a=2
+a=1
+
 end

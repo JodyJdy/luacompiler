@@ -24,8 +24,8 @@ public class FuncArgs extends Expr{
 
     }
 
-    public void addExprList(ExprList e){
-        expr1.addAll(e.getExprList());
+    public void addExprList(List<Expr> e){
+        expr1.addAll(e);
     }
     @Override
     public void generate(InstructionGenerator generator, ExprDesc exprDesc) {

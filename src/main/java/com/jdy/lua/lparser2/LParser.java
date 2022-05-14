@@ -139,6 +139,7 @@ public class LParser {
         switch (ls.getCurTokenEnum()){
             //数值型for循环
             case ASSIGN:
+                luaX_Next(ls);
                 Expr expr1 = expr(ls);
                 checkNext(ls,COMMA);
                 Expr expr2 = expr(ls);
@@ -160,7 +161,7 @@ public class LParser {
                     luaX_Next(ls);
                 }
                 checkNext(ls,IN);
-                ExprList exprList = exprList(ls);
+                List<Expr> exprList = exprList(ls);
                 checkNext(ls,DO);
                 BlockStatement block2 = block(ls);
                 checkMatch(ls,END,FOR,line);
@@ -209,7 +210,7 @@ public class LParser {
         LocalStatement localStatement = new LocalStatement();
         int index = 0;
         do{
-            localStatement.addNameExpr(new NameExpr(ls.getCurrTk().getS()));
+            localStatement.addVarName(ls.getCurrTk().getS());
             luaX_Next(ls);
 
             if(testNext(ls,LT)){
@@ -263,9 +264,9 @@ public class LParser {
         return labelStatement;
     }
     public static ReturnStatement retStat(LexState ls,int line){
-        ExprList exprList = exprList(ls);
+        List<Expr> exprList = exprList(ls);
         //无返回值
-        if(exprList.getExprList().size() ==1 && exprList.getExprList().get(0) == null){
+        if(exprList.size() ==1 && exprList.get(0) == null){
             return new ReturnStatement();
         }
         return new ReturnStatement(exprList(ls));
@@ -288,18 +289,18 @@ public class LParser {
             }
             //读取到了 =
             checkNext(ls,ASSIGN);
-            state.setRight(exprList(ls));
+            state.setRights(exprList(ls));
         } else{
             //函数调用
             state.setFunc(s);
         }
         return state;
     }
-    public static ExprList exprList(LexState ls){
-        ExprList exprList = new ExprList();
-        exprList.addExpr(expr(ls));
+    public static List<Expr> exprList(LexState ls){
+        List<Expr> exprList = new ArrayList<>();
+        exprList.add(expr(ls));
         while(testNext(ls,COMMA)){
-            exprList.addExpr(expr(ls));
+            exprList.add(expr(ls));
         }
         return exprList;
     }
@@ -307,37 +308,6 @@ public class LParser {
         return logicOrExpr(ls);
     }
 
-    /**
-     * 定义运算符优先级，用于决定是否继续读入
-     */
-    public static int[][] priority ={
-            {10, 10}, {10, 10},           /* '+' '-' */
-            {11, 11}, {11, 11},           /* '*' '%' */
-            {14, 13},                  /* '^' (right associative) */
-            {11, 11}, {11, 11},           /* '/' '//' */
-            {6, 6}, {4, 4}, {5, 5},   /* '&' '|' '~' */
-            {7, 7}, {7, 7},           /* '<<' '>>' */
-            {9, 8},                   /* '..' (right associative) */
-            {3, 3}, {3, 3}, {3, 3},   /* ==, <, <= */
-            {3, 3}, {3, 3}, {3, 3},   /* ~=, >, >= */
-            {2, 2}, {1, 1}            /* and, or */
-    };
-    /**
-     * 单运算符的优先级
-     */
-    public static int UNARY_PRIORITY = 12;
-
-    /**
-     * 优化 Subexpr的结构
-     */
-    public static SubExpr trySimplyfySubExpr(SubExpr subExpr){
-        if(subExpr.getUnOpr() == null && subExpr.getBinOpr() == null && subExpr.getSubExpr2() ==null){
-            if(subExpr.getSubExpr1() instanceof  SubExpr){
-                return (SubExpr)subExpr.getSubExpr1();
-            }
-        }
-        return subExpr;
-    }
 
 
     public static Expr logicOrExpr(LexState ls){
@@ -581,7 +551,7 @@ public class LParser {
                     funcArgs = new FuncArgs();
                 } else{
                     funcArgs = new FuncArgs();
-                    ExprList exprList = exprList(ls);
+                    List<Expr> exprList = exprList(ls);
                     funcArgs.addExprList(exprList);
                 }
                 luaX_Next(ls);

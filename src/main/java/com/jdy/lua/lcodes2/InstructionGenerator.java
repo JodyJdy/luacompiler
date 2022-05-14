@@ -12,7 +12,6 @@ import com.jdy.lua.lparser2.expr.*;
 import com.jdy.lua.lparser2.statement.*;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import static com.jdy.lua.lcodes.BinOpr.*;
@@ -200,7 +199,7 @@ public class InstructionGenerator {
             Lcodes.emitCodeABC(fi, OpCode.OP_RETURN, 0, 1, 0);
             return;
         }
-        List<Expr> exprs = returnStatement.getExprList().getExprList();
+        List<Expr> exprs = returnStatement.getExprList();
         int nExprs = exprs.size();
         if (nExprs == 1) {
             if (exprs.get(0) instanceof NameExpr) {
@@ -301,8 +300,7 @@ public class InstructionGenerator {
         endLabel.fixJump2Pc(fi.getPc() + 1);
     }
 
-    public void removeTailNils(ExprList exprList) {
-        List<Expr> exprs = exprList.getExprList();
+    public void removeTailNils(List<Expr> exprs) {
         while (!exprs.isEmpty() && exprs.get(exprs.size() - 1) instanceof NilExpr) {
             exprs.remove(exprs.size() - 1);
         }
@@ -324,9 +322,9 @@ public class InstructionGenerator {
             return;
         }
         List<Expr> vars = exprStatement.getLefts();
-        List<Expr> exprs = exprStatement.getRight().getExprList();
+        List<Expr> exprs = exprStatement.getRights();
         //赋值 a,b,c=1,2,3
-        removeTailNils(exprStatement.getRight());
+        removeTailNils(exprStatement.getRights());
         int nVars = exprStatement.getLefts().size();
         int nExps = exprs.size();
         int[] tableRegs = new int[nVars];
@@ -466,10 +464,10 @@ public class InstructionGenerator {
     public void generate(LocalStatement statement) {
         removeTailNils(statement.getExprList());
         int oldRegs = fi.getUsedRegs();
-        List<Expr> exprList = statement.getExprList().getExprList();
-        List<NameExpr> nameExprs = statement.getNameExprList();
+        List<Expr> exprList = statement.getExprList();
+        List<String> varNames = statement.getNames();
         int nExps = exprList.size();
-        int nNames = nameExprs.size();
+        int nNames = varNames.size();
 
         //表达式数量和变量数量一致
         if (nExps == nNames) {
@@ -511,8 +509,8 @@ public class InstructionGenerator {
         }
         fi.setUsedRegs(oldRegs);
         int startPc = fi.getPc() + 1;
-        for (NameExpr expr : nameExprs) {
-            fi.addLocVar(expr.getName(), startPc);
+        for (String varName : varNames) {
+            fi.addLocVar(varName, startPc);
         }
     }
 
@@ -568,17 +566,6 @@ public class InstructionGenerator {
 
     }
 
-    private LocalStatement forNum2LocalStatement(ForStatement forStatement) {
-        LocalStatement localStatement = new LocalStatement();
-        NameExpr name1 = new NameExpr("(for index)");
-        NameExpr name2 = new NameExpr("(for limit)");
-        NameExpr name3 = new NameExpr("(for step)");
-        localStatement.getNameExprList().addAll(Arrays.asList(name1, name2, name3));
-        localStatement.getExprList().addExpr(forStatement.getExpr1());
-        localStatement.getExprList().addExpr(forStatement.getExpr2());
-        localStatement.getExprList().addExpr(forStatement.getExpr3());
-        return localStatement;
-    }
 
     private void forNum(ForStatement forStatement) {
         if (forStatement.getExpr3() == null) {
@@ -586,47 +573,54 @@ public class InstructionGenerator {
             Expr expr = new IntExpr(1L);
             forStatement.setExpr3(expr);
         }
-
         fi.enterScope(true);
-        //定义循环用的变量
-        LocalStatement localStatement = forNum2LocalStatement(forStatement);
+        //expr1,expr2,expr3只在一开始执行一次，将其存放在三个自定义变量中
+        LocalStatement localStatement = LocalStatement.builder()
+                .addLocalVar("(for index)",forStatement.getExpr1())
+                .addLocalVar("(for limit)",forStatement.getExpr2())
+                .addLocalVar("(for step)",forStatement.getExpr3()).build();
         generate(localStatement);
         fi.addLocVar(forStatement.getName1().getName(), fi.getPc() + 2);
-
+        //一共有四个变量，OP_FORPREP准备好计数器，并检查能否执行循环，否则就跳出循环
         int a = fi.getUsedRegs() - 4;
         int pcForPrep = Lcodes.emitCodeABx(fi, OpCode.OP_FORPREP, a, 0);
         forStatement.getBlock().generate(this);
         fi.closeOpnUpval();
-
+        //OP_FORLOOP,更新计数器,如果循环继续，跳到循环体
         int pcForLoop = Lcodes.emitCodeABx(fi, OpCode.OP_FORLOOP, a, 0);
 
         Instruction prep = fi.getInstruction(pcForPrep);
         Instruction loop = fi.getInstruction(pcForLoop);
-        Instructions.setArgsBx(prep, pcForLoop - pcForPrep - 1);
-        Instructions.setArgsBx(loop, pcForPrep - pcForLoop);
-
+        //向下跳出循环
+        Instructions.setArgBx(prep, pcForLoop - pcForPrep - 1);
+        //向上跳到循环体
+        Instructions.setArgBx(loop, pcForLoop - pcForPrep );
         fi.exitScope(fi.getPc());
 
         fi.fixEndPC("(for index)", 1);
         fi.fixEndPC("(for limit)", 1);
         fi.fixEndPC("(for step)", 1);
-
     }
 
-    private LocalStatement forIn2Localstatement(ForStatement forStatement) {
-        LocalStatement localStatement = new LocalStatement();
-        NameExpr name1 = new NameExpr("(for generator)");
-        NameExpr name2 = new NameExpr("(for state)");
-        NameExpr name3 = new NameExpr("(for control)");
-        localStatement.getNameExprList().addAll(Arrays.asList(name1, name2, name3));
-        localStatement.setExprList(forStatement.getExprList());
-        return localStatement;
-    }
 
+    /**
+     * for var1,var2... in exprlist do block end
+     *
+     * exprlist 会产生
+     *   iterator function ,state,control variable的 初始值, a closing value（这里不处理,因此只考虑三个变量即可)
+     *   iterator function调用时使用 state,control variable作为参数，返回值会赋值给
+     *   var1,var2...,  如果control variable 为nil了，循环终止
+     *
+     */
     private void forIn(ForStatement forStatement) {
         fi.enterScope(true);
-        LocalStatement localStatement = forIn2Localstatement(forStatement);
+        LocalStatement localStatement = LocalStatement.builder()
+                .addVarName("(for generator)")
+                .addVarName("(for state)")
+                .addVarName("(for control)")
+                .setExprList(forStatement.getExprList()).build();
         localStatement.generate(this);
+
         for (NameExpr expr : forStatement.getNameExprList()) {
             fi.addLocVar(expr.getName(), fi.getPc() + 2);
         }
@@ -635,10 +629,10 @@ public class InstructionGenerator {
         fi.closeOpnUpval();
         Instruction tfcIns = fi.getInstruction(pcJmpToTFC);
         Instructions.setArgsJ(tfcIns, fi.getPc() - pcJmpToTFC);
-
         int rGenerator = fi.slotOfLocVar("(for generator)");
-        Lcodes.emitCodeABC(fi, OpCode.OP_TFORCALL, rGenerator, forStatement.getNameExprList().size(), 0);
-        Lcodes.emitCodeABx(fi, OpCode.OP_TFORLOOP, rGenerator + 2, pcJmpToTFC - fi.getPc() - 1);
+        Lcodes.emitCodeABC(fi, OpCode.OP_TFORCALL, rGenerator, 0, forStatement.getNameExprList().size());
+        //跳到循环开始的部分
+        Lcodes.emitCodeABx(fi, OpCode.OP_TFORLOOP, rGenerator + 2, fi.getPc() +1 - pcJmpToTFC );
         fi.exitScope(fi.getPc() - 1);
         fi.fixEndPC("(for generator)", 2);
         fi.fixEndPC("(for state)", 2);

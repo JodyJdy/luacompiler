@@ -2,8 +2,6 @@ package com.jdy.lua.lparser2.statement;
 
 import com.jdy.lua.lcodes2.InstructionGenerator;
 import com.jdy.lua.lparser2.expr.Expr;
-import com.jdy.lua.lparser2.expr.ExprList;
-import com.jdy.lua.lparser2.expr.SuffixedExp;
 import lombok.Data;
 
 import java.util.ArrayList;
@@ -13,7 +11,7 @@ import java.util.List;
 public class ExprStatement extends Statement{
 
     private List<Expr> lefts = new ArrayList<>();
-    private ExprList right;
+    private List<Expr> rights;
     private Expr func;
 
 

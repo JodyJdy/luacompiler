@@ -112,6 +112,9 @@ public enum OpCode {
                         if not to run then pc+=Bx+1;			*/
 
     OP_TFORPREP(75),/**	A Bx	create upvalue for R[A + 3]; pc+=Bx		*/
+    /**
+     * 在实现虚拟机时，如果不考虑 closing value， R[A+4]应该调整为R[A+3]
+     */
     OP_TFORCALL(76),/**	A C	R[A+4], ... ,R[A+3+C] := R[A](R[A+1], R[A+2]);	*/
     OP_TFORLOOP(77),/**	A Bx	if R[A+2] ~= nil then { R[A]=R[A+2]; pc -= Bx }	*/
 

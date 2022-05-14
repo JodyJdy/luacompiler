@@ -2,7 +2,6 @@ package com.jdy.lua.lparser2.statement;
 
 import com.jdy.lua.lcodes2.InstructionGenerator;
 import com.jdy.lua.lparser2.expr.Expr;
-import com.jdy.lua.lparser2.expr.ExprList;
 import com.jdy.lua.lparser2.expr.NameExpr;
 import lombok.Getter;
 import lombok.Setter;
@@ -19,7 +18,7 @@ public class ForStatement extends Statement{
     private Expr expr1;
     private Expr expr2;
     private Expr expr3;
-    private ExprList exprList;
+    private List<Expr> exprList;
 
     private BlockStatement block;
 
@@ -31,10 +30,11 @@ public class ForStatement extends Statement{
         this.block = block;
         isGeneric = false;
     }
-    public ForStatement(List<NameExpr> nameExprList,ExprList exprList,BlockStatement block){
+    public ForStatement(List<NameExpr> nameExprList,List<Expr> exprList,BlockStatement block){
         this.nameExprList = nameExprList;
         this.exprList = exprList;
         this.block = block;
+        isGeneric = true;
 
     }
 
