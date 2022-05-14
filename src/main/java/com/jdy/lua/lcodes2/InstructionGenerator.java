@@ -6,7 +6,6 @@ import com.jdy.lua.lopcodes.Instructions;
 import com.jdy.lua.lopcodes.OpCode;
 import com.jdy.lua.lparser2.ArgAndKind;
 import com.jdy.lua.lparser2.FunctionInfo;
-import com.jdy.lua.lparser2.TableAccess;
 import com.jdy.lua.lparser2.VirtualLabel;
 import com.jdy.lua.lparser2.expr.*;
 import com.jdy.lua.lparser2.statement.*;
@@ -16,8 +15,8 @@ import java.util.List;
 
 import static com.jdy.lua.lcodes.BinOpr.*;
 import static com.jdy.lua.lopcodes.OpCode.*;
-import static com.jdy.lua.lparser2.expr.SuffixedExp.SuffixedContent;
 
+@SuppressWarnings("all")
 public class InstructionGenerator {
 
     private FunctionInfo fi;
@@ -96,6 +95,9 @@ public class InstructionGenerator {
         statList.generate(this);
     }
 
+    /**
+     * local 函数定义
+     */
     public void generate(LocalFuncStat funcStat) {
         int r = fi.addLocVar(funcStat.getStr(), fi.getPc() + 2);
         funcStat.getFunctionBody().generate(this, createDesc(r, 0));
@@ -193,7 +195,12 @@ public class InstructionGenerator {
         fi.exitScope(fi.getPc() + 1);
         falseLabel.fixJump2Pc(fi.getPc() + 1);
     }
-
+    public static boolean isTableAccess(Expr expr){
+        return expr instanceof TableStrAccess || expr instanceof TableExprAccess;
+    }
+    public static boolean isCall(Expr expr){
+       return expr instanceof FuncCall || expr instanceof TableMethodCall;
+    }
     public void generate(ReturnStatement returnStatement) {
         if (returnStatement.getExprList() == null) {
             Lcodes.emitCodeABC(fi, OpCode.OP_RETURN, 0, 1, 0);
@@ -202,27 +209,20 @@ public class InstructionGenerator {
         List<Expr> exprs = returnStatement.getExprList();
         int nExprs = exprs.size();
         if (nExprs == 1) {
-            if (exprs.get(0) instanceof NameExpr) {
-                NameExpr nameExp = (NameExpr) exprs.get(0);
-                int r = fi.slotOfLocVar(nameExp.getName());
-                if (r >= 0) {
-                    Lcodes.emitCodeABC(fi, OpCode.OP_RETURN, r, 2, 0);
-                    return;
-                }
+            if (isCall(exprs.get(0))) {
+                int r = fi.allocReg();
+                ExprDesc exprDesc = new ExprDesc();
+                exprDesc.setReg(r);
+                generate(exprs.get(0),exprDesc);
+                Lcodes.emitCodeABC(fi, OpCode.OP_TAILCALL, r,exprDesc.getInfo() + 1, 0);
+                fi.freeReg();
+                Lcodes.emitCodeABC(fi, OpCode.OP_RETURN, r, 0, 0);
+                return;
             }
-            if (exprs.get(0) instanceof SuffixedExp) {
-                //有可能是函数调用
-                SuffixedExp sf = (SuffixedExp) exprs.get(0);
-                SuffixedContent content = sf.getSuffixedContent();
-                if (content != null) {
-                    int r = fi.allocReg();
-                    int nArgs = prepareFuncCall(sf.getPrimaryExr(), content.getStringExpr(), content.getFuncArgs(), r);
-                    Lcodes.emitCodeABC(fi, OpCode.OP_TAILCALL, r, nArgs + 1, 0);
-                    fi.freeReg();
-                    Lcodes.emitCodeABC(fi, OpCode.OP_RETURN, r, 0, 0);
-                    return;
-                }
-            }
+            int r = exp2ArgAndKind(fi,exprs.get(0),ArgAndKind.ARG_REG).getArg();
+            fi.freeReg();
+            Lcodes.emitCodeABC(fi, OP_RETURN1,r,0,0);
+            return;
         }
 
         boolean multRet = hasMultiRet(exprs.get(exprs.size() - 1));
@@ -245,7 +245,7 @@ public class InstructionGenerator {
         }
     }
 
-    public void generate(BreakStatement breakStatement) {
+    public void generate(BreakStatement b) {
         int pc = Lcodes.emitCodeJump(fi, 0, 0);
         fi.addBreakJmp(pc);
     }
@@ -306,12 +306,6 @@ public class InstructionGenerator {
         }
     }
 
-    private SuffixedExp simplify(SuffixedExp suffixedExp) {
-        while (suffixedExp.getSuffixedContent() == null && suffixedExp.getPrimaryExr() instanceof SuffixedExp) {
-            suffixedExp = (SuffixedExp) suffixedExp.getPrimaryExr();
-        }
-        return suffixedExp;
-    }
 
     public void generate(ExprStatement exprStatement) {
         //函数调用
@@ -323,7 +317,7 @@ public class InstructionGenerator {
         }
         List<Expr> vars = exprStatement.getLefts();
         List<Expr> exprs = exprStatement.getRights();
-        //赋值 a,b,c=1,2,3
+
         removeTailNils(exprStatement.getRights());
         int nVars = exprStatement.getLefts().size();
         int nExps = exprs.size();
@@ -335,18 +329,13 @@ public class InstructionGenerator {
 
         for (int i = 0; i < vars.size(); i++) {
             Expr expr = vars.get(i);
-            SuffixedExp suffixedExp;
-            TableAccess tableAccess = null;
-            if (expr instanceof SuffixedExp) {
-                suffixedExp = simplify((SuffixedExp) expr);
-                tableAccess = suffixedExp.tryTrans2TableAccess();
-            }
-            if (tableAccess != null) {
-                //存放 table
+            if (isTableAccess(expr)) {
                 tableRegs[i] = fi.allocReg();
-                tableAccess.getTable().generate(this, createDesc(tableRegs[i], 1));
                 keyRegs[i] = fi.allocReg();
-                tableAccess.getKey().generate(this, createDesc(keyRegs[i], 1));
+                ExprDesc desc = new ExprDesc();
+                desc.setTableReg(tableRegs[i]);
+                desc.setTableKey(keyRegs[i]);
+                tableAccessLeft(expr,desc);
             } else if (expr instanceof NameExpr) {
                 NameExpr nameExpr = (NameExpr) expr;
                 String name = nameExpr.getName();
@@ -361,12 +350,12 @@ public class InstructionGenerator {
                 System.err.println("错误的ExprStatement");
             }
         }
-        //实现存储好变量值的寄存器，后面才会 alloc
+        //事先存储好变量值的寄存器，后面才会 alloc
         for (int i = 0; i < vars.size(); i++) {
             varRegs[i] = fi.getUsedRegs() + i;
         }
         if (nExps >= nVars) {
-            for (int i = 0; i < exprs.size(); i++) {
+            for (int i = 0; i <nVars; i++) {
                 Expr exp = exprs.get(i);
                 int a = fi.allocReg();
                 if (i >= nVars && i == nExps - 1 && hasMultiRet(exp)) {
@@ -382,13 +371,16 @@ public class InstructionGenerator {
                 int a = fi.allocReg();
                 if (i == nExps - 1 && hasMultiRet(exp)) {
                     multRet = true;
+                    //计算出表达式返回值的数量
                     int n = nVars - nExps + 1;
                     exp.generate(this, createDesc(a, n));
+                    //接受返回值
                     fi.allocReg(n - 1);
                 } else {
                     exp.generate(this, createDesc(a, 1));
                 }
             }
+            //置空
             if (!multRet) {
                 int n = nVars - nExps;
                 int a = fi.allocReg(n);
@@ -398,13 +390,7 @@ public class InstructionGenerator {
         for (int i = 0; i < nVars; i++) {
 
             Expr expr = vars.get(i);
-            SuffixedExp suffixedExp;
-            TableAccess tableAccess = null;
-            if (expr instanceof SuffixedExp) {
-                suffixedExp = simplify((SuffixedExp) expr);
-                tableAccess = suffixedExp.tryTrans2TableAccess();
-            }
-            if (tableAccess != null) {
+            if (isTableAccess(expr)) {
                 Lcodes.emitCodeABC(fi, OpCode.OP_SETTABLE, tableRegs[i], keyRegs[i], varRegs[i]);
                 continue;
             }
@@ -441,10 +427,11 @@ public class InstructionGenerator {
             }
 
         }
+        //赋值表达式没有定义变量，将寄存器还原
         fi.setUsedRegs(oldRegs);
     }
 
-    public void generate(FunctionBody functionBody, int a, int n) {
+    public void generate(FunctionBody functionBody, ExprDesc desc) {
         FunctionInfo subFunc = new FunctionInfo();
         InstructionGenerator instructionGenerator = new InstructionGenerator(subFunc);
         fi.addFunc(subFunc);
@@ -458,7 +445,7 @@ public class InstructionGenerator {
         subFunc.exitScope(subFunc.getPc() + 2);
         Lcodes.emitCodeABC(subFunc, OpCode.OP_RETURN, 0, 1, 0);
         int bx = fi.getSubFuncs().size() - 1;
-        Lcodes.emitCodeABx(fi, OpCode.OP_CLOSURE, a, bx);
+        Lcodes.emitCodeABx(fi, OpCode.OP_CLOSURE,desc.getReg(), bx);
     }
 
     public void generate(LocalStatement statement) {
@@ -469,22 +456,12 @@ public class InstructionGenerator {
         int nExps = exprList.size();
         int nNames = varNames.size();
 
-        //表达式数量和变量数量一致
-        if (nExps == nNames) {
-            for (Expr expr : exprList) {
-                int tempReg = exp2ArgAndKind(fi, expr, ArgAndKind.ARG_REG).getArg();
+        //表达式数量和变量数量一致，依次存放到寄存器里面
+        if (nExps >= nNames) {
+            //多于变量数目的表达式忽略
+            for (int i=0;i<nNames;i++) {
+               exp2ArgAndKind(fi, exprList.get(i), ArgAndKind.ARG_REG);
             }
-        } else if (nExps > nNames) {
-            for (int i = 0; i < nExps; i++) {
-                Expr expr = exprList.get(i);
-                int tempReg = fi.allocReg();
-                if (i == nExps - 1 && hasMultiRet(expr)) {
-                    expr.generate(this, createDesc(tempReg, 0));
-                } else {
-                    expr.generate(this, createDesc(tempReg, 1));
-                }
-            }
-
         } else {
             boolean hasMulRet = false;
             for (int i = 0; i < nExps; i++) {
@@ -492,10 +469,10 @@ public class InstructionGenerator {
                 int tempReg = fi.allocReg();
                 if (i == nExps - 1 && hasMultiRet(expr)) {
                     hasMulRet = true;
-                    int tempReg2 = nNames - nExps + 1;
-                    expr.generate(this, createDesc(tempReg, tempReg2));
+                    int n = nNames - nExps + 1;
+                    expr.generate(this, createDesc(tempReg, n));
                     //为多个返回值，分配空间
-                    fi.allocReg(tempReg2 - 1);
+                    fi.allocReg(n - 1);
                 } else {
                     expr.generate(this, createDesc(tempReg, 1));
                 }
@@ -522,7 +499,7 @@ public class InstructionGenerator {
 
         boolean hasMulRet = false;
         if (nArr != 0) {
-            hasMulRet = hasMulRet || hasMultiRet(constructor.getListFields().get(0));
+            hasMulRet =  hasMultiRet(constructor.getListFields().get(0));
         }
         if (nExp != 0) {
             hasMulRet = hasMulRet || hasMultiRet(constructor.getFields().get(0));
@@ -648,41 +625,31 @@ public class InstructionGenerator {
         }
     }
 
-    public void generate(SuffixedExp suffixedExp, ExprDesc exprDesc) {
-        if (suffixedExp.getSuffixedContent() == null) {
-            suffixedExp.getPrimaryExr().generate(this, exprDesc);
-            return;
-        }
-        Expr primary = suffixedExp.getPrimaryExr();
-        SuffixedContent content = suffixedExp.getSuffixedContent();
-        //a.b
-        if (content.isHasDot()) {
-            tableAccess(primary, content.getStringExpr(), exprDesc.getReg());
-            //a[b]
-        } else if (content.getTableIndex() != null) {
-            tableAccess(primary, content.getTableIndex().getExpr(), exprDesc.getReg());
-            //a:b()
-        } else if (content.isHasColon()) {
-            methodCall(primary, content.getStringExpr(), content.getFuncArgs(), exprDesc.getReg(), exprDesc.getN());
-            //a()
-        } else if (content.getFuncArgs() != null) {
-            funcCall(primary, content.getFuncArgs(), exprDesc.getReg(), exprDesc.getN());
-        }
+    public void generate(TableStrAccess tableStrAccess,ExprDesc exprDesc){
+        tableAccess(tableStrAccess.getTable(),tableStrAccess.getKey(), exprDesc.getReg());
     }
+    public void generate(TableExprAccess tableExprAccess,ExprDesc exprDesc){
+        tableAccess(tableExprAccess.getTable(),tableExprAccess.getKey(),exprDesc.getReg());
+    }
+    public void generate(FuncCall funcCall,ExprDesc exprDesc){
+        int nArgs = prepareFuncCall(funcCall.getFunc(), null, funcCall.getArgs(),exprDesc.getReg());
+        exprDesc.setInfo(nArgs);
+        Lcodes.emitCodeABC(fi, OpCode.OP_CALL,exprDesc.getReg(), nArgs + 1, exprDesc.getN() + 1);
+    }
+    public void generate(TableMethodCall tableMethodCall,ExprDesc exprDesc){
+        int nArgs = prepareFuncCall(tableMethodCall.getTable(),tableMethodCall.getMethod(),
+                tableMethodCall.getArgs(),exprDesc.getReg());
+        exprDesc.setInfo(nArgs);
+        //b c 分别为参数数量 和 函数的返回值数量
+        Lcodes.emitCodeABC(fi, OpCode.OP_CALL, exprDesc.getReg(), nArgs + 1,exprDesc.getN() + 1);
+    }
+
 
     public static boolean hasMultiRet(Expr expr) {
         if (expr instanceof VarargExpr) {
             return true;
         }
-        //func Call
-        if (expr instanceof SuffixedExp) {
-            SuffixedExp suf = (SuffixedExp) expr;
-            if (suf.getSuffixedContent() != null && suf.getSuffixedContent().getFuncArgs() != null) {
-                return true;
-            }
-        }
-
-        return false;
+        return isCall(expr);
     }
 
     private int prepareFuncCall(Expr expr, StringExpr name, FuncArgs args, int a) {
@@ -728,22 +695,6 @@ public class InstructionGenerator {
         return nArgs;
     }
 
-    private void methodCall(Expr expr, StringExpr stringExpr, FuncArgs args, int a, int n) {
-        int nArgs = prepareFuncCall(expr, stringExpr, args, a);
-        //b c 分别为参数数量 和 函数的返回值数量
-        Lcodes.emitCodeABC(fi, OpCode.OP_CALL, a, nArgs + 1, n + 1);
-
-    }
-
-    private void funcCall(Expr exp, FuncArgs args, int a, int n) {
-        int nArgs = prepareFuncCall(exp, null, args, a);
-        Lcodes.emitCodeABC(fi, OpCode.OP_CALL, a, nArgs + 1, n + 1);
-    }
-
-    private void tableAccess(TableAccess access, int a) {
-        tableAccess(access.getTable(), access.getKey(), a);
-    }
-
     /**
      * exrp[key] =valu
      */
@@ -761,6 +712,22 @@ public class InstructionGenerator {
         fi.setUsedRegs(oldRegs);
     }
 
+    /**
+     * 当在左边出现 talbe[key]说明是赋值，
+     */
+    private void tableAccessLeft(Expr expr,ExprDesc exprDesc){
+        int table =exprDesc.getTableReg();
+        int key =  exprDesc.getTableKey();
+        if(expr instanceof TableExprAccess){
+            TableExprAccess exprAccess = (TableExprAccess)expr;
+            exprAccess.getTable().generate(this,createDesc(table,1));
+            exprAccess.getKey().generate(this,createDesc(key,1));
+        } else if(expr instanceof TableStrAccess){
+            TableStrAccess strAccess = (TableStrAccess)expr;
+            strAccess.getTable().generate(this,createDesc(table,1));
+            strAccess.getKey().generate(this,createDesc(key,1));
+        }
+    }
     /**
      * exp[key]
      */
@@ -828,6 +795,7 @@ public class InstructionGenerator {
         }
         int jmp = Lcodes.emitCodeJump(fi, 0, 0);
         exprDesc.setInfo(jmp);
+        fi.freeReg();
     }
 
     public void testOp(ExprDesc exprDesc, Expr expr) {
@@ -840,6 +808,7 @@ public class InstructionGenerator {
         int jmp = Lcodes.emitCodeJump(fi, 0, 0);
         exprDesc.setInfo(jmp);
         exprDesc.setJump(true);
+        fi.freeReg();
     }
 
     /**
@@ -1052,7 +1021,11 @@ public class InstructionGenerator {
     public ArgAndKind exp2ArgAndKind(FunctionInfo fi, Expr expr, int kind) {
         return exp2ArgAndKind(fi, expr, kind, null);
     }
-
+    public ExprDesc createDesc(int a){
+        ExprDesc exprDesc = new ExprDesc();
+        exprDesc.setReg(a);
+        return exprDesc;
+    }
     public ExprDesc createDesc(int a, int n) {
         ExprDesc exprDesc = new ExprDesc();
         exprDesc.setReg(a);

@@ -194,7 +194,6 @@ public class FunctionInfo {
      * 需要存储 相关的break
      */
     public void enterScope(boolean breakable){
-
         scopeLevel++;
         if(breakable){
             breaks.add(new ArrayList<>());
@@ -206,6 +205,10 @@ public class FunctionInfo {
      * 退出一个block 传入 endPc，用于跳转
      */
     public void exitScope(int endPc){
+        if(breaks.isEmpty()){
+            return;
+        }
+        //处理break语句（如果有的话）
         List<Integer> pendingBreakJmps = breaks.remove(breaks.size() -1);
         if(pendingBreakJmps != null){
             for(int p : pendingBreakJmps){

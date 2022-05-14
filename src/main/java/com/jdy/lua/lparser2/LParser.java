@@ -269,7 +269,7 @@ public class LParser {
         if(exprList.size() ==1 && exprList.get(0) == null){
             return new ReturnStatement();
         }
-        return new ReturnStatement(exprList(ls));
+        return new ReturnStatement(exprList);
     }
     public static BreakStatement breakStat(LexState ls,int line){
         return new BreakStatement();
@@ -490,8 +490,11 @@ public class LParser {
         luaX_Next(ls);
         return  stringExpr;
     }
+
+    /**
+     * suffixedexp -> primaryexp { '.' NAME | '[' exp ']' | ':' NAME funcargs | funcargs }
+     */
     public static Expr suffixedExp(LexState ls){
-        /* suffixedexp -> primaryexp { '.' NAME | '[' exp ']' | ':' NAME funcargs | funcargs } */
         Expr suffixedExp = primaryExpr(ls);
         if(suffixedExp == null){
             return null;
@@ -500,22 +503,22 @@ public class LParser {
         for(;;){
             switch (ls.getCurTokenEnum()){
                 case DOT:
-                    StringExpr stringExpr = fieldSel(ls);
-                    suffixedExp = new SuffixedExp(suffixedExp,new SuffixedContent(stringExpr));
+                    StringExpr key = fieldSel(ls);
+                    suffixedExp = new TableStrAccess(suffixedExp,key);
                     break;
                 case MID_LEFT: {
-                    TableIndex tableIndex = tableIndex(ls);
-                    suffixedExp = new SuffixedExp(suffixedExp,new SuffixedContent(tableIndex));
+                    Expr k = tableIndex(ls);
+                    suffixedExp = new TableExprAccess(suffixedExp,k);
                     break;
                 }
                 case COLON: {
-                    StringExpr stringExpr2 = fieldSel(ls);
+                    StringExpr method = fieldSel(ls);
                     FuncArgs funcArgs = funcArgs(ls);
-                    suffixedExp = new SuffixedExp(suffixedExp,new SuffixedContent(stringExpr2,funcArgs));
+                    suffixedExp = new TableMethodCall(suffixedExp,method,funcArgs);
                     break;
                 }
                 case SMALL_LEFT: case BIG_LEFT: case STRING:
-                    suffixedExp = new SuffixedExp(suffixedExp,new SuffixedContent(funcArgs(ls)));
+                    suffixedExp = new FuncCall(suffixedExp,funcArgs(ls));
                     break;
                 default:
                    return suffixedExp;
@@ -605,10 +608,10 @@ public class LParser {
         }
         return f;
     }
-    public static TableIndex tableIndex(LexState ls){
+    public static Expr tableIndex(LexState ls){
         luaX_Next(ls);
         Expr e = expr(ls);
         luaX_Next(ls);
-        return new TableIndex(e);
+        return e;
     }
 }

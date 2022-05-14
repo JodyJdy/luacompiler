@@ -1,9 +1,11 @@
 
-local a =1
+local function a(x)
 
-for num=1,100,1
-do
 
-a=num
+ return 1
 
 end
+
+
+a "hello"
+
