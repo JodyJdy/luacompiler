@@ -1,9 +1,9 @@
 
 local a =1
 
-for a,b,c in 1
+for num=1,100,1
 do
 
-a=1
+a=num
 
 end

@@ -783,20 +783,20 @@ public class InstructionGenerator {
 
     }
 
-    public void generate(NameExpr expr, int a, int n) {
+    public void generate(NameExpr expr,ExprDesc desc) {
         int r = fi.slotOfLocVar(expr.getName());
         if (r >= 0) {
-            Lcodes.emitCodeABC(fi, OpCode.OP_MOVE, a, r, 0);
+            Lcodes.emitCodeABC(fi, OpCode.OP_MOVE, desc.getReg(), r, 0);
             return;
         }
         r = fi.indexOfUpval(expr.getName());
         if (r >= 0) {
-            Lcodes.emitCodeABC(fi, OpCode.OP_GETUPVAL, a, r, 0);
+            Lcodes.emitCodeABC(fi, OpCode.OP_GETUPVAL,desc.getReg(), r, 0);
             return;
         }
         //env['name'],env存放全局的东西
         NameExpr expr1 = new NameExpr("_ENV");
-        tableAccess(expr1, expr, a);
+        tableAccess(expr1, expr,desc.getReg());
     }
 
     public void generate(NotExpr notExpr,ExprDesc exprDesc){
