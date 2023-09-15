@@ -1,5 +1,7 @@
 import com.jdy.lua.antlr4.LuaLexer;
 import com.jdy.lua.antlr4.LuaParser;
+import com.jdy.lua.executor.Block;
+import com.jdy.lua.executor.Function;
 import com.jdy.lua.parser.Parser;
 import com.jdy.lua.statement.Statement;
 import org.antlr.v4.runtime.BufferedTokenStream;
@@ -12,9 +14,9 @@ public class Test {
         FileInputStream fils = new FileInputStream("src/test/b.lua");
         LuaParser luaParser = new LuaParser(new BufferedTokenStream(new LuaLexer(CharStreams.fromStream(fils))));
 
-
         LuaParser.ChunkContext context = luaParser.chunk();
         //获取BlockStatement
+        Block block  = new Block();
         Statement result = Parser.parseBlock(context.block());
         System.out.println();
     }

@@ -1,6 +1,7 @@
 package com.jdy.lua.executor;
 
 import com.jdy.lua.data.DataTypeEnum;
+import com.jdy.lua.data.NilValue;
 import com.jdy.lua.data.Value;
 import com.jdy.lua.statement.Expr;
 import com.jdy.lua.statement.Statement;
@@ -24,6 +25,10 @@ public class Function extends Block implements Value {
      * 入参的值
      */
     private final Map<String, Variable> args = new HashMap<>();
+    /**
+     * 返回值
+     */
+    private Value returnValue = NilValue.NIL;
 
     public Function(List<Value> args) {
         Statement.FunctionStatement fs;
