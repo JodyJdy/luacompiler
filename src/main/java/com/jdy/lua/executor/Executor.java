@@ -165,6 +165,23 @@ public class Executor {
     private Function function;
 
 
+    /**
+     * 如果跳转的位置是当前label则，继续执行，返回执行的下标
+     */
+    private  int checkStatementIndex(){
+        //如果 发生了goto，且跳转的位置是当前block，则继续
+        if (gotoLabel != null) {
+            LabelLocation location = labelLocation.get(gotoLabel);
+            //应该在当前block执行
+            if (location.getBlockLevel() == blockLevel) {
+                //重置 gotoLabel 标记
+                gotoLabel = null;
+                return location.getStatementIndex();
+            }
+        }
+        return  -1;
+    }
+
     public void executeBlock(Block block) {
         List<Statement> statementList = block.getBlockStatement().getStatements();
         for (int i = 0; i < statementList.size(); i++) {
@@ -178,18 +195,7 @@ public class Executor {
             }
             //block是否应该结束
             if (blockShouldStop()) {
-                //如果 发生了goto，且跳转的位置是当前block，则继续
-                if (gotoLabel != null) {
-                    LabelLocation location = labelLocation.get(gotoLabel);
-                    //应该在当前block执行
-                    if (location.getBlockLevel() == blockLevel) {
-                        i = location.getStatementIndex();
-                        //重置 gotoLabel 标记
-                        gotoLabel = null;
-                    } else {
-                        //结束block的执行
-                        break;
-                    }
+                if ((i = checkStatementIndex()) >= 0){
                 } else {
                     break;
                 }
@@ -230,9 +236,18 @@ public class Executor {
     public void executeStatement(LocalDefineStatement local) {
         List<String> vars = local.getVarNames();
         List<Expr> exprs = local.getExprs();
+        List<Value> valueList = new ArrayList<>();
+        for (Expr expr : exprs) {
+            Value val = expr.visitExpr(this);
+            if (val instanceof MultiValue multiValue) {
+                valueList.addAll(multiValue.getValueList());
+            } else {
+                valueList.add(val);
+            }
+        }
         for (int i = 0; i < vars.size(); i++) {
-            if (i < exprs.size()) {
-                currentBlock.addVar(vars.get(i), exprs.get(i).visitExpr(this));
+            if (i < valueList.size()) {
+                currentBlock.addVar(vars.get(i), valueList.get(i));
             } else {
                 currentBlock.addVar(vars.get(i), NilValue.NIL);
             }
@@ -256,8 +271,8 @@ public class Executor {
         assign.getRight().forEach(e -> {
             Value value = e.visitExpr(this);
             //多返回值，进行展开
-            if (value instanceof MultiValue) {
-                initValues.addAll(((MultiValue) value).getValueList());
+            if (value instanceof MultiValue multiValue) {
+                initValues.addAll(multiValue.getValueList());
             } else {
                 initValues.add(e.visitExpr(this));
             }
@@ -265,25 +280,23 @@ public class Executor {
         for (int i = 0; i < exprs.size(); i++) {
             Expr expr = exprs.get(i);
             Value value = i < initValues.size() ? initValues.get(i) : NIL;
-            if (expr instanceof NameExpr) {
-                Variable variable = currentBlock.searchVariable(((NameExpr) expr).getName());
+            if (expr instanceof NameExpr nameExpr) {
+                Variable variable = currentBlock.searchVariable(nameExpr.getName());
                 //新增全局变量
                 if (variable == null) {
-                    currentBlock.addGlobalVar(((NameExpr) expr).getName(), value);
+                    currentBlock.addGlobalVar(nameExpr.getName(), value);
                 } else {
                     variable.setValue(value);
                 }
-            } else if (expr instanceof DotExpr) {
-                Value left = ((DotExpr) expr).getLeft().visitExpr(this);
-                checkTable(left);
-                checkName(((DotExpr) expr).getRight());
-                NameExpr nameExpr = (NameExpr) ((DotExpr) expr).getRight();
-                ((Table) left).add(nameExpr.getName(), value);
-            } else if (expr instanceof IndexExpr) {
-                Value left = ((IndexExpr) expr).getLeft().visitExpr(this);
-                checkTable(left);
-                Value right = ((IndexExpr) expr).getRight().visitExpr(this);
-                ((Table) left).add(right, value);
+            } else if (expr instanceof DotExpr dotExpr) {
+                Table  left = checkTable(dotExpr.getLeft().visitExpr(this));
+                checkName(dotExpr.getRight());
+                NameExpr nameExpr = (NameExpr) dotExpr.getRight();
+                left.add(nameExpr.getName(), value);
+            } else if (expr instanceof IndexExpr indexExpr) {
+                Table left = checkTable((indexExpr.getLeft()).visitExpr(this));
+                Value right = indexExpr.getRight().visitExpr(this);
+                left.add(right, value);
             } else {
                 throw new RuntimeException("不支持的赋值类型");
             }
@@ -436,12 +449,10 @@ public class Executor {
         FuncType funcType = statement.getFuncName();
         if (funcType instanceof BasicFuncType) {
             currentBlock.addGlobalVar(((BasicFuncType) funcType).getFuncName(), new com.jdy.lua.data.Function(currentBlock, statement.getFuncBody()));
-        } else if (funcType instanceof TableMethod) {
-            TableMethod method = (TableMethod) funcType;
+        } else if (funcType instanceof TableMethod method) {
             Table table = resolveTable(method.getTableNames());
             table.add(method.getMethodName(), new com.jdy.lua.data.Function(currentBlock, statement.getFuncBody()));
-        } else if (funcType instanceof TableExtendMethod) {
-            TableExtendMethod method = (TableExtendMethod) funcType;
+        } else if (funcType instanceof TableExtendMethod method) {
             Table table = resolveTable(method.getFatherTableNames());
             table.add(method.getMethodName(), new com.jdy.lua.data.Function(currentBlock, statement.getFuncBody(), true));
         }
@@ -501,8 +512,8 @@ public class Executor {
     public Value executeExpr(CatExpr expr) {
         Value left = expr.getLeft().visitExpr(this);
         Value right = expr.getRight().visitExpr(this);
-        if (left instanceof StringValue && right instanceof StringValue) {
-            return new StringValue(((StringValue) left).getVal() + ((StringValue) right).getVal());
+        if (left instanceof StringValue leftVal && right instanceof StringValue rightVal) {
+            return new StringValue(leftVal.getVal() + rightVal.getVal());
         }
         return new StringValue("");
     }
@@ -512,61 +523,50 @@ public class Executor {
         float l = left instanceof NumberValue ? ((NumberValue) left).getF() : 0;
         Value right = expr.getRight().visitExpr(this);
         float r = right instanceof NumberValue ? ((NumberValue) right).getF() : 0;
-        switch (expr.getOp()) {
-            case "+":
-                return new NumberValue(l + r);
-            case "-":
-                return new NumberValue(l - r);
-            case "*":
-                return new NumberValue(l * r);
-            case "/":
-                return new NumberValue(l / r);
-            case "%":
-                return new NumberValue(l % r);
-            case "//":
-                return new NumberValue(((int) l) % ((int) r));
-            case "^":
-                return new NumberValue((float) Math.pow(l, r));
-            case "&":
-                return new NumberValue(((int) l) & ((int) r));
-            case "|":
-                return new NumberValue(((int) l) | ((int) r));
-            case "<<":
-                return new NumberValue(((int) l) << ((int) r));
-            case ">>":
-                return new NumberValue(((int) l) >> ((int) r));
-            case "..":
-                return new StringValue((StringValue) left, (StringValue) right);
-        }
-        return NIL;
+        return switch (expr.getOp()) {
+            case "+" -> new NumberValue(l + r);
+            case "-" -> new NumberValue(l - r);
+            case "*" -> new NumberValue(l * r);
+            case "/" -> new NumberValue(l / r);
+            case "%" -> new NumberValue(l % r);
+            case "//" -> new NumberValue(((int) l) % ((int) r));
+            case "^" -> new NumberValue((float) Math.pow(l, r));
+            case "&" -> new NumberValue(((int) l) & ((int) r));
+            case "|" -> new NumberValue(((int) l) | ((int) r));
+            case "<<" -> new NumberValue(((int) l) << ((int) r));
+            case ">>" -> new NumberValue(((int) l) >> ((int) r));
+            case ".." -> new StringValue((StringValue) left, (StringValue) right);
+            default -> NIL;
+        };
     }
 
     public Value executeExpr(UnaryExpr expr) {
         Value v = expr.getExpr().visitExpr(this);
         switch (expr.getOp()) {
-            case "#":
+            case "#" -> {
                 if (v instanceof StringValue) {
                     int len = ((StringValue) v).getVal().length();
                     return new NumberValue(len);
                 }
-                break;
-            case "not":
+            }
+            case "not" -> {
                 if (v == TRUE) {
                     return FALSE;
                 }
                 return TRUE;
-            case "-":
+            }
+            case "-" -> {
                 if (v instanceof NumberValue) {
                     float f = -1 * ((NumberValue) v).getF();
                     return new NumberValue(f);
                 }
-                break;
-            case "~":
+            }
+            case "~" -> {
                 if (v instanceof NumberValue) {
                     int f = ((NumberValue) v).getF().intValue();
                     return new NumberValue(~f);
                 }
-                break;
+            }
         }
         return NilValue.NIL;
     }
@@ -576,21 +576,15 @@ public class Executor {
         NumberValue right = (NumberValue) expr.getRight().visitExpr(this);
         Float l = left.getF();
         Float r = right.getF();
-        switch (expr.getOp()) {
-            case "<":
-                return l < r ? TRUE : FALSE;
-            case ">":
-                return l > r ? TRUE : FALSE;
-            case "<=":
-                return l <= r ? TRUE : FALSE;
-            case ">=":
-                return l >= r ? TRUE : FALSE;
-            case "~=":
-                return !Objects.equals(l, r) ? TRUE : FALSE;
-            case "==":
-                return Objects.equals(l, r) ? TRUE : FALSE;
-        }
-        return FALSE;
+        return switch (expr.getOp()) {
+            case "<" -> l < r ? TRUE : FALSE;
+            case ">" -> l > r ? TRUE : FALSE;
+            case "<=" -> l <= r ? TRUE : FALSE;
+            case ">=" -> l >= r ? TRUE : FALSE;
+            case "~=" -> !Objects.equals(l, r) ? TRUE : FALSE;
+            case "==" -> Objects.equals(l, r) ? TRUE : FALSE;
+            default -> FALSE;
+        };
     }
 
     public Value executeStatement(FuncCallExpr stat) {
@@ -603,11 +597,11 @@ public class Executor {
         final List<Value> initArgs = new ArrayList<>();
         //一共两种形式  a.b() a:b()
         Expr funcExpr = expr.getFunc();
-        if (funcExpr instanceof ColonExpr) {
+        if (funcExpr instanceof ColonExpr colonExpr) {
             //取table，作为self参数
-            Table table = checkTable(((ColonExpr) funcExpr).getLeft().visitExpr(this));
+            Table table = checkTable(colonExpr.getLeft().visitExpr(this));
             initArgs.add(table);
-            function = checkFunc(table.get(((ColonExpr) funcExpr).getName()));
+            function = checkFunc(table.get(colonExpr.getName()));
         } else{
             function = checkFunc( expr.getFunc().visitExpr(this));
         }
@@ -629,8 +623,8 @@ public class Executor {
         expr.getExprExprMap().forEach((k, v) -> {
             Value key;
             //key是名称
-            if (k instanceof NameExpr) {
-                key = new StringValue(((NameExpr) k).getName());
+            if (k instanceof NameExpr nameExpr) {
+                key = new StringValue(nameExpr.getName());
             } else {
                 //key是表达式
                 key = k.visitExpr(this);
@@ -648,18 +642,6 @@ public class Executor {
         return new MultiValue(valueList);
     }
 
-    public Value executeExpr(VarExpr expr) {
-        if (expr.getSuffix() == null) {
-            return expr.getPrefix().visitExpr(this);
-        }
-        Table left = (Table) expr.getPrefix().visitExpr(this);
-        if (expr.getSuffix() instanceof NameExpr) {
-            return left.get(((NameExpr) expr.getSuffix()).getName());
-        } else {
-            // suffix [ exp ]
-            return left.get(expr.getSuffix().visitExpr(this));
-        }
-    }
 
     public Value executeExpr(Expr.Function functionBody) {
         return new Function(currentBlock, functionBody);

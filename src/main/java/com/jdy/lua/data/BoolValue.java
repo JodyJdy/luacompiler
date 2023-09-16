@@ -14,11 +14,8 @@ import lombok.Data;
 public class BoolValue implements Value, Expr {
     public static BoolValue TRUE = new BoolValue(true);
     public static BoolValue FALSE = new BoolValue(false);
-    public BoolValue(Boolean b) {
+    private BoolValue(Boolean b) {
         this.b = b;
-    }
-
-    public BoolValue() {
     }
 
     Boolean b;

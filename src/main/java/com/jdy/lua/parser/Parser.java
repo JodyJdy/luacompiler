@@ -31,14 +31,14 @@ public class Parser {
             blockStatement.addStatement(parseStat(stat));
         }
         if (block.laststat() != null) {
-            LuaParser.LaststatContext laststat = block.laststat();
-            String text = laststat.getStart().getText();
+            LuaParser.LaststatContext lastStat = block.laststat();
+            String text = lastStat.getStart().getText();
             if ("break".equals(text)) {
                 blockStatement.addStatement(new Statement.BreakStatement());
             } else if ("continue".equals(text)) {
                 blockStatement.addStatement(new Statement.ContinueStatement());
             } else{
-                blockStatement.addStatement(new Statement.ReturnStatement(parseExprList(laststat.explist())));
+                blockStatement.addStatement(new Statement.ReturnStatement(parseExprList(lastStat.explist())));
             }
         }
         return blockStatement;
@@ -146,19 +146,12 @@ public class Parser {
             numberForStatement.setBlockStatement((Statement.BlockStatement) parseBlock(forStat.block(0)));
             return numberForStatement;
         }
+        // 泛型for循环
         Statement.GenericForStatement genericForStatement = new Statement.GenericForStatement();
         genericForStatement.setVars(parseNameList(forStat.namelist()));
         genericForStatement.setExpList(parseExprList(forStat.explist()));
         genericForStatement.setBlockStatement((Statement.BlockStatement) parseBlock(forStat.block(0)));
         return genericForStatement;
-    }
-
-    public static List<Expr> parseExprList(List<LuaParser.ExpContext> exps) {
-        List<Expr> exprs = new ArrayList<>();
-        exps.forEach(e->
-                exprs.add(parseExpr(e))
-        );
-        return exprs;
     }
 
     public static List<Expr> parseExprList(LuaParser.ExplistContext exps) {
@@ -242,9 +235,7 @@ public class Parser {
         LuaParser.VarlistContext varlist = stat.varlist();
         List<Expr> exprs = parseExprList(stat.explist());
         List<Expr> left = new ArrayList<>();
-        varlist.var().forEach(var->{
-            left.add(parseVar(var));
-        });
+        varlist.var().forEach(var-> left.add(parseVar(var)));
         return new Statement.AssignStatement(left, exprs);
     }
 
@@ -372,7 +363,7 @@ public class Parser {
                 return BoolValue.FALSE;
             }
             if ("...".equals(text)) {
-                return new Expr.MultiArg();
+                return Expr.MultiArg.MULTI_ARG;
             }
         }
         if (exp.string() != null) {

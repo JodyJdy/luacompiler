@@ -21,7 +21,7 @@ public class Block {
     private Statement.BlockStatement blockStatement;
     /**
      *
-     * 父级 Block,如果是函数的话， parent可能是另一个函数
+     * 父级 Block
      */
     protected Block parent;
     /**
@@ -37,9 +37,6 @@ public class Block {
 
     public Block(Statement.BlockStatement blockStatement) {
         this.blockStatement = blockStatement;
-    }
-    public Block() {
-
     }
     public Block(Block parent) {
         this.parent = parent;

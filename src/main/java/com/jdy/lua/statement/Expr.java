@@ -293,29 +293,6 @@ public interface Expr  {
         private List<Expr> exprs;
     }
     @Data
-    class VarExpr implements Expr{
-        Expr prefix;
-        /**
-         * 可以为空
-         */
-        Expr suffix;
-
-
-        public VarExpr(Expr prefix) {
-            this.prefix = prefix;
-        }
-
-        public VarExpr(Expr prefix, Expr suffix) {
-            this.prefix = prefix;
-            this.suffix = suffix;
-        }
-        @Override
-        public Value visitExpr(Executor vistor) {
-            return vistor.executeExpr(this);
-        }
-
-    }
-    @Data
     class NameExpr implements Expr{
         public NameExpr(String name) {
             this.name = name;
@@ -338,9 +315,15 @@ public interface Expr  {
         }
 
     }
+
     @Data
-    class MultiArg implements Expr{
+    class MultiArg implements Expr {
+        public static MultiArg MULTI_ARG = new MultiArg();
+        private MultiArg(){
+
+        }
         @Override
+
         public Value visitExpr(Executor vistor) {
             return vistor.executeExpr(this);
         }

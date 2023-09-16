@@ -1,10 +1,12 @@
 
-local x = 1
+function Test()
 
-::label::
-
-print(x)
-if x < 10 then
-    x=x+1
-    goto label
+    return 1,2,3
 end
+
+
+
+local x,y,z = Test()
+print(x)
+print(y)
+print(z)
