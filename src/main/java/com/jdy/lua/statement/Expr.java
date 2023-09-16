@@ -261,22 +261,22 @@ public interface Expr  {
     }
 
     @Data
-    class FunctionBody implements Expr{
+    class Function implements Expr{
         /**
          * 普通参数
          */
 
-        private List<String> names;
+        protected List<String> paramNames;
         /**
          * 结尾有 变长参数  ...这种
          */
-        private boolean hasMultiArg;
+        protected boolean hasMultiArg;
 
         private Statement.BlockStatement blockStatement;
 
         @Override
-        public Value visitExpr(Executor vistor) {
-            return vistor.executeExpr(this);
+        public Value visitExpr(Executor visitor) {
+            return visitor.executeExpr(this);
         }
 
     }

@@ -12,10 +12,6 @@ import lombok.Data;
  */
 @Data
 public class NumberValue implements Value, Expr {
-    @Override
-    public String toString() {
-        return String.valueOf(f);
-    }
 
     private Float f;
 
@@ -35,5 +31,10 @@ public class NumberValue implements Value, Expr {
     @Override
     public DataTypeEnum type() {
         return DataTypeEnum.NUMBER;
+    }
+
+    @Override
+    public String toString() {
+        return String.valueOf(f);
     }
 }

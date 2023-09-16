@@ -8,10 +8,13 @@ import lombok.Data;
 @Data
 public class LabelLocation {
     private final int blockLevel;
-    private final int statmentIndex;
+    /**
+     * label在 block中的下标
+     */
+    private final int statementIndex;
 
-    public LabelLocation(int blockLevel, int statmentIndex) {
+    public LabelLocation(int blockLevel, int statementIndex) {
         this.blockLevel = blockLevel;
-        this.statmentIndex = statmentIndex;
+        this.statementIndex = statementIndex;
     }
 }

@@ -19,6 +19,10 @@ public class NilValue implements Value, Expr {
     @Override
     public Value visitExpr(Executor vistor) {
         return this;
+    }
 
+    @Override
+    public String toString() {
+        return "nil";
     }
 }

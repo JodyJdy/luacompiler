@@ -187,7 +187,7 @@ public class Parser {
 
     public static Statement parseFunc(LuaParser.StatContext funcStat) {
         Statement.FuncType funcType = parseFuncType(funcStat.funcname());
-        Expr.FunctionBody body = parseFuncBody(funcStat.funcbody());
+        Expr.Function body = parseFuncBody(funcStat.funcbody());
         return new Statement.FunctionStatement(funcType,body);
     }
 
@@ -211,8 +211,8 @@ public class Parser {
     }
 
 
-    public static Expr.FunctionBody parseFuncBody(LuaParser.FuncbodyContext funcbodyContext){
-        Expr.FunctionBody functionBody = new Expr.FunctionBody();
+    public static Expr.Function parseFuncBody(LuaParser.FuncbodyContext funcbodyContext){
+        Expr.Function functionBody = new Expr.Function();
         if (funcbodyContext.parlist() != null) {
             List<String> names =parseNameList(funcbodyContext.parlist().namelist());
             int nodeSize = funcbodyContext.parlist().children.size();
@@ -222,10 +222,10 @@ public class Parser {
                     functionBody.setHasMultiArg(true);
                 }
             } else{
-                functionBody.setNames(names);
+                functionBody.setParamNames(names);
             }
         } else{
-            functionBody.setNames(new ArrayList<>());
+            functionBody.setParamNames(new ArrayList<>());
         }
         functionBody.setBlockStatement((Statement.BlockStatement) parseBlock(funcbodyContext.block()));
         return functionBody;
@@ -322,9 +322,22 @@ public class Parser {
             return parseTableConstructor(args.tableconstructor());
         }
         if (args.string() != null) {
-            return new StringValue(args.string().getText());
+            return parseString(args.string());
         }
         return new Expr.EmptyArg();
+    }
+
+    public static StringValue parseString(LuaParser.StringContext str) {
+        if (str.NORMALSTRING() != null) {
+            String text = str.NORMALSTRING().getText();
+            return new StringValue(StringUtil.extractNormalString(text));
+        } else if (str.CHARSTRING() != null) {
+            String text = str.CHARSTRING().getText();
+            return new StringValue(StringUtil.extractNormalString(text));
+        } else{
+            return new  StringValue(StringUtil.extractLongString(str.LONGSTRING().getText()));
+        }
+
     }
 
 
@@ -363,15 +376,7 @@ public class Parser {
             }
         }
         if (exp.string() != null) {
-            LuaParser.StringContext str = exp.string();
-            if (str.NORMALSTRING() != null) {
-                String text = str.NORMALSTRING().getText();
-                return new StringValue(StringUtil.extractNormalString(text));
-            } else if (str.CHARSTRING() != null) {
-                String text = str.CHARSTRING().getText();
-                return new StringValue(StringUtil.extractNormalString(text));
-            }
-            return new StringValue(StringUtil.extractLongString(str.LONGSTRING().getText()));
+            return parseString(exp.string());
         }
         if (exp.number() != null) {
             return new NumberValue(Float.valueOf(exp.number().getText()));

@@ -1,27 +1,48 @@
 package com.jdy.lua.executor;
 
-import com.jdy.lua.data.StringValue;
-import com.jdy.lua.data.Table;
-import com.jdy.lua.data.Value;
+import com.jdy.lua.data.*;
 import com.jdy.lua.statement.Expr;
 
 public class Checker {
 
-    public static void checkTable(Value value) {
+    public static Table checkTable(Value value) {
         if (!(value instanceof Table)) {
         throw new RuntimeException(value.toString() + " 不是表");
         }
+        return (Table) value;
     }
 
-    public static void checkName(Expr expr) {
+    public static Function checkFunc(Value val){
+        if (!(val instanceof com.jdy.lua.data.Function)) {
+            throw new RuntimeException("函数不存在");
+        }
+        return (Function) val;
+    }
+
+    public static Expr.NameExpr checkName(Expr expr) {
         if (!(expr instanceof Expr.NameExpr)) {
             throw new RuntimeException(expr.toString()+ " 不是NameExpr");
         }
+        return (Expr.NameExpr) expr;
     }
 
-    public static void checkName(Value value) {
-        if (!(value instanceof StringValue)) {
-            throw new RuntimeException(value.toString() + "不是字符串");
+    public static NumberValue checkNumber(Expr expr) {
+        if (!(expr instanceof NumberValue)) {
+            throw new RuntimeException(expr.toString()+ " 不是数字");
+        }
+        return (NumberValue) expr;
+    }
+
+    public static NumberValue checkNumber(Value value) {
+        if (!(value instanceof NumberValue)) {
+            throw new RuntimeException(value.toString()+ " 不是数字");
+        }
+        return (NumberValue) value;
+    }
+
+    public static void checkNull(Object obj, String msg) {
+        if (obj == null || obj == NilValue.NIL) {
+            throw new RuntimeException(msg);
         }
     }
 }

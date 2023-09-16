@@ -274,14 +274,13 @@ public  interface Statement {
         /**
          * 表名
          *  function a.b.c.d.xx(){
-         *
          * }
          */
-        private List<String> tableNames;
+        private final List<String> tableNames;
         /**
          * 方法名
          */
-        private String methodName;
+        private final String methodName;
 
         public TableMethod(List<String> tableNames, String methodName) {
             this.tableNames = tableNames;
@@ -331,12 +330,12 @@ public  interface Statement {
     class FunctionStatement implements Statement {
         private FuncType funcName;
 
-        public FunctionStatement(FuncType funcName, Expr.FunctionBody funcBody) {
+        public FunctionStatement(FuncType funcName, Expr.Function funcBody) {
             this.funcName = funcName;
             this.funcBody = funcBody;
         }
 
-        private Expr.FunctionBody funcBody;
+        private Expr.Function funcBody;
         @Override
         public void visitStatement(Executor visitor) {
             visitor.executeStatement(this);
@@ -349,9 +348,9 @@ public  interface Statement {
     @Data
     class LocalFunctionStatement implements Statement{
         private String funcName;
-        private Expr.FunctionBody funcBody;
+        private Expr.Function funcBody;
 
-        public LocalFunctionStatement(String funcName, Expr.FunctionBody funcBody) {
+        public LocalFunctionStatement(String funcName, Expr.Function funcBody) {
             this.funcName = funcName;
             this.funcBody = funcBody;
         }

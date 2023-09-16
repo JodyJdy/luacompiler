@@ -32,4 +32,9 @@ public class BoolValue implements Value, Expr {
     public Value visitExpr(Executor vistor) {
         return this;
     }
+
+    @Override
+    public String toString() {
+        return String.valueOf(b);
+    }
 }

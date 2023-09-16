@@ -15,4 +15,9 @@ public class MultiValue implements Value{
     public DataTypeEnum type() {
         return DataTypeEnum.MULTI;
     }
+
+    @Override
+    public String toString(){
+       return valueList.toString();
+    }
 }

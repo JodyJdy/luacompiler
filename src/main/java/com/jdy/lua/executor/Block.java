@@ -84,4 +84,8 @@ public class Block {
     public void addGlobalVar(Variable var) {
         globalVariableMap.put(var.getName(), var);
     }
+
+    public static void addNative(String name, Value value) {
+        globalVariableMap.put(name, new Variable(name,value));
+    }
 }

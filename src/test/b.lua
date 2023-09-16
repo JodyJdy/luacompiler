@@ -1,6 +1,10 @@
-a ="hello "
-b = [[ wweorisldjflksdf ]]
 
-c ='sdlf'
+local x = 1
 
-local d = a .. b .. c
+::label::
+
+print(x)
+if x < 10 then
+    x=x+1
+    goto label
+end

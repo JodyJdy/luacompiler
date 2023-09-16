@@ -5,11 +5,25 @@ import com.jdy.lua.statement.Expr;
 import lombok.Data;
 
 @Data
-public class Function implements Value{
-    private final Block parent;
-    private  final Expr.FunctionBody body;
+public class Function implements Value {
+    /**
+     * 是否是原生的
+     */
+    protected boolean isNative = false;
 
-    public Function(Block parent,Expr.FunctionBody body) {
+    private final Block parent;
+    private final Expr.Function body;
+    /*
+    是否是对象方法 a:b
+     */
+    private boolean objMethod =false;
+
+    public Function(Block parent, Expr.Function body,boolean objMethod) {
+        this(parent, body);
+        this.objMethod = objMethod;
+    }
+
+    public Function(Block parent, Expr.Function body) {
         this.parent = parent;
         this.body = body;
     }
@@ -21,6 +35,6 @@ public class Function implements Value{
 
     @Override
     public String toString() {
-        return this.body.getNames().toString();
+        return "function";
     }
 }
