@@ -1,5 +1,6 @@
 package com.jdy.lua.statement;
 
+import com.jdy.lua.executor.Executor;
 import lombok.Data;
 
 import java.util.ArrayList;
@@ -13,7 +14,13 @@ import java.util.List;
  */
 public  interface Statement {
 
+    void visitStatement(Executor visitor);
+
     class EmptyStatement implements Statement{
+        @Override
+        public void visitStatement(Executor visitor) {
+            visitor.executeStatement(this);
+        }
     }
 
 
@@ -32,6 +39,11 @@ public  interface Statement {
         }
 
         private List<Expr> exprs;
+        @Override
+        public void visitStatement(Executor visitor) {
+            visitor.executeStatement(this);
+        }
+
 
     }
     /**
@@ -39,7 +51,6 @@ public  interface Statement {
      */
     @Data
     class AssignStatement  implements Statement{
-        Boolean isLocal;
         private final List<Expr> left;
         private final List<Expr> right;
 
@@ -47,6 +58,11 @@ public  interface Statement {
             this.left = left;
             this.right = right;
         }
+        @Override
+        public void visitStatement(Executor visitor) {
+            visitor.executeStatement(this);
+        }
+
     }
 
     /**
@@ -61,6 +77,11 @@ public  interface Statement {
             this.condition = condition;
             this.blockStatement = blockStatement;
         }
+        @Override
+        public void visitStatement(Executor visitor) {
+            visitor.executeStatement(this);
+        }
+
     }
 
 
@@ -70,11 +91,14 @@ public  interface Statement {
         }
         private final List<Statement> statements = new ArrayList<>();
 
-        private Statement lastStatement;
-
         public void addStatement(Statement statement){
             statements.add(statement);
         }
+        @Override
+        public void visitStatement(Executor visitor) {
+            visitor.executeStatement(this);
+        }
+
     }
 
     /**
@@ -90,6 +114,11 @@ public  interface Statement {
         private Expr expr2;
         private Expr expr3;
         private BlockStatement blockStatement;
+        @Override
+        public void visitStatement(Executor visitor) {
+            visitor.executeStatement(this);
+        }
+
     }
 
     /**
@@ -110,6 +139,12 @@ public  interface Statement {
         private List<Expr> expList;
 
         private BlockStatement blockStatement;
+
+        @Override
+        public void visitStatement(Executor visitor) {
+            visitor.executeStatement(this);
+        }
+
     }
 
     /**
@@ -127,20 +162,37 @@ public  interface Statement {
         }
 
         private BlockStatement blockStatement;
+        @Override
+        public void visitStatement(Executor visitor) {
+            visitor.executeStatement(this);
+        }
+
     }
     @Data
     class  BreakStatement  implements Statement{
+        @Override
+        public void visitStatement(Executor visitor) {
+            visitor.executeStatement(this);
+        }
+
     }
     @Data
     class  ContinueStatement  implements Statement{
+        @Override
+        public void visitStatement(Executor visitor) {
+            visitor.executeStatement(this);
+        }
     }
     @Data
     class GotoLabelStatement implements Statement{
         public GotoLabelStatement(String labelName) {
             this.labelName = labelName;
         }
-
         private String labelName;
+        @Override
+        public void visitStatement(Executor visitor) {
+            visitor.executeStatement(this);
+        }
     }
     @Data
     class LabelStatement implements Statement{
@@ -149,7 +201,10 @@ public  interface Statement {
         }
 
         private String labelName;
-
+        @Override
+        public void visitStatement(Executor visitor) {
+            visitor.executeStatement(this);
+        }
     }
     @Data
     class  IfStatement implements Statement{
@@ -165,13 +220,24 @@ public  interface Statement {
             this.elseIfBlocks = elseIfBlocks;
             this.elseBlock = elseBlock;
         }
+        @Override
+        public void visitStatement(Executor visitor) {
+            visitor.executeStatement(this);
+        }
+
     }
+    @Data
     class ReturnStatement implements Statement {
         List<Expr> exprs;
 
         public ReturnStatement(List<Expr> exprs) {
             this.exprs = exprs;
         }
+        @Override
+        public void visitStatement(Executor visitor) {
+            visitor.executeStatement(this);
+        }
+
     }
 
     /**
@@ -271,19 +337,29 @@ public  interface Statement {
         }
 
         private Expr.FunctionBody funcBody;
+        @Override
+        public void visitStatement(Executor visitor) {
+            visitor.executeStatement(this);
+        }
+
     }
 
 
 
     @Data
-    class LocalFunctionStatement implements Statement,Expr{
+    class LocalFunctionStatement implements Statement{
         private String funcName;
-        private FunctionBody funcBody;
+        private Expr.FunctionBody funcBody;
 
-        public LocalFunctionStatement(String funcName, FunctionBody funcBody) {
+        public LocalFunctionStatement(String funcName, Expr.FunctionBody funcBody) {
             this.funcName = funcName;
             this.funcBody = funcBody;
         }
+        @Override
+        public void visitStatement(Executor visitor) {
+            visitor.executeStatement(this);
+        }
+
     }
 
 

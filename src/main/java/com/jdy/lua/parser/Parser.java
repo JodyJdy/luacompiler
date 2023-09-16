@@ -7,6 +7,7 @@ import com.jdy.lua.data.NumberValue;
 import com.jdy.lua.data.StringValue;
 import com.jdy.lua.statement.Expr;
 import com.jdy.lua.statement.Statement;
+import com.jdy.lua.util.StringUtil;
 import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
@@ -33,14 +34,13 @@ public class Parser {
             LuaParser.LaststatContext laststat = block.laststat();
             String text = laststat.getStart().getText();
             if ("break".equals(text)) {
-                blockStatement.setLastStatement(new Statement.BreakStatement());
+                blockStatement.addStatement(new Statement.BreakStatement());
             } else if ("continue".equals(text)) {
-                blockStatement.setLastStatement(new Statement.ContinueStatement());
+                blockStatement.addStatement(new Statement.ContinueStatement());
             } else{
-                blockStatement.setLastStatement(new Statement.ReturnStatement(parseExprList(laststat.explist())));
+                blockStatement.addStatement(new Statement.ReturnStatement(parseExprList(laststat.explist())));
             }
         }
-
         return blockStatement;
     }
 
@@ -216,11 +216,14 @@ public class Parser {
         if (funcbodyContext.parlist() != null) {
             List<String> names =parseNameList(funcbodyContext.parlist().namelist());
             int nodeSize = funcbodyContext.parlist().children.size();
-            TerminalNode last = (TerminalNode) funcbodyContext.parlist().children.get(nodeSize - 1);
-            if ("...".equals(last.getText())) {
-                functionBody.setHasMultiArg(true);
+            if (funcbodyContext.parlist().children.get(nodeSize - 1) instanceof TerminalNode) {
+                TerminalNode last = (TerminalNode) funcbodyContext.parlist().children.get(nodeSize - 1);
+                if ("...".equals(last.getText())) {
+                    functionBody.setHasMultiArg(true);
+                }
+            } else{
+                functionBody.setNames(names);
             }
-            functionBody.setNames(names);
         } else{
             functionBody.setNames(new ArrayList<>());
         }
@@ -258,7 +261,7 @@ public class Parser {
         } else{
             funcDesc = parseExpr(varOrExpContext.exp());
         }
-        return parsenameAnArgsList(funcDesc,functioncall.nameAndArgs());
+        return parseNameAndArgsList(funcDesc,functioncall.nameAndArgs());
     }
     public static Statement parseFuncCall(LuaParser.StatContext stat) {
         return (Statement) parseFuncCallExpr(stat);
@@ -291,10 +294,17 @@ public class Parser {
             result = new Expr.ColonExpr(result,nameAndArgsContext.NAME().getText());
         }
         //args说明出现了函数调用
-        return new Expr.FuncCallExpr(result,List.of(parseArgs(nameAndArgsContext.args())));
+        Expr expr = parseArgs(nameAndArgsContext.args());
+        List<Expr> args = new ArrayList<>();
+        if (expr instanceof Expr.ExprList) {
+            args.addAll(((Expr.ExprList) expr).getExprs());
+        } else{
+            args.add(expr);
+        }
+        return new Expr.FuncCallExpr(result,args);
     }
 
-    public static Expr parsenameAnArgsList(Expr result, List<LuaParser.NameAndArgsContext> nameAndArgsContexts) {
+    public static Expr parseNameAndArgsList(Expr result, List<LuaParser.NameAndArgsContext> nameAndArgsContexts) {
         for (LuaParser.NameAndArgsContext context : nameAndArgsContexts) {
             result = parseNameAndArgs(result, context);
         }
@@ -320,6 +330,9 @@ public class Parser {
 
     public static Expr parseTableConstructor(LuaParser.TableconstructorContext context) {
         Expr.TableExpr table = new Expr.TableExpr();
+        if (context.fieldlist() == null) {
+            return table;
+        }
         for(LuaParser.FieldContext field : context.fieldlist().field()){
             if (field.exp().size() == 2) {
                 table.addExpr(parseExpr(field.exp(0)),parseExpr(field.exp(1)));
@@ -349,15 +362,16 @@ public class Parser {
                 return new Expr.MultiArg();
             }
         }
-        // @todo 此时的字符串包含 " 后续优化细节
         if (exp.string() != null) {
             LuaParser.StringContext str = exp.string();
             if (str.NORMALSTRING() != null) {
-                return new StringValue(str.NORMALSTRING().getText());
+                String text = str.NORMALSTRING().getText();
+                return new StringValue(StringUtil.extractNormalString(text));
             } else if (str.CHARSTRING() != null) {
-                return new StringValue(str.CHARSTRING().getText());
+                String text = str.CHARSTRING().getText();
+                return new StringValue(StringUtil.extractNormalString(text));
             }
-            return new StringValue(str.LONGSTRING().getText());
+            return new StringValue(StringUtil.extractLongString(str.LONGSTRING().getText()));
         }
         if (exp.number() != null) {
             return new NumberValue(Float.valueOf(exp.number().getText()));
@@ -370,7 +384,7 @@ public class Parser {
             } else{
                 prefix = parseExpr(varOrExp.exp());
             }
-            return parsenameAnArgsList(prefix, exp.prefixexp().nameAndArgs());
+            return parseNameAndArgsList(prefix, exp.prefixexp().nameAndArgs());
         }
 
         if (exp.functiondef()!= null) {

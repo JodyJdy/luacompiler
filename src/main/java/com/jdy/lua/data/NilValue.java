@@ -1,5 +1,6 @@
 package com.jdy.lua.data;
 
+import com.jdy.lua.executor.Executor;
 import com.jdy.lua.statement.Expr;
 
 /**
@@ -13,5 +14,11 @@ public class NilValue implements Value, Expr {
     @Override
     public DataTypeEnum type() {
         return DataTypeEnum.NIL;
+    }
+
+    @Override
+    public Value visitExpr(Executor vistor) {
+        return this;
+
     }
 }

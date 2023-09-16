@@ -8,4 +8,5 @@ package com.jdy.lua.data;
  */
 public interface Value {
     DataTypeEnum type();
+
 }

@@ -1,6 +1,6 @@
+a ="hello "
+b = [[ wweorisldjflksdf ]]
 
+c ='sdlf'
 
-
-function x()
-    return function()  end
-end
+local d = a .. b .. c

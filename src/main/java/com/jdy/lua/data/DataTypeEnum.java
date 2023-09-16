@@ -13,6 +13,7 @@ public enum DataTypeEnum {
     STRING,
     FUNCTION,
     TABLE,
+    MULTI,
    // 暂时不支持 thread和userdata
     ;
 }

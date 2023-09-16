@@ -1,6 +1,8 @@
 package com.jdy.lua.statement;
 
 import com.jdy.lua.data.NumberValue;
+import com.jdy.lua.data.Value;
+import com.jdy.lua.executor.Executor;
 import lombok.Data;
 
 import java.util.LinkedHashMap;
@@ -15,14 +17,9 @@ import java.util.Map;
  */
 public interface Expr  {
 
-    /**
-     * ( exp )
-     */
+    Value visitExpr(Executor vistor);
 
-    @Data
-    class SingleExpr implements Expr{
-        Expr single;
-    }
+
 
     /**
      *
@@ -37,6 +34,11 @@ public interface Expr  {
             this.left = left;
             this.name = name;
         }
+        @Override
+        public Value visitExpr(Executor vistor) {
+            return vistor.executeExpr(this);
+        }
+
 
         String name;
     }
@@ -49,6 +51,12 @@ public interface Expr  {
         Expr left;
         Expr right;
 
+        @Override
+        public Value visitExpr(Executor vistor) {
+            return vistor.executeExpr(this);
+        }
+
+
         public DotExpr(Expr left, Expr right) {
             this.left = left;
             this.right = right;
@@ -60,6 +68,12 @@ public interface Expr  {
      */
     @Data
     class IndexExpr implements Expr{
+
+        @Override
+        public Value visitExpr(Executor vistor) {
+            return vistor.executeExpr(this);
+        }
+
         public IndexExpr(Expr left, Expr right) {
             this.left = left;
             this.right = right;
@@ -70,6 +84,12 @@ public interface Expr  {
     }
     @Data
     class AndExpr implements Expr{
+
+        @Override
+        public Value visitExpr(Executor vistor) {
+            return vistor.executeExpr(this);
+        }
+
         public AndExpr(Expr left, Expr right) {
             this.left = left;
             this.right = right;
@@ -80,6 +100,12 @@ public interface Expr  {
     }
     @Data
     class OrExpr implements Expr{
+
+        @Override
+        public Value visitExpr(Executor vistor) {
+            return vistor.executeExpr(this);
+        }
+
         public OrExpr(Expr left, Expr right) {
             this.left = left;
             this.right = right;
@@ -88,26 +114,19 @@ public interface Expr  {
         Expr left;
         Expr right;
     }
-    @Data
-    class NotExpr implements Expr{
-        Expr expr;
-    }
 
     /**
      * a..b
      */
     @Data
     class CatExpr implements Expr{
+        @Override
+        public Value visitExpr(Executor vistor) {
+            return vistor.executeExpr(this);
+        }
+
         Expr left;
         Expr right;
-    }
-
-    /**
-     * #a
-     */
-    @Data
-    class LengthExpr implements Expr{
-        Expr expr;
     }
 
     /**
@@ -123,6 +142,11 @@ public interface Expr  {
      */
     @Data
     class CalExpr implements Expr{
+        @Override
+        public Value visitExpr(Executor vistor) {
+            return vistor.executeExpr(this);
+        }
+
         String op;
         Expr left;
         Expr right;
@@ -134,8 +158,16 @@ public interface Expr  {
         }
     }
 
+    /**
+     *  # , not  ,- , ~
+     */
     @Data
     class UnaryExpr implements Expr{
+        @Override
+        public Value visitExpr(Executor vistor) {
+            return vistor.executeExpr(this);
+        }
+
         private String op;
 
         public UnaryExpr(String op, Expr expr) {
@@ -161,6 +193,11 @@ public interface Expr  {
      */
     @Data
     class RelExpr implements Expr{
+        @Override
+        public Value visitExpr(Executor vistor) {
+            return vistor.executeExpr(this);
+        }
+
         public RelExpr(String op, Expr left, Expr right) {
             this.op = op;
             this.left = left;
@@ -174,6 +211,16 @@ public interface Expr  {
 
     @Data
     class FuncCallExpr implements Expr,Statement{
+        @Override
+        public Value visitExpr(Executor vistor) {
+            return vistor.executeExpr(this);
+        }
+
+        @Override
+        public void visitStatement(Executor visitor) {
+            visitor.executeStatement(this);
+        }
+
         public FuncCallExpr(Expr func, List<Expr> exprs) {
             this.func = func;
             this.exprs = exprs;
@@ -206,6 +253,11 @@ public interface Expr  {
         public void addExpr(Expr left, Expr right) {
             exprExprMap.put(left, right);
         }
+        @Override
+        public Value visitExpr(Executor vistor) {
+            return vistor.executeExpr(this);
+        }
+
     }
 
     @Data
@@ -222,6 +274,11 @@ public interface Expr  {
 
         private Statement.BlockStatement blockStatement;
 
+        @Override
+        public Value visitExpr(Executor vistor) {
+            return vistor.executeExpr(this);
+        }
+
     }
     @Data
     class ExprList implements Expr{
@@ -229,6 +286,10 @@ public interface Expr  {
             this.exprs = exprs;
         }
 
+        @Override
+        public Value visitExpr(Executor vistor) {
+            return vistor.executeExpr(this);
+        }
         private List<Expr> exprs;
     }
     @Data
@@ -248,6 +309,11 @@ public interface Expr  {
             this.prefix = prefix;
             this.suffix = suffix;
         }
+        @Override
+        public Value visitExpr(Executor vistor) {
+            return vistor.executeExpr(this);
+        }
+
     }
     @Data
     class NameExpr implements Expr{
@@ -256,15 +322,28 @@ public interface Expr  {
         }
 
         private String name;
+        @Override
+        public Value visitExpr(Executor vistor) {
+            return vistor.executeExpr(this);
+        }
+
     }
 
 
     @Data
     class EmptyArg implements Expr {
+        @Override
+        public Value visitExpr(Executor vistor) {
+            return vistor.executeExpr(this);
+        }
+
     }
     @Data
     class MultiArg implements Expr{
-
+        @Override
+        public Value visitExpr(Executor vistor) {
+            return vistor.executeExpr(this);
+        }
     }
 
 

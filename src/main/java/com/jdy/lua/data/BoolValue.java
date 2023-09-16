@@ -1,5 +1,6 @@
 package com.jdy.lua.data;
 
+import com.jdy.lua.executor.Executor;
 import com.jdy.lua.statement.Expr;
 import lombok.Data;
 
@@ -25,5 +26,10 @@ public class BoolValue implements Value, Expr {
     @Override
     public DataTypeEnum type() {
         return DataTypeEnum.BOOLEAN;
+    }
+
+    @Override
+    public Value visitExpr(Executor vistor) {
+        return this;
     }
 }

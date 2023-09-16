@@ -2,6 +2,7 @@ package com.jdy.lua.executor;
 
 import com.jdy.lua.data.Value;
 import com.jdy.lua.statement.Statement;
+import lombok.Data;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -12,6 +13,7 @@ import java.util.Map;
  * @description:
  * @data 2023/9/14 16:34
  */
+@Data
 public class Block {
     /**
      * block对应的blockStatement
@@ -30,6 +32,22 @@ public class Block {
      * block 内部的局部变量
      */
     protected final Map<String,Variable> localVariableMap = new HashMap<>();
+
+
+
+    public Block(Statement.BlockStatement blockStatement) {
+        this.blockStatement = blockStatement;
+    }
+    public Block() {
+
+    }
+    public Block(Block parent) {
+        this.parent = parent;
+    }
+    public Block(Block parent,Statement.BlockStatement blockStatement) {
+        this.parent = parent;
+        this.blockStatement = blockStatement;
+    }
 
     /**
      * 根据 变量名称搜索 变量
@@ -50,10 +68,16 @@ public class Block {
         if (globalVariableMap.containsKey(name)) {
             return globalVariableMap.get(name);
         }
-        throw new RuntimeException("变量不存在:" + name);
+        //变量不存在
+        return null;
     }
 
-
+    public void removeVar(String name) {
+        this.localVariableMap.remove(name);
+    }
+    public void addVar(String name, Value value) {
+        this.localVariableMap.put(name, new Variable(name, value));
+    }
     public void addGlobalVar(String name, Value value) {
         globalVariableMap.put(name, new Variable(name, value));
     }
