@@ -1,9 +1,3 @@
+print(type(1))
+print(type("hello"))
 
-function test(...)
-   a={...}
-   print(a)
-end
-
-
-
-test(true,false,false)

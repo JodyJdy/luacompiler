@@ -8,9 +8,10 @@ public class NativeLoader {
      */
     public static void load(){
         Block.addNative(Math.TABLE_NAME,Math.MATH);
-        Block.addNative("print",PrintMethod.print());
-        Block.addNative("println",PrintMethod.println());
-        Block.addNative("setmetatable",MetaTableMethod.setmetatable());
-        Block.addNative("getmetatable",MetaTableMethod.getmetatable());
+        Block.addNative("print",GlobalMethod.print());
+        Block.addNative("println",GlobalMethod.println());
+        Block.addNative("type",GlobalMethod.type());
+        Block.addNative("setmetatable",GlobalMethod.setmetatable());
+        Block.addNative("getmetatable",GlobalMethod.getmetatable());
     }
 }
