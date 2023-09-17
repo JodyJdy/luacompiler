@@ -27,11 +27,11 @@ public class NativeFuncBody extends Expr.Function {
     @Override
     public Statement.BlockStatement getBlockStatement() {
         // 不可能到达这里
-        throw new RuntimeException("");
+        throw new RuntimeException("不允许的调用");
     }
     @Override
-    public Value visitExpr(Executor vistor) {
+    public Value visitExpr(Executor visitor) {
         // 不可能到达这里
-        throw new RuntimeException("");
+        throw new RuntimeException("不允许的调用");
     }
 }

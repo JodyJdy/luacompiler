@@ -24,7 +24,10 @@ public class GlobalMethod {
                 .execute(
                         arg->{
                             final StringBuilder sb = new StringBuilder();
-                            arg.forEach(sb::append);
+                            arg.forEach(g->{
+                                sb.append(g);
+                                sb.append(" ");
+                            });
                             System.out.println(sb);
                             return NilValue.NIL;
                         }

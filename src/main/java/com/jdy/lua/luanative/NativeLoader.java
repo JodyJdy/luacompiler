@@ -15,6 +15,9 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 
 public class NativeLoader {
     /**
@@ -34,22 +37,34 @@ public class NativeLoader {
         NativeLoader.modulePath = modulePath;
     }
 
-    static String modulePath;
+
+    /**
+     * 正在加载的模块
+     */
+    private static final Set<String> loadingModule = Collections.synchronizedSet(new HashSet<>());
+
+    private static String modulePath;
     public static Table loadModule(String moduleName) {
         if (modulePath == null) {
             throw new RuntimeException("未配置模块地址");
         }
         String path = modulePath + File.separator + moduleName+".lua";
+        if (loadingModule.contains(path)) {
+            throw new RuntimeException(String.format("模块:%s 循环出现了循环依赖", path));
+        }
         try {
+            loadingModule.add(path);
             FileInputStream moduleFile = new FileInputStream(path);
             LuaParser luaParser = new LuaParser(new BufferedTokenStream(new LuaLexer(CharStreams.fromStream(moduleFile))));
             LuaParser.ChunkContext context = luaParser.chunk();
             Statement result = Parser.parseBlock(context.block());
-            return Checker.checkTable(new Executor((Statement.BlockStatement) result).execute());
+            Table module = Checker.checkTable(new Executor((Statement.BlockStatement) result).execute());
+            loadingModule.remove(path);
+            return module;
         } catch (FileNotFoundException e) {
-            throw new RuntimeException("模块找不到"+moduleName);
+            throw new RuntimeException(String.format("模块:%s找不到",moduleName));
         } catch (IOException e) {
-            throw new RuntimeException("模块读取失败");
+            throw new RuntimeException(String.format("模块:%s读取失败",moduleName));
         }
     }
 }
