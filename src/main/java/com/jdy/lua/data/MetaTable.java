@@ -15,8 +15,10 @@ public class MetaTable {
     public static String DIV = "__div";
     public static String MOD = "__mod";
     public static String UNM = "__unm";
+    public static String POW = "__pow";
     public static String CONCAT = "__concat";
 
+    public static String NE = "__ne";
     public static String EQ = "__eq";
 
     public static String LT = "__lt";
@@ -27,6 +29,6 @@ public class MetaTable {
     public static String TO_STRING = "__tostring";
 
     public static Set<String> META_SET = Set.of(
-            ADD,SUB,MUL,DIV,MOD,UNM,CONCAT,EQ,LT,LE,INDEX,NEW_INDEX,TO_STRING
+            ADD,SUB,MUL,DIV,MOD,UNM,POW,CONCAT,EQ,LT,LE,NE,INDEX,NEW_INDEX,TO_STRING
     );
 }

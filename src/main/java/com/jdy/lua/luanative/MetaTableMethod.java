@@ -21,12 +21,7 @@ public class MetaTableMethod {
                         arg->{
                             Table tableA = checkTable(arg.get(0));
                             Table tableB = checkTable(arg.get(1));
-                            for (String meta : META_SET) {
-                                Value v = tableB.get(meta);
-                                if (v != NilValue.NIL) {
-                                    tableA.add(meta,v);
-                                }
-                            }
+                            tableA.setMetatable(tableB);
                             return tableA;
                         }
                 ).build();

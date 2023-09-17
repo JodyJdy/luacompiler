@@ -22,7 +22,29 @@ import static com.jdy.lua.executor.Checker.*;
  */
 public class Executor {
 
-    private Block currentBlock;
+    /**
+     * 当前上下文的block,一个线程对应一个
+     * 用于其他位置 调用方法时 获取到当前的上下文信息
+     */
+    public static final ThreadLocal<Block> THREAD_LOCAL_BLOCK = new ThreadLocal<>();
+
+    public static  Block currentThreadBlock(){
+        return THREAD_LOCAL_BLOCK.get();
+    }
+
+
+    /**
+     * 为了减少从ThreadLocal中访问，定义curBlock
+     */
+    private  Block curBlock;
+    public  Block currentBlock(){
+        return curBlock;
+    }
+    public void setCurrentBlock(Block block) {
+        THREAD_LOCAL_BLOCK.set(block);
+        curBlock = block;
+    }
+
 
     /**
      * 存储label的坐标
@@ -112,7 +134,7 @@ public class Executor {
     private Value execute(Block parent) {
         Block block = new Block(blockStatement);
         block.setParent(parent);
-        currentBlock = block;
+        setCurrentBlock(block);
         //如果是函数调用，会准备参数
         prepareArg();
         executeBlock(block);
@@ -144,19 +166,19 @@ public class Executor {
         int i = 0;
         //包含self默认参数，第一个就是默认参数
         if (function.isObjMethod()) {
-            currentBlock.addVar("self",args.get(i));
+            currentBlock().addVar("self",args.get(i));
         }
         for (; i < parameterNames.size(); i++) {
             if (i < args.size()) {
-                currentBlock.addVar(parameterNames.get(i), args.get(i));
+                currentBlock().addVar(parameterNames.get(i), args.get(i));
             } else {
-                currentBlock.addVar(parameterNames.get(i), NIL);
+                currentBlock().addVar(parameterNames.get(i), NIL);
             }
         }
         //处理变长参数
         if (functionBody.isHasMultiArg()) {
             if (i < args.size()) {
-                currentBlock.addVar("...", new MultiValue(args.subList(i, args.size())));
+                currentBlock().addVar("...", new MultiValue(args.subList(i, args.size())));
             }
         }
     }
@@ -247,9 +269,9 @@ public class Executor {
         }
         for (int i = 0; i < vars.size(); i++) {
             if (i < valueList.size()) {
-                currentBlock.addVar(vars.get(i), valueList.get(i));
+                currentBlock().addVar(vars.get(i), valueList.get(i));
             } else {
-                currentBlock.addVar(vars.get(i), NilValue.NIL);
+                currentBlock().addVar(vars.get(i), NilValue.NIL);
             }
         }
     }
@@ -281,10 +303,10 @@ public class Executor {
             Expr expr = exprs.get(i);
             Value value = i < initValues.size() ? initValues.get(i) : NIL;
             if (expr instanceof NameExpr nameExpr) {
-                Variable variable = currentBlock.searchVariable(nameExpr.getName());
+                Variable variable = currentBlock().searchVariable(nameExpr.getName());
                 //新增全局变量
                 if (variable == null) {
-                    currentBlock.addGlobalVar(nameExpr.getName(), value);
+                    currentBlock().addGlobalVar(nameExpr.getName(), value);
                 } else {
                     variable.setValue(value);
                 }
@@ -292,11 +314,11 @@ public class Executor {
                 Table  left = checkTable(dotExpr.getLeft().visitExpr(this));
                 checkName(dotExpr.getRight());
                 NameExpr nameExpr = (NameExpr) dotExpr.getRight();
-                left.add(nameExpr.getName(), value);
+                left.addVal(nameExpr.getName(), value);
             } else if (expr instanceof IndexExpr indexExpr) {
                 Table left = checkTable((indexExpr.getLeft()).visitExpr(this));
                 Value right = indexExpr.getRight().visitExpr(this);
-                left.add(right, value);
+                left.addVal(right, value);
             } else {
                 throw new RuntimeException("不支持的赋值类型");
             }
@@ -323,13 +345,14 @@ public class Executor {
     }
 
     public void executeStatement(BlockStatement blockStatement) {
-        Block newBlock = new Block(currentBlock, blockStatement);
+        Block newBlock = new Block(currentBlock(), blockStatement);
         blockLevel++;
-        currentBlock = newBlock;
+        setCurrentBlock(newBlock);
         executeBlock(newBlock);
         ///还原block
         blockLevel--;
-        currentBlock = currentBlock.parent;
+        setCurrentBlock(currentBlock().parent);
+
     }
 
     public void executeStatement(NumberForStatement statement) {
@@ -344,7 +367,7 @@ public class Executor {
         } else {
             step = (NumberValue) statement.getExpr3().visitExpr(this);
         }
-        currentBlock.addVar(statement.getVar(), initValue);
+        currentBlock().addVar(statement.getVar(), initValue);
         boolean reverse = finalValue.getF() < initValue.getF();
         circleLevel++;
         for (; reverse ? initValue.getF() >= finalValue.getF() : initValue.getF() <= finalValue.getF(); initValue.setF(initValue.getF() + step.getF())) {
@@ -360,7 +383,7 @@ public class Executor {
                 continueLevel = CLEAR_MARK;
             }
         }
-        currentBlock.removeVar(statement.getVar());
+        currentBlock().removeVar(statement.getVar());
         circleLevel--;
     }
 
@@ -448,18 +471,18 @@ public class Executor {
     public void executeStatement(FunctionStatement statement) {
         FuncType funcType = statement.getFuncName();
         if (funcType instanceof BasicFuncType) {
-            currentBlock.addGlobalVar(((BasicFuncType) funcType).getFuncName(), new com.jdy.lua.data.Function(currentBlock, statement.getFuncBody()));
+            currentBlock().addGlobalVar(((BasicFuncType) funcType).getFuncName(), new com.jdy.lua.data.Function(currentBlock(), statement.getFuncBody()));
         } else if (funcType instanceof TableMethod method) {
             Table table = resolveTable(method.getTableNames());
-            table.add(method.getMethodName(), new com.jdy.lua.data.Function(currentBlock, statement.getFuncBody()));
+            table.addVal(method.getMethodName(), new com.jdy.lua.data.Function(currentBlock(), statement.getFuncBody()));
         } else if (funcType instanceof TableExtendMethod method) {
             Table table = resolveTable(method.getFatherTableNames());
-            table.add(method.getMethodName(), new com.jdy.lua.data.Function(currentBlock, statement.getFuncBody(), true));
+            table.addVal(method.getMethodName(), new com.jdy.lua.data.Function(currentBlock(), statement.getFuncBody(), true));
         }
     }
 
     private Table resolveTable(List<String> tableNames) {
-        Variable var = currentBlock.searchVariable(tableNames.get(0));
+        Variable var = currentBlock().searchVariable(tableNames.get(0));
         checkNull(var, "表:" + tableNames.get(0) + "不存在");
         Table result = checkTable(var.getValue());
         for (int i = 1; i < tableNames.size(); i++) {
@@ -472,7 +495,7 @@ public class Executor {
      * 添加一个函数
      */
     public void executeStatement(LocalFunctionStatement statement) {
-        currentBlock.addVar(statement.getFuncName(), new com.jdy.lua.data.Function(currentBlock, statement.getFuncBody()));
+        currentBlock().addVar(statement.getFuncName(), new com.jdy.lua.data.Function(currentBlock(), statement.getFuncBody()));
     }
 
     public Value executeExpr(Expr expr) {
@@ -496,17 +519,19 @@ public class Executor {
     }
 
     public Value executeExpr(AndExpr expr) {
-        if (expr.getLeft().visitExpr(this) == TRUE && expr.getRight().visitExpr(this) == TRUE) {
-            return TRUE;
+        Value left = expr.getLeft().visitExpr(this);
+        if (left == FALSE || left == NIL) {
+            return left;
         }
-        return FALSE;
+        return expr.getRight().visitExpr(this);
     }
 
     public Value executeExpr(OrExpr expr) {
-        if (expr.getLeft().visitExpr(this) == TRUE || expr.getRight().visitExpr(this) == TRUE) {
-            return TRUE;
+        Value left = expr.getLeft().visitExpr(this);
+        if (left == TRUE || (left != FALSE && left != NIL)) {
+            return left;
         }
-        return FALSE;
+        return expr.getRight().visitExpr(this);
     }
 
     public Value executeExpr(CatExpr expr) {
@@ -520,33 +545,36 @@ public class Executor {
 
     public Value executeExpr(CalExpr expr) {
         Value left = expr.getLeft().visitExpr(this);
-        float l = left instanceof NumberValue ? ((NumberValue) left).getF() : 0;
         Value right = expr.getRight().visitExpr(this);
-        float r = right instanceof NumberValue ? ((NumberValue) right).getF() : 0;
-        return switch (expr.getOp()) {
-            case "+" -> new NumberValue(l + r);
-            case "-" -> new NumberValue(l - r);
-            case "*" -> new NumberValue(l * r);
-            case "/" -> new NumberValue(l / r);
-            case "%" -> new NumberValue(l % r);
-            case "//" -> new NumberValue(((int) l) % ((int) r));
-            case "^" -> new NumberValue((float) Math.pow(l, r));
-            case "&" -> new NumberValue(((int) l) & ((int) r));
-            case "|" -> new NumberValue(((int) l) | ((int) r));
-            case "<<" -> new NumberValue(((int) l) << ((int) r));
-            case ">>" -> new NumberValue(((int) l) >> ((int) r));
-            case ".." -> new StringValue((StringValue) left, (StringValue) right);
-            default -> NIL;
-        };
+        if(left instanceof CalculateValue l && right instanceof CalculateValue r) {
+            return switch (expr.getOp()) {
+                case "+" -> l.add(r);
+                case "-" -> l.sub(r);
+                case "*" -> l.mul(r);
+                case "/" -> l.div(r);
+                case "%" -> l.mod(r);
+                case "//" -> l.intMod(r);
+                case "^" -> l.pow(r);
+                case "&" -> l.bitAnd(r);
+                case "|" -> l.bitOr(r);
+                case "<<" -> l.bitLeftMove(r);
+                case ">>" -> l.bitRightMove(r);
+                case ".." -> l.concat(r);
+                default -> NIL;
+            };
+        }
+        throw new RuntimeException("不支持计算的数据类型");
     }
 
     public Value executeExpr(UnaryExpr expr) {
         Value v = expr.getExpr().visitExpr(this);
         switch (expr.getOp()) {
             case "#" -> {
-                if (v instanceof StringValue) {
-                    int len = ((StringValue) v).getVal().length();
-                    return new NumberValue(len);
+                if (v instanceof CalculateValue cal) {
+                    return cal.len();
+                }
+                if (v instanceof MultiValue mul) {
+                   return new NumberValue(mul.getValueList().size());
                 }
             }
             case "not" -> {
@@ -562,9 +590,8 @@ public class Executor {
                 }
             }
             case "~" -> {
-                if (v instanceof NumberValue) {
-                    int f = ((NumberValue) v).getF().intValue();
-                    return new NumberValue(~f);
+                if (v instanceof CalculateValue cal) {
+                    return cal.unm();
                 }
             }
         }
@@ -572,17 +599,15 @@ public class Executor {
     }
 
     public Value executeExpr(RelExpr expr) {
-        NumberValue left = (NumberValue) expr.getLeft().visitExpr(this);
-        NumberValue right = (NumberValue) expr.getRight().visitExpr(this);
-        Float l = left.getF();
-        Float r = right.getF();
+        Value left = expr.getLeft().visitExpr(this);
+        Value  right = expr.getRight().visitExpr(this);
         return switch (expr.getOp()) {
-            case "<" -> l < r ? TRUE : FALSE;
-            case ">" -> l > r ? TRUE : FALSE;
-            case "<=" -> l <= r ? TRUE : FALSE;
-            case ">=" -> l >= r ? TRUE : FALSE;
-            case "~=" -> !Objects.equals(l, r) ? TRUE : FALSE;
-            case "==" -> Objects.equals(l, r) ? TRUE : FALSE;
+            case "<" -> left.lt(right);
+            case ">" -> left.gt(right);
+            case "<=" -> left.le(right);
+            case ">=" -> left.ge(right);
+            case "~=" -> left.ne(right);
+            case "==" -> left.eq(right);
             default -> FALSE;
         };
     }
@@ -629,7 +654,12 @@ public class Executor {
                 //key是表达式
                 key = k.visitExpr(this);
             }
-            table.add(key, v.visitExpr(this));
+            if (v instanceof MultiArg) {
+                MultiValue mul = checkMultiValue(v.visitExpr(this));
+                mul.getValueList().forEach(table::addVal);
+            } else{
+                table.addVal(key, v.visitExpr(this));
+            }
         });
         return table;
     }
@@ -644,14 +674,14 @@ public class Executor {
 
 
     public Value executeExpr(Expr.Function functionBody) {
-        return new Function(currentBlock, functionBody);
+        return new Function(currentBlock(), functionBody);
     }
 
     public Value executeExpr(NameExpr expr) {
-        return currentBlock.searchVariable(expr.getName()).getValue();
+        return currentBlock().searchVariable(expr.getName()).getValue();
     }
 
     public Value executeExpr(MultiArg expr) {
-        return currentBlock.searchVariable("...").getValue();
+        return currentBlock().searchVariable("...").getValue();
     }
 }

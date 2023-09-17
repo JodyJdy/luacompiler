@@ -16,9 +16,9 @@ public class Math {
     public static Table MATH  = new Table();
     static {
         // math.add(a,b)
-        MATH.add("add",add());
+        MATH.addVal("add",add());
         // math.pi()
-        MATH.add("pi", pi());
+        MATH.addVal("pi", pi());
     }
 
     private static NativeFunction add(){

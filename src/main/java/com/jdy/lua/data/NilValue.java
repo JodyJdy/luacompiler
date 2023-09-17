@@ -11,6 +11,9 @@ import com.jdy.lua.statement.Expr;
  */
 public class NilValue implements Value, Expr {
     public static NilValue NIL = new NilValue();
+    private NilValue(){
+
+    }
     @Override
     public DataTypeEnum type() {
         return DataTypeEnum.NIL;
@@ -25,4 +28,41 @@ public class NilValue implements Value, Expr {
     public String toString() {
         return "nil";
     }
+
+    @Override
+    public BoolValue eq(Value b) {
+        if (b == NIL) {
+            return BoolValue.TRUE;
+        }
+        return BoolValue.FALSE;
+    }
+
+    @Override
+    public BoolValue ne(Value b) {
+        if (b != NIL) {
+            return BoolValue.TRUE;
+        }
+        return BoolValue.FALSE;
+    }
+
+    @Override
+    public BoolValue lt(Value b) {
+        throw new RuntimeException("空值无法比较大小");
+    }
+
+    @Override
+    public BoolValue gt(Value b) {
+        throw new RuntimeException("空值无法比较大小");
+    }
+
+    @Override
+    public BoolValue le(Value b) {
+        throw new RuntimeException("空值无法比较大小");
+    }
+
+    @Override
+    public BoolValue ge(Value b) {
+        throw new RuntimeException("空值无法比较大小");
+    }
 }
+

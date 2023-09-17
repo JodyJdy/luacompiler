@@ -45,4 +45,18 @@ public class Checker {
             throw new RuntimeException(msg);
         }
     }
+
+    public static BoolValue checkBool(Object obj) {
+        if (obj instanceof BoolValue b) {
+            return b;
+        }
+        throw new RuntimeException("值类型不是布尔值");
+    }
+
+    public static MultiValue checkMultiValue(Value val) {
+        if (val instanceof MultiValue mul) {
+            return mul;
+        }
+        throw new RuntimeException("值类型不是多值类型");
+    }
 }

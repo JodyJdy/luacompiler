@@ -8,5 +8,12 @@ package com.jdy.lua.data;
  */
 public interface Value {
     DataTypeEnum type();
+    BoolValue eq(Value b);
+    BoolValue ne(Value b);
+    BoolValue lt(Value b);
+    BoolValue gt(Value b);
+
+    BoolValue le(Value b);
+    BoolValue ge(Value b);
 
 }

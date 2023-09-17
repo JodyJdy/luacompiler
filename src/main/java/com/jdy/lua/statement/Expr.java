@@ -5,6 +5,7 @@ import com.jdy.lua.data.Value;
 import com.jdy.lua.executor.Executor;
 import lombok.Data;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -266,7 +267,7 @@ public interface Expr  {
          * 普通参数
          */
 
-        protected List<String> paramNames;
+        protected List<String> paramNames = new ArrayList<>();
         /**
          * 结尾有 变长参数  ...这种
          */

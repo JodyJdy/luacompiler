@@ -4,6 +4,8 @@ import com.jdy.lua.executor.Block;
 import com.jdy.lua.statement.Expr;
 import lombok.Data;
 
+import java.util.Objects;
+
 @Data
 public class Function implements Value {
     /**
@@ -36,5 +38,43 @@ public class Function implements Value {
     @Override
     public String toString() {
         return "function";
+    }
+
+    @Override
+    public BoolValue eq(Value b) {
+        if (b instanceof Function f) {
+           if(f.objMethod == this. objMethod
+                   && this.isNative == f.isNative
+                    && this.body.equals(f.body)
+                   && Objects.equals(this.parent,f.parent)){
+              return BoolValue.TRUE;
+           }
+        }
+        return BoolValue.FALSE;
+    }
+
+    @Override
+    public BoolValue ne(Value b) {
+        return eq(b) == BoolValue.TRUE ? BoolValue.FALSE : BoolValue.TRUE;
+    }
+
+    @Override
+    public BoolValue lt(Value b) {
+        throw new RuntimeException("Function无法比较大小");
+    }
+
+    @Override
+    public BoolValue gt(Value b) {
+        throw new RuntimeException("Function无法比较大小");
+    }
+
+    @Override
+    public BoolValue le(Value b) {
+        throw new RuntimeException("Function无法比较大小");
+    }
+
+    @Override
+    public BoolValue ge(Value b) {
+        throw new RuntimeException("Function无法比较大小");
     }
 }

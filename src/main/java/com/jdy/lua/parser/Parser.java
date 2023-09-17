@@ -37,7 +37,7 @@ public class Parser {
                 blockStatement.addStatement(new Statement.BreakStatement());
             } else if ("continue".equals(text)) {
                 blockStatement.addStatement(new Statement.ContinueStatement());
-            } else{
+            } else {
                 blockStatement.addStatement(new Statement.ReturnStatement(parseExprList(lastStat.explist())));
             }
         }
@@ -45,9 +45,9 @@ public class Parser {
     }
 
     /**
-     *语句
+     * 语句
      */
-    public static Statement parseStat(LuaParser.StatContext stat){
+    public static Statement parseStat(LuaParser.StatContext stat) {
         Token token = stat.getStart();
         if (stat.label() != null) {
             return parseLabelStat(stat.label());
@@ -109,12 +109,13 @@ public class Parser {
     public static Statement parseWhile(LuaParser.StatContext stat) {
         return new Statement.WhileStatement(parseExpr(stat.exp(0)), (Statement.BlockStatement) parseBlock(stat.block(0)));
     }
+
     public static Statement parseRepeat(LuaParser.StatContext stat) {
         return new Statement.RepeatStatement(parseExpr(stat.exp(0)), (Statement.BlockStatement) parseBlock(stat.block(0)));
     }
 
     /**
-     *if语句
+     * if语句
      */
     public static Statement parseIf(LuaParser.StatContext ifStat) {
         Expr ifExpr = parseExpr(ifStat.exp(0));
@@ -131,7 +132,7 @@ public class Parser {
         if (ifStat.block().size() > 1) {
             end = (Statement.BlockStatement) parseBlock(ifStat.block(ifStat.block().size() - 1));
         }
-        return new Statement.IfStatement(ifExpr,ifBlock,elseExprs,elseBlock,end);
+        return new Statement.IfStatement(ifExpr, ifBlock, elseExprs, elseBlock, end);
     }
 
     public static Statement parseFor(LuaParser.StatContext forStat) {
@@ -141,8 +142,8 @@ public class Parser {
             numberForStatement.setVar(forStat.NAME().getText());
             List<LuaParser.ExpContext> exps = forStat.exp();
             numberForStatement.setExpr1(parseExpr(exps.get(0)));
-            numberForStatement.setExpr2(exps.size()>=2? parseExpr(exps.get(1)):null);
-            numberForStatement.setExpr3(exps.size()==3? parseExpr(exps.get(2)):null);
+            numberForStatement.setExpr2(exps.size() >= 2 ? parseExpr(exps.get(1)) : null);
+            numberForStatement.setExpr3(exps.size() == 3 ? parseExpr(exps.get(2)) : null);
             numberForStatement.setBlockStatement((Statement.BlockStatement) parseBlock(forStat.block(0)));
             return numberForStatement;
         }
@@ -156,7 +157,7 @@ public class Parser {
 
     public static List<Expr> parseExprList(LuaParser.ExplistContext exps) {
         List<Expr> exprs = new ArrayList<>();
-        exps.exp().forEach(e->
+        exps.exp().forEach(e ->
                 exprs.add(parseExpr(e))
         );
         return exprs;
@@ -164,7 +165,7 @@ public class Parser {
 
     public static Expr.ExprList parseExprList2(LuaParser.ExplistContext exps) {
         List<Expr> exprs = new ArrayList<>();
-        exps.exp().forEach(e->
+        exps.exp().forEach(e ->
                 exprs.add(parseExpr(e))
         );
         return new Expr.ExprList(exprs);
@@ -181,7 +182,7 @@ public class Parser {
     public static Statement parseFunc(LuaParser.StatContext funcStat) {
         Statement.FuncType funcType = parseFuncType(funcStat.funcname());
         Expr.Function body = parseFuncBody(funcStat.funcbody());
-        return new Statement.FunctionStatement(funcType,body);
+        return new Statement.FunctionStatement(funcType, body);
     }
 
     public static Statement.FuncType parseFuncType(LuaParser.FuncnameContext funcName) {
@@ -198,44 +199,45 @@ public class Parser {
         }
         String name = funcName.NAME(funcName.NAME().size() - 1).getText();
         if (".".equals(terminalNode.getText())) {
-            return new Statement.TableMethod(tablePrefix,name);
+            return new Statement.TableMethod(tablePrefix, name);
         }
         return new Statement.TableExtendMethod(tablePrefix, name);
     }
 
 
-    public static Expr.Function parseFuncBody(LuaParser.FuncbodyContext funcbodyContext){
+    public static Expr.Function parseFuncBody(LuaParser.FuncbodyContext funcbodyContext) {
         Expr.Function functionBody = new Expr.Function();
         if (funcbodyContext.parlist() != null) {
-            List<String> names =parseNameList(funcbodyContext.parlist().namelist());
+            //处理普通的参数
+            if (funcbodyContext.parlist().namelist() != null) {
+                List<String> names = parseNameList(funcbodyContext.parlist().namelist());
+                functionBody.setParamNames(names);
+            }
+            //处理 ... 参数
             int nodeSize = funcbodyContext.parlist().children.size();
-            if (funcbodyContext.parlist().children.get(nodeSize - 1) instanceof TerminalNode) {
-                TerminalNode last = (TerminalNode) funcbodyContext.parlist().children.get(nodeSize - 1);
+            if (funcbodyContext.parlist().children.get(nodeSize - 1) instanceof TerminalNode last) {
                 if ("...".equals(last.getText())) {
                     functionBody.setHasMultiArg(true);
                 }
-            } else{
-                functionBody.setParamNames(names);
             }
-        } else{
-            functionBody.setParamNames(new ArrayList<>());
         }
+
         functionBody.setBlockStatement((Statement.BlockStatement) parseBlock(funcbodyContext.block()));
         return functionBody;
     }
 
     public static Statement parseAttnameList(LuaParser.StatContext stat) {
         List<String> varNames = new ArrayList<>();
-        stat.attnamelist().NAME().forEach(n->varNames.add(n.getText()));
-        List<Expr> exprs =  parseExprList(stat.explist());
-        return new Statement.LocalDefineStatement(varNames,exprs);
+        stat.attnamelist().NAME().forEach(n -> varNames.add(n.getText()));
+        List<Expr> exprs = parseExprList(stat.explist());
+        return new Statement.LocalDefineStatement(varNames, exprs);
     }
 
     public static Statement parseAssignStatement(LuaParser.StatContext stat) {
         LuaParser.VarlistContext varlist = stat.varlist();
         List<Expr> exprs = parseExprList(stat.explist());
         List<Expr> left = new ArrayList<>();
-        varlist.var().forEach(var-> left.add(parseVar(var)));
+        varlist.var().forEach(var -> left.add(parseVar(var)));
         return new Statement.AssignStatement(left, exprs);
     }
 
@@ -249,22 +251,24 @@ public class Parser {
         Expr funcDesc;
         if (varOrExpContext.var() != null) {
             funcDesc = parseVar(varOrExpContext.var());
-        } else{
+        } else {
             funcDesc = parseExpr(varOrExpContext.exp());
         }
-        return parseNameAndArgsList(funcDesc,functioncall.nameAndArgs());
+        return parseNameAndArgsList(funcDesc, functioncall.nameAndArgs());
     }
+
     public static Statement parseFuncCall(LuaParser.StatContext stat) {
         return (Statement) parseFuncCallExpr(stat);
     }
+
     public static Expr parseVar(LuaParser.VarContext var) {
         Expr result;
         if (var.NAME() != null) {
             result = new Expr.NameExpr(var.NAME().getText());
-        } else{
+        } else {
             result = parseExpr(var.exp());
         }
-        for(LuaParser.VarSuffixContext varSuffix : var.varSuffix()){
+        for (LuaParser.VarSuffixContext varSuffix : var.varSuffix()) {
             //处理 nameAndArgs
             for (LuaParser.NameAndArgsContext nameAndArgsContext : varSuffix.nameAndArgs()) {
                 result = parseNameAndArgs(result, nameAndArgsContext);
@@ -279,20 +283,20 @@ public class Parser {
         return result;
     }
 
-    public static Expr parseNameAndArgs(Expr result,LuaParser.NameAndArgsContext nameAndArgsContext) {
+    public static Expr parseNameAndArgs(Expr result, LuaParser.NameAndArgsContext nameAndArgsContext) {
         // a:b() 类型
         if (nameAndArgsContext.NAME() != null) {
-            result = new Expr.ColonExpr(result,nameAndArgsContext.NAME().getText());
+            result = new Expr.ColonExpr(result, nameAndArgsContext.NAME().getText());
         }
         //args说明出现了函数调用
         Expr expr = parseArgs(nameAndArgsContext.args());
         List<Expr> args = new ArrayList<>();
         if (expr instanceof Expr.ExprList) {
             args.addAll(((Expr.ExprList) expr).getExprs());
-        } else{
+        } else {
             args.add(expr);
         }
-        return new Expr.FuncCallExpr(result,args);
+        return new Expr.FuncCallExpr(result, args);
     }
 
     public static Expr parseNameAndArgsList(Expr result, List<LuaParser.NameAndArgsContext> nameAndArgsContexts) {
@@ -303,7 +307,7 @@ public class Parser {
     }
 
     /**
-     *args 函数调用时才会用到
+     * args 函数调用时才会用到
      */
     public static Expr parseArgs(LuaParser.ArgsContext args) {
         if (args.explist() != null) {
@@ -325,8 +329,8 @@ public class Parser {
         } else if (str.CHARSTRING() != null) {
             String text = str.CHARSTRING().getText();
             return new StringValue(StringUtil.extractNormalString(text));
-        } else{
-            return new  StringValue(StringUtil.extractLongString(str.LONGSTRING().getText()));
+        } else {
+            return new StringValue(StringUtil.extractLongString(str.LONGSTRING().getText()));
         }
 
     }
@@ -337,12 +341,12 @@ public class Parser {
         if (context.fieldlist() == null) {
             return table;
         }
-        for(LuaParser.FieldContext field : context.fieldlist().field()){
+        for (LuaParser.FieldContext field : context.fieldlist().field()) {
             if (field.exp().size() == 2) {
-                table.addExpr(parseExpr(field.exp(0)),parseExpr(field.exp(1)));
-            }else if(field.NAME() != null){
-                table.addExpr(new Expr.NameExpr(field.NAME().getText()),parseExpr(field.exp(0)));
-            } else{
+                table.addExpr(parseExpr(field.exp(0)), parseExpr(field.exp(1)));
+            } else if (field.NAME() != null) {
+                table.addExpr(new Expr.NameExpr(field.NAME().getText()), parseExpr(field.exp(0)));
+            } else {
                 table.addExpr(parseExpr(field.exp(0)));
             }
         }
@@ -351,10 +355,10 @@ public class Parser {
 
 
     public static Expr parseExpr(LuaParser.ExpContext exp) {
-        if (exp.getStart() != null) {
+        if (exp.getStart() != null && exp.children.size() == 1) {
             String text = exp.getStart().getText();
             if ("nil".equals(text)) {
-                return  NilValue.NIL;
+                return NilValue.NIL;
             }
             if ("true".equals(text)) {
                 return BoolValue.TRUE;
@@ -377,20 +381,20 @@ public class Parser {
             Expr prefix;
             if (varOrExp.var() != null) {
                 prefix = parseVar(varOrExp.var());
-            } else{
+            } else {
                 prefix = parseExpr(varOrExp.exp());
             }
             return parseNameAndArgsList(prefix, exp.prefixexp().nameAndArgs());
         }
 
-        if (exp.functiondef()!= null) {
+        if (exp.functiondef() != null) {
             return parseFuncBody(exp.functiondef().funcbody());
         }
         if (exp.tableconstructor() != null) {
             return parseTableConstructor(exp.tableconstructor());
         }
         if (exp.operatorUnary() != null) {
-            return new Expr.UnaryExpr(exp.operatorUnary().getText(),parseExpr(exp.exp(0)));
+            return new Expr.UnaryExpr(exp.operatorUnary().getText(), parseExpr(exp.exp(0)));
         }
         Expr ex1 = parseExpr(exp.exp(0));
         Expr ex2 = parseExpr(exp.exp(1));
@@ -413,7 +417,7 @@ public class Parser {
             return new Expr.AndExpr(ex1, ex2);
         }
         if (exp.operatorOr() != null) {
-            return new Expr.OrExpr(ex1,ex2);
+            return new Expr.OrExpr(ex1, ex2);
         }
         if (exp.operatorBitwise() != null) {
             return new Expr.CalExpr(exp.operatorBitwise().getText(), ex1, ex2);

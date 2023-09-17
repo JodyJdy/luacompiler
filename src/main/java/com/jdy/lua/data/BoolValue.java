@@ -34,4 +34,34 @@ public class BoolValue implements Value, Expr {
     public String toString() {
         return String.valueOf(b);
     }
+
+    @Override
+    public BoolValue eq(Value b) {
+        return this.equals(b) ? TRUE : FALSE;
+    }
+
+    @Override
+    public BoolValue ne(Value b) {
+        return this.equals(b) ? FALSE : TRUE;
+    }
+
+    @Override
+    public BoolValue lt(Value b) {
+        throw new RuntimeException("布尔值无法比较大小");
+    }
+
+    @Override
+    public BoolValue gt(Value b) {
+        throw new RuntimeException("布尔值无法比较大小");
+    }
+
+    @Override
+    public BoolValue le(Value b) {
+        throw new RuntimeException("布尔值无法比较大小");
+    }
+
+    @Override
+    public BoolValue ge(Value b) {
+        throw new RuntimeException("布尔值无法比较大小");
+    }
 }
