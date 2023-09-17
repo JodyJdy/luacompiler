@@ -33,6 +33,13 @@ public class Checker {
         return (NumberValue) expr;
     }
 
+    public static StringValue checkString(Value value) {
+        if (!(value instanceof StringValue)) {
+            throw new RuntimeException(value.toString()+ " 不是字符串");
+        }
+        return (StringValue) value;
+    }
+
     public static NumberValue checkNumber(Value value) {
         if (!(value instanceof NumberValue)) {
             throw new RuntimeException(value.toString()+ " 不是数字");

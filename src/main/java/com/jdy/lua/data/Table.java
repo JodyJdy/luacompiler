@@ -7,7 +7,6 @@ import com.jdy.lua.statement.Expr;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 import static com.jdy.lua.data.MetaTable.*;
 
@@ -20,7 +19,12 @@ import static com.jdy.lua.data.MetaTable.*;
 public class Table implements CalculateValue {
 
 
-    public final Map<String, Value> map = new LinkedHashMap<>();
+    private final LinkedHashMap<String, Value> map = new LinkedHashMap<>();
+
+    /**
+     * 记录key 用于遍历
+     */
+    private final List<String> keys = new ArrayList<>();
 
     public void setMetatable(Table metatable) {
         this.metatable = metatable;
@@ -62,21 +66,30 @@ public class Table implements CalculateValue {
     }
 
     public void addVal(String key, Value value) {
+        checkKeyExist(key);
         map.put(key, value);
     }
 
+
+    public void checkKeyExist(String key) {
+        if (!keys.contains(key)) {
+            keys.add(key);
+        }
+    }
+
     public void addVal(Value value) {
-        map.put(String.valueOf(map.size()), value);
+        String key = String.valueOf(map.size());
+        map.put(key, value);
     }
 
     public Value get(float key) {
         // lua 下标从1开始
-        return get(String.valueOf(key-1));
+        return get(String.valueOf(key - 1));
     }
 
     public Value get(int key) {
         // lua 下标从1开始
-        return get(String.valueOf(key-1));
+        return get(String.valueOf(key - 1));
     }
 
     public Value get(String key) {
@@ -84,13 +97,13 @@ public class Table implements CalculateValue {
             return map.get(key);
         }
         //从元表获取数据
-        if (metatable != null && metatable.get(INDEX)!= NilValue.NIL) {
-            return getFromMetaTable(metatable.get(INDEX),key);
+        if (metatable != null && metatable.get(INDEX) != NilValue.NIL) {
+            return getFromMetaTable(metatable.get(INDEX), key);
         }
         return NilValue.NIL;
     }
 
-    private Value getFromMetaTable(Value meta,String key) {
+    private Value getFromMetaTable(Value meta, String key) {
         //从元表中返回数据
         if (meta instanceof Table) {
             return ((Table) meta).get(key);
@@ -122,7 +135,7 @@ public class Table implements CalculateValue {
             if (metatable.hasKey(EQ)) {
                 Value value = metatable.get(EQ);
                 if (value instanceof Function fun) {
-                    Value val =  new Executor(fun, List.of(this,b)).execute();
+                    Value val = new Executor(fun, List.of(this, b)).execute();
                     return Checker.checkBool(val);
                 }
             }
@@ -137,7 +150,7 @@ public class Table implements CalculateValue {
             if (metatable.hasKey(NE)) {
                 Value value = metatable.get(NE);
                 if (value instanceof Function fun) {
-                    Value val =  new Executor(fun, List.of(this,b)).execute();
+                    Value val = new Executor(fun, List.of(this, b)).execute();
                     return Checker.checkBool(val);
                 }
             }
@@ -152,7 +165,7 @@ public class Table implements CalculateValue {
             if (metatable.hasKey(LT)) {
                 Value value = metatable.get(LT);
                 if (value instanceof Function fun) {
-                    Value val =  new Executor(fun, List.of(this,b)).execute();
+                    Value val = new Executor(fun, List.of(this, b)).execute();
                     return Checker.checkBool(val);
                 }
             }
@@ -171,7 +184,7 @@ public class Table implements CalculateValue {
             if (metatable.hasKey(LE)) {
                 Value value = metatable.get(LE);
                 if (value instanceof Function fun) {
-                    Value val =  new Executor(fun, List.of(this,b)).execute();
+                    Value val = new Executor(fun, List.of(this, b)).execute();
                     return Checker.checkBool(val);
                 }
             }
@@ -193,7 +206,7 @@ public class Table implements CalculateValue {
         if (metatable != null && metatable.hasKey(ADD)) {
             Value value = metatable.get(ADD);
             if (value instanceof Function fun) {
-               return new Executor(fun, List.of(this,b)).execute();
+                return new Executor(fun, List.of(this, b)).execute();
             }
         }
         return CalculateValue.super.add(b);
@@ -204,7 +217,7 @@ public class Table implements CalculateValue {
         if (metatable != null && metatable.hasKey(SUB)) {
             Value value = metatable.get(SUB);
             if (value instanceof Function fun) {
-                return new Executor(fun, List.of(this,b)).execute();
+                return new Executor(fun, List.of(this, b)).execute();
             }
         }
         return CalculateValue.super.sub(b);
@@ -215,7 +228,7 @@ public class Table implements CalculateValue {
         if (metatable != null && metatable.hasKey(MUL)) {
             Value value = metatable.get(MUL);
             if (value instanceof Function fun) {
-                return new Executor(fun, List.of(this,b)).execute();
+                return new Executor(fun, List.of(this, b)).execute();
             }
         }
         return CalculateValue.super.mul(b);
@@ -226,7 +239,7 @@ public class Table implements CalculateValue {
         if (metatable != null && metatable.hasKey(DIV)) {
             Value value = metatable.get(DIV);
             if (value instanceof Function fun) {
-                return new Executor(fun, List.of(this,b)).execute();
+                return new Executor(fun, List.of(this, b)).execute();
             }
         }
         return CalculateValue.super.div(b);
@@ -234,7 +247,7 @@ public class Table implements CalculateValue {
 
     @Override
     public Value unm() {
-        if (metatable != null && metatable.hasKey(UNM)){
+        if (metatable != null && metatable.hasKey(UNM)) {
             Value value = metatable.get(UNM);
             if (value instanceof Function fun) {
                 return new Executor(fun, List.of(this)).execute();
@@ -248,7 +261,7 @@ public class Table implements CalculateValue {
         if (metatable != null && metatable.hasKey(MOD)) {
             Value value = metatable.get(MOD);
             if (value instanceof Function fun) {
-                return new Executor(fun, List.of(this,b)).execute();
+                return new Executor(fun, List.of(this, b)).execute();
             }
         }
         return CalculateValue.super.mod(b);
@@ -260,7 +273,7 @@ public class Table implements CalculateValue {
         if (metatable != null && metatable.hasKey(POW)) {
             Value value = metatable.get(POW);
             if (value instanceof Function fun) {
-                return new Executor(fun, List.of(this,b)).execute();
+                return new Executor(fun, List.of(this, b)).execute();
             }
         }
         return CalculateValue.super.pow(b);
@@ -271,7 +284,7 @@ public class Table implements CalculateValue {
         if (metatable != null && metatable.hasKey(CONCAT)) {
             Value value = metatable.get(CONCAT);
             if (value instanceof Function fun) {
-                return new Executor(fun, List.of(this,b)).execute();
+                return new Executor(fun, List.of(this, b)).execute();
             }
         }
         return CalculateValue.super.concat(b);
@@ -281,11 +294,20 @@ public class Table implements CalculateValue {
     public Value len() {
         return new NumberValue(map.size());
     }
+
     /**
      * 不包含元表
+     *
      * @return
      */
- public boolean hasKey(String key){
-     return map.containsKey(key);
- }
+    public boolean hasKey(String key) {
+        return map.containsKey(key);
+    }
+
+    public String key(int i){
+        return keys.get(i);
+    }
+    public List<String> keys(){
+        return keys;
+    }
 }

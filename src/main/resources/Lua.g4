@@ -76,6 +76,7 @@ block
 
 stat
     : ';'
+    | require
     | varlist '=' explist
     | functioncall
     | label
@@ -90,6 +91,10 @@ stat
     | 'function' funcname funcbody
     | 'local' 'function' NAME funcbody
     | 'local' attnamelist ('=' explist)?
+    ;
+
+require
+    : 'require' '(' NORMALSTRING ')'
     ;
 
 attnamelist
@@ -126,6 +131,7 @@ explist
 
 exp
     : 'nil' | 'false' | 'true'
+    | require
     | number
     | string
     | '...'

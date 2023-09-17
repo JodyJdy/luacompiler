@@ -18,7 +18,7 @@ import java.util.Map;
  */
 public interface Expr  {
 
-    Value visitExpr(Executor vistor);
+    Value visitExpr(Executor visitor);
 
 
 

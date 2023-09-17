@@ -1,18 +1,23 @@
 package com.jdy.lua.executor;
 
-import com.jdy.lua.data.*;
 import com.jdy.lua.data.Function;
+import com.jdy.lua.data.*;
 import com.jdy.lua.luanative.NativeFunction;
+import com.jdy.lua.luanative.NativeLoader;
 import com.jdy.lua.statement.Expr;
 import com.jdy.lua.statement.Statement;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
-import static com.jdy.lua.statement.Statement.*;
-import static com.jdy.lua.statement.Expr.*;
-import static com.jdy.lua.data.BoolValue.*;
-import static com.jdy.lua.data.NilValue.*;
+import static com.jdy.lua.data.BoolValue.FALSE;
+import static com.jdy.lua.data.BoolValue.TRUE;
+import static com.jdy.lua.data.NilValue.NIL;
 import static com.jdy.lua.executor.Checker.*;
+import static com.jdy.lua.statement.Expr.*;
+import static com.jdy.lua.statement.Statement.*;
 
 /**
  * @author jdy
@@ -387,12 +392,78 @@ public class Executor {
         circleLevel--;
     }
 
+
+    private List<Iterator> prepareIterator(List<Expr> exprs) {
+        //存放迭代器中间产物
+        List<Value> iteratorMiddle = new ArrayList<>();
+        for (Expr expr : exprs) {
+            //根据 ipairs(t) 获取 f,s,var
+            if (expr instanceof FuncCallExpr) {
+                MultiValue multi = checkMultiValue(expr.visitExpr(this));
+                iteratorMiddle.addAll(multi.getValueList());
+            } else{
+                // for k,v in f,s,var 形式
+                iteratorMiddle.add(expr.visitExpr(this));
+            }
+        }
+        // 按照 f,s,var 三个一组遍历
+        if (iteratorMiddle.size() % 3 != 0) {
+            throw new RuntimeException("不符合for-each 规范");
+        }
+        List<Iterator> iterators = new ArrayList<>();
+        // 将 f,s,var 组成一个 迭代器
+        for (int i = 0; i < iteratorMiddle.size(); i += 3) {
+            iterators.add(new Iterator(checkFunc(iteratorMiddle.get(i)),iteratorMiddle.get(i+1),
+                    iteratorMiddle.get(i+2)));
+        }
+        return iterators;
+    }
     /**
      * @param statement
      * @// TODO: 2023/9/16  后期实现
      */
     public void executeStatement(GenericForStatement statement) {
-
+        //存放迭代器
+        List<Iterator> iterators = prepareIterator(statement.getExpList());
+        List<String> vars = statement.getVars();
+        //变量先放进去
+        vars.forEach(var-> currentBlock().addVar(var,NIL));
+        circleLevel++;
+        Label:
+        while(true){
+            List<Value> tempValues = new ArrayList<>();
+            for (Iterator iter : iterators) {
+                Executor doIter = new Executor(iter.getIteratorFunc(), List.of(iter.getSource(), iter.getVar()));
+                MultiValue multiValue = checkMultiValue(doIter.execute());
+                tempValues.addAll(multiValue.getValueList());
+                //设置var的值，用于下次迭代
+                iter.setVar(multiValue.getValueList().get(0));
+                //结束
+                if (iter.getVar() == NIL) {
+                    break Label;
+                }
+            }
+            //根据tempValue更新 循环变量
+            for (int i = 0; i < vars.size(); i++) {
+                Variable var = currentBlock().searchVariable(vars.get(i));
+                var.setValue(tempValues.get(i));
+            }
+            //执行block
+            statement.getBlockStatement().visitStatement(this);
+            if (shouldReturn()) {
+                break;
+            }
+            if (shouldBreak()) {
+                breakLevel = CLEAR_MARK;
+                break;
+            }
+            if (shouldContinue()) {
+                continueLevel = CLEAR_MARK;
+            }
+        }
+        //循环变量移除
+        vars.forEach(currentBlock()::removeVar);
+        circleLevel--;
     }
 
     public void executeStatement(RepeatStatement statement) {
@@ -683,5 +754,13 @@ public class Executor {
 
     public Value executeExpr(MultiArg expr) {
         return currentBlock().searchVariable("...").getValue();
+    }
+
+    public Value executeExpr(RequireModule requireModule) {
+        return NativeLoader.loadModule(requireModule.getModuleName());
+    }
+
+    public void executeStatement(RequireModule requireModule) {
+        curBlock.addVar(requireModule.getModuleName(), NativeLoader.loadModule(requireModule.getModuleName()));
     }
 }

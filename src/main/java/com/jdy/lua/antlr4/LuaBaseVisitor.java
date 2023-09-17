@@ -1,5 +1,4 @@
-package com.jdy.lua.antlr4;
-// Generated from E:/IdeaProjects/luacompiler-main/src/main/resources\Lua.g4 by ANTLR 4.12.0
+package com.jdy.lua.antlr4;// Generated from D:/javaproject/luacompiler/luacompiler/src/main/resources/Lua.g4 by ANTLR 4.13.1
 import org.antlr.v4.runtime.tree.AbstractParseTreeVisitor;
 
 /**
@@ -33,6 +32,13 @@ public class LuaBaseVisitor<T> extends AbstractParseTreeVisitor<T> implements Lu
 	 * {@link #visitChildren} on {@code ctx}.</p>
 	 */
 	@Override public T visitStat(LuaParser.StatContext ctx) { return visitChildren(ctx); }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation returns the result of calling
+	 * {@link #visitChildren} on {@code ctx}.</p>
+	 */
+	@Override public T visitRequire(LuaParser.RequireContext ctx) { return visitChildren(ctx); }
 	/**
 	 * {@inheritDoc}
 	 *

@@ -1,5 +1,4 @@
-package com.jdy.lua.antlr4;
-// Generated from E:/IdeaProjects/luacompiler-main/src/main/resources\Lua.g4 by ANTLR 4.12.0
+package com.jdy.lua.antlr4;// Generated from D:/javaproject/luacompiler/luacompiler/src/main/resources/Lua.g4 by ANTLR 4.13.1
 
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.tree.ErrorNode;
@@ -48,6 +47,18 @@ public class LuaBaseListener implements LuaListener {
 	 * <p>The default implementation does nothing.</p>
 	 */
 	@Override public void exitStat(LuaParser.StatContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterRequire(LuaParser.RequireContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitRequire(LuaParser.RequireContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *

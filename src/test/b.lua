@@ -1,3 +1,6 @@
-print(type(1))
-print(type("hello"))
 
+
+require("module")
+
+
+print(module.constant)

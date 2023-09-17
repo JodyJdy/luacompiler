@@ -58,6 +58,9 @@ public class Parser {
         if (stat.functioncall() != null) {
             return parseFuncCall(stat);
         }
+        if (stat.require() != null) {
+            return new Statement.RequireModule(StringUtil.extractNormalString(stat.require().NORMALSTRING().getText()));
+        }
 
         String text = token.getText();
         if (":".equals(text)) {
@@ -369,6 +372,9 @@ public class Parser {
             if ("...".equals(text)) {
                 return Expr.MultiArg.MULTI_ARG;
             }
+        }
+        if (exp.require() != null) {
+            return new Statement.RequireModule(StringUtil.extractNormalString(exp.require().NORMALSTRING().getText()));
         }
         if (exp.string() != null) {
             return parseString(exp.string());

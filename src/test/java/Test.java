@@ -13,11 +13,12 @@ public class Test {
     public static void main(String[] args) throws Exception {
         FileInputStream fils = new FileInputStream("src/test/b.lua");
         LuaParser luaParser = new LuaParser(new BufferedTokenStream(new LuaLexer(CharStreams.fromStream(fils))));
-        NativeLoader.load();
-
+        //加载库函数
+        NativeLoader.loadLibrary();
+        //设置模块加载地址
+        NativeLoader.setModulePath("src/test");
         LuaParser.ChunkContext context = luaParser.chunk();
         Statement result = Parser.parseBlock(context.block());
-        System.out.println();
         new Executor((Statement.BlockStatement) result).execute();
     }
 

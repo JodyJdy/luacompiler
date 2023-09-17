@@ -1,5 +1,6 @@
 package com.jdy.lua.statement;
 
+import com.jdy.lua.data.Value;
 import com.jdy.lua.executor.Executor;
 import lombok.Data;
 
@@ -262,13 +263,6 @@ public  interface Statement {
     }
 
 
-    /**
-     * 表的方法
-     * Account = {balance = 0}
-     * function Account.withdraw (v)
-     *     Account.balance = Account.balance - v
-     * end
-     */
     @Data
     class TableMethod implements FuncType{
         /**
@@ -289,19 +283,7 @@ public  interface Statement {
     }
 
     /**
-     * 表的派生类方法
-     * -- 元类
-     * Rectangle = {area = 0, length = 0, breadth = 0}
-     * -- 派生类的方法 new
-     * function Rectangle:new (o,length,breadth)
-     *   o = o or {}
-     *   setmetatable(o, self)
-     *   self.__index = self
-     *   self.length = length or 0
-     *   self.breadth = breadth or 0
-     *   self.area = length*breadth;
-     *   return o
-     * end
+     * a.b.c:()
      */
     @Data
     class TableExtendMethod implements FuncType{
@@ -323,7 +305,6 @@ public  interface Statement {
     /**
      * 函数本身也是个表达式
      * a = function(xx){
-     *
      * }
      */
     @Data
@@ -359,6 +340,24 @@ public  interface Statement {
             visitor.executeStatement(this);
         }
 
+    }
+
+    @Data
+    class RequireModule implements Statement,Expr{
+        private final String moduleName;
+
+        public RequireModule(String moduleName) {
+            this.moduleName = moduleName;
+        }
+
+        @Override
+        public Value visitExpr(Executor visitor) {
+            return visitor.executeExpr(this);
+        }
+        @Override
+        public void visitStatement(Executor visitor) {
+            visitor.executeStatement(this);
+        }
     }
 
 
