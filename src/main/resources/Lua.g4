@@ -74,6 +74,11 @@ block
     : stat* laststat?
     ;
 
+commandLine
+    : stat
+    | exp
+    ;
+
 stat
     : ';'
     | require

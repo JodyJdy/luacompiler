@@ -1,4 +1,4 @@
-package com.jdy.lua.antlr4;// Generated from D:/javaproject/luacompiler/luacompiler/src/main/resources/Lua.g4 by ANTLR 4.13.1
+package com.jdy.lua.antlr4;// Generated from D:/projects/luacompiler/src/main/resources/Lua.g4 by ANTLR 4.13.1
 import org.antlr.v4.runtime.tree.ParseTreeListener;
 
 /**
@@ -26,6 +26,16 @@ public interface LuaListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitBlock(LuaParser.BlockContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link LuaParser#commandLine}.
+	 * @param ctx the parse tree
+	 */
+	void enterCommandLine(LuaParser.CommandLineContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link LuaParser#commandLine}.
+	 * @param ctx the parse tree
+	 */
+	void exitCommandLine(LuaParser.CommandLineContext ctx);
 	/**
 	 * Enter a parse tree produced by {@link LuaParser#stat}.
 	 * @param ctx the parse tree

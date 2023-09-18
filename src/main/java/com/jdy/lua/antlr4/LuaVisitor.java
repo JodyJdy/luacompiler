@@ -1,4 +1,4 @@
-package com.jdy.lua.antlr4;// Generated from D:/javaproject/luacompiler/luacompiler/src/main/resources/Lua.g4 by ANTLR 4.13.1
+package com.jdy.lua.antlr4;// Generated from D:/projects/luacompiler/src/main/resources/Lua.g4 by ANTLR 4.13.1
 import org.antlr.v4.runtime.tree.ParseTreeVisitor;
 
 /**
@@ -21,6 +21,12 @@ public interface LuaVisitor<T> extends ParseTreeVisitor<T> {
 	 * @return the visitor result
 	 */
 	T visitBlock(LuaParser.BlockContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link LuaParser#commandLine}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitCommandLine(LuaParser.CommandLineContext ctx);
 	/**
 	 * Visit a parse tree produced by {@link LuaParser#stat}.
 	 * @param ctx the parse tree
