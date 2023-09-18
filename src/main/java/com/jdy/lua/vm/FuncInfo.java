@@ -2,6 +2,7 @@ package com.jdy.lua.vm;
 
 import com.jdy.lua.data.DataTypeEnum;
 import com.jdy.lua.data.NilValue;
+import com.jdy.lua.data.StringValue;
 import com.jdy.lua.data.Value;
 
 import java.util.ArrayList;
@@ -16,10 +17,25 @@ import java.util.Map;
  * @data 2023/9/18 14:16
  */
 public class FuncInfo implements Value {
+
+    public void setObjMethod(boolean objMethod) {
+        isObjMethod = objMethod;
+    }
+
+    /**
+     * 是否是对象实例方法
+     * a:b()这种
+     */
+    private boolean isObjMethod = false;
     /**
      * 只有 函数定义 和最外层的  block 拥有 codes
      */
-    private List<ByteCode> codes = new ArrayList<>();
+    private final List<ByteCode> codes = new ArrayList<>();
+
+    /**
+     * 函数中使用到的label
+     */
+    private final Map<String, LabelMessage> labelLocation = new HashMap<>();
 
     /**
      * 引用的 父级 block 中的变量
@@ -106,6 +122,13 @@ public class FuncInfo implements Value {
     }
 
     /**
+     * 重置寄存器的使用
+     * @param n
+     */
+    public void resetRegister(int n) {
+        used = n;
+    }
+    /**
      * 释放n个寄存器
      */
     public void freeRegister(int n) {
@@ -129,30 +152,11 @@ public class FuncInfo implements Value {
         }
         return null;
     }
-    public void addVar(String name, Value val) {
+    public int addVar(String name, Value val) {
         int reg = this.allocRegister();
         registers.set(reg, new StackElement(name, val, reg));
-    }
-
-    /**
-     * 匿名函数索引
-     */
-    private int unnamedFuncIndex = 0;
-    /**
-     * 用于与变量名区分
-     */
-    private static String UNNAMED_FUNC_PREFIX = "(unnamed_func)";
-    /**
-     *添加匿名函数
-     */
-    public int addUnnamedFunc(String name, FuncInfo func) {
-        int reg =this.allocRegister();
-        registers.set(reg, new StackElement(UNNAMED_FUNC_PREFIX + unnamedFuncIndex, func, reg));
-        unnamedFuncIndex++;
         return reg;
     }
-
-
 
     public UpVal searchUpVal(String name) {
         UpVal temp = upValMap.get(name);
@@ -168,6 +172,11 @@ public class FuncInfo implements Value {
         return temp;
     }
 
+    public static void addGlobalVal(String name, Value val) {
+        GlobalVal globalVal = new GlobalVal(globalVar.size(), name, val);
+        globalVar.add(globalVal);
+        globalVarMap.put(name, globalVal);
+    }
     public static int searchGlobalIndex(String name) {
         GlobalVal val = searchGlobal(name);
         if (val != null) {
@@ -190,6 +199,9 @@ public class FuncInfo implements Value {
         codes.add(byteCode);
     }
 
+    public static int getConstantIndex(String val) {
+        return getConstantIndex(new StringValue(val));
+    }
     public static int getConstantIndex(Value v) {
         for (int i = 0; i < constant.size(); i++) {
             if (constant.get(i).equals(v)) {
@@ -198,5 +210,44 @@ public class FuncInfo implements Value {
         }
         constant.add(v);
         return constant.size() - 1;
+    }
+
+
+    public void addLabel(String labelName) {
+        labelLocation.put(labelName, new LabelMessage(codes.size(),used));
+    }
+
+    public int getNextPc(){
+        return codes.size();
+    }
+    public LabelMessage getLabel(String labelName) {
+        return labelLocation.get(labelName);
+    }
+
+    public void setParamNames(List<String> paramNames) {
+        this.paramNames = paramNames;
+    }
+
+    public void setHasMultiArg(boolean hasMultiArg) {
+        this.hasMultiArg = hasMultiArg;
+    }
+
+    public void setRegisterVal(int reg, Value val) {
+        registers.set(reg, new StackElement(val));
+    }
+
+    /**
+     * 普通参数
+     */
+
+    protected List<String> paramNames = new ArrayList<>();
+    /**
+     * 结尾有 变长参数  ...这种
+     */
+    protected boolean hasMultiArg;
+
+
+    public int getUsed() {
+        return used;
     }
 }

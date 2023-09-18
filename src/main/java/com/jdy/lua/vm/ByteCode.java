@@ -107,6 +107,56 @@ public interface ByteCode {
             super(a, b, c);
         }
     }
+    class MUL extends ThreeArgByteCode{
+        public MUL(int a, int b, int c) {
+            super(a, b, c);
+        }
+    }
+    class DIV extends ThreeArgByteCode{
+        public DIV(int a, int b, int c) {
+            super(a, b, c);
+        }
+    }
+    class MOD extends ThreeArgByteCode{
+        public MOD(int a, int b, int c) {
+            super(a, b, c);
+        }
+    }
+    class INTMOD extends ThreeArgByteCode{
+        public INTMOD(int a, int b, int c) {
+            super(a, b, c);
+        }
+    }
+    class POW extends ThreeArgByteCode{
+        public POW(int a, int b, int c) {
+            super(a, b, c);
+        }
+    }
+    class BITAND extends ThreeArgByteCode{
+        public BITAND(int a, int b, int c) {
+            super(a, b, c);
+        }
+    }
+    class BITOR extends ThreeArgByteCode{
+        public BITOR(int a, int b, int c) {
+            super(a, b, c);
+        }
+    }
+    class BITLEFTMOVE extends ThreeArgByteCode{
+        public BITLEFTMOVE(int a, int b, int c) {
+            super(a, b, c);
+        }
+    }
+    class BITRIGHTMOVE extends ThreeArgByteCode{
+        public BITRIGHTMOVE(int a, int b, int c) {
+            super(a, b, c);
+        }
+    }
+    class CAT extends ThreeArgByteCode{
+        public CAT(int a, int b, int c) {
+            super(a, b, c);
+        }
+    }
 
     /**
      * 测试寄存器里面的值是否为真， 为真继续执行，否则跳到假出口
@@ -261,6 +311,23 @@ public interface ByteCode {
             super(a, b);
         }
     }
+
+    /**
+     * 创建一个 table
+     */
+    class NEWTABLE extends NoArgByteCode{
+
+    }
+
+    /**
+     * 将 b - > c 寄存器中的内容，
+     * 添加到 a 寄存器对应的table中
+     */
+    class SETARRAY extends ThreeArgByteCode{
+        public SETARRAY(int a, int b, int c) {
+            super(a, b, c);
+        }
+    }
     /**
      * 将寄存器A，下标b的内容 设置为 c寄存器的内容
      */
@@ -282,6 +349,5 @@ public interface ByteCode {
             super(a, b, c);
         }
     }
-
 
 }

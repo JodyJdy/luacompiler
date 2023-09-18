@@ -63,7 +63,7 @@ public class Parser {
         }
 
         String text = token.getText();
-        if (":".equals(text)) {
+        if (";".equals(text)) {
             return new Statement.EmptyStatement();
         }
         if ("goto".equals(text)) {

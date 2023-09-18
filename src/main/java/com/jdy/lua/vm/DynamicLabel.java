@@ -15,6 +15,9 @@ public class DynamicLabel {
 
     public DynamicLabel() {
     }
+    public DynamicLabel(int pc){
+        this. pc = pc;
+    }
 
     public Integer getPc() {
         return pc;
