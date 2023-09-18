@@ -8,12 +8,25 @@ package com.jdy.lua.data;
  */
 public interface Value {
     DataTypeEnum type();
-    BoolValue eq(Value b);
-    BoolValue ne(Value b);
-    BoolValue lt(Value b);
-    BoolValue gt(Value b);
+    default BoolValue eq(Value b){
+        throw new RuntimeException("不支持比较");
+    }
+    default BoolValue ne(Value b){
 
-    BoolValue le(Value b);
-    BoolValue ge(Value b);
+        throw new RuntimeException("不支持比较");
+    }
+    default BoolValue lt(Value b){
+        throw new RuntimeException("不支持比较");
+    }
+    default BoolValue gt(Value b){
+        throw new RuntimeException("不支持比较");
+    }
+
+    default BoolValue le(Value b){
+        throw new RuntimeException("不支持比较");
+    }
+    default BoolValue ge(Value b){
+        throw new RuntimeException("不支持比较");
+    }
 
 }

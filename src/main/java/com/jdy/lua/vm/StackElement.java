@@ -14,6 +14,11 @@ public class StackElement {
      * 是否是本地变量
      */
     private boolean isLocalVar = false;
+
+    /**
+     * 如果是本地变量 下标
+     */
+    private int index;
     /**
      * 如果是本地变量 变量名
      */
@@ -31,9 +36,10 @@ public class StackElement {
         this.value = value;
     }
 
-    public StackElement(String name, Value val) {
+    public StackElement(String name, Value val,int index) {
         this.varName = name;
         this.value = val;
+        this.index = index;
         this.isLocalVar = true;
     }
 
@@ -45,5 +51,25 @@ public class StackElement {
 
     public static StackElement empty(){
         return new StackElement(NilValue.NIL);
+    }
+
+    public boolean isLocalVar() {
+        return isLocalVar;
+    }
+
+    public int getIndex() {
+        return index;
+    }
+
+    public String getVarName() {
+        return varName;
+    }
+
+    public boolean isCapture() {
+        return capture;
+    }
+
+    public Value getValue() {
+        return value;
     }
 }

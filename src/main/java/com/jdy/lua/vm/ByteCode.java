@@ -23,6 +23,10 @@ public interface ByteCode {
      */
     abstract class SingleArgByteCode implements ByteCode {
         protected int a;
+
+        public SingleArgByteCode(int a) {
+            this.a = a;
+        }
     }
 
     /**
@@ -45,6 +49,12 @@ public interface ByteCode {
         protected int a;
         protected int b;
         protected int c;
+
+        public ThreeArgByteCode(int a, int b, int c) {
+            this.a = a;
+            this.b = b;
+            this.c = c;
+        }
     }
 
     /**
@@ -53,7 +63,22 @@ public interface ByteCode {
      * a 表示 跳转到的 pc 位置
      */
     class JMP extends SingleArgByteCode {
+        private DynamicLabel dynamicLabel;
 
+        public JMP(DynamicLabel dynamicLabel) {
+            super(0);
+            this.dynamicLabel = dynamicLabel;
+        }
+
+        public JMP(int a) {
+            super(a);
+        }
+        /**
+         * 应用label的值，找到具体的跳转位置
+         */
+        public void applyLabel(){
+            this.a = dynamicLabel.getPc();
+        }
     }
 
     /**
@@ -65,7 +90,9 @@ public interface ByteCode {
      */
 
     class ADD extends ThreeArgByteCode {
-
+        public ADD(int a, int b, int c) {
+            super(a, b, c);
+        }
     }
 
     /**
@@ -76,48 +103,54 @@ public interface ByteCode {
      * 将 寄存器b 和 寄存器 c 里面的内容 相减 放入到 a中
      */
     class SUB extends ThreeArgByteCode {
-
+        public SUB(int a, int b, int c) {
+            super(a, b, c);
+        }
     }
 
-
     /**
-     * 测试 寄存器 a 和 寄存器 b 的内容是否相同
-     * 如果相同 pc + 2 执行 真出口 的内容
-     * pc + 1 的位置是 假出口
-     * <p>
-     * 其他逻辑跳转类似
+     * 测试寄存器里面的值是否为真， 为真继续执行，否则跳到假出口
      */
 
-    class EQ extends TwoArgByteCode {
+    class TEST extends SingleArgByteCode {
+        public TEST(int a) {
+            super(a);
+        }
+    }
+
+    class EQ extends TwoArgByteCode{
         public EQ(int a, int b) {
             super(a, b);
         }
     }
+
     class NE extends TwoArgByteCode {
         public NE(int a, int b) {
             super(a, b);
         }
     }
-    class LT extends TwoArgByteCode {
-        public LT(int a, int b) {
-            super(a, b);
-        }
-    }
-    class LE extends TwoArgByteCode {
-        public LE(int a, int b) {
-            super(a, b);
-        }
-    }
-    class GT extends TwoArgByteCode {
-        public GT(int a, int b) {
-            super(a, b);
-        }
-    }
-    class GE extends TwoArgByteCode {
+    class GE extends TwoArgByteCode{
         public GE(int a, int b) {
             super(a, b);
         }
     }
+    class GT extends TwoArgByteCode{
+        public GT(int a, int b) {
+            super(a, b);
+        }
+    }
+
+    class LT extends TwoArgByteCode{
+        public LT(int a, int b) {
+            super(a, b);
+        }
+    }
+    class LE extends TwoArgByteCode{
+        public LE(int a, int b) {
+            super(a, b);
+        }
+    }
+
 
 
     /**
@@ -199,16 +232,22 @@ public interface ByteCode {
      * a+1 里面
      */
 
-    class CALL extends ThreeArgByteCode{}
+    class CALL extends ThreeArgByteCode{
+        public CALL(int a, int b, int c) {
+            super(a, b, c);
+        }
+    }
 
     /**
-     *
      * 返回多个参数
      * 将 b -> c 寄存器里面的内容 存储到 a 寄存器里面
-     * 将 内容长度存储到 a + 1 里面
      */
 
-    class RETURNMULTI extends ThreeArgByteCode{}
+    class RETURNMULTI extends ThreeArgByteCode{
+        public RETURNMULTI(int a, int b, int c) {
+            super(a, b, c);
+        }
+    }
     /**
      * 无参数返回
      */
@@ -225,7 +264,24 @@ public interface ByteCode {
     /**
      * 将寄存器A，下标b的内容 设置为 c寄存器的内容
      */
-    class SETTABLE extends ThreeArgByteCode{}
+    class SETTABLE extends ThreeArgByteCode{
+        public SETTABLE(int a, int b, int c) {
+            super(a, b, c);
+        }
+    }
+
+    /**
+     * 如果一个寄存器里面存放了多个值 （例如: 多返回值函数, ... ）
+     *
+     *  将 b 寄存器的多值 下标为 c 的值 存放在 a寄存器里面
+     *
+     */
+
+    class GETMULTI extends ThreeArgByteCode{
+        public GETMULTI(int a, int b, int c) {
+            super(a, b, c);
+        }
+    }
 
 
 }
