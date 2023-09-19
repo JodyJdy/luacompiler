@@ -101,10 +101,6 @@ public class InstructionGenerator {
         int beforeReg = funcInfo.getUsed();
         assignStatement.getRight().forEach(this::generateExpr);
         int afterReg = funcInfo.getUsed();
-        //有一部分需要设置为nil
-        if (afterReg - beforeReg < exprs.size()) {
-
-        }
         for (int i = 0; i < exprs.size(); i++) {
             Expr expr = exprs.get(i);
             //获取值所在的寄存器
@@ -121,7 +117,6 @@ public class InstructionGenerator {
                     }
                 } else if ((upVal = funcInfo.searchUpVal(nameExpr.getName())) != null) {
                     if (value <= afterReg) {
-
                         funcInfo.addCode(new SAVEUPVAL(upVal.getIndex(), value));
                     } else{
                         funcInfo.addCode(new SAVENIL(1,upVal.getIndex()));
