@@ -90,7 +90,7 @@ public class InstructionGenerator {
         //不考虑返回值的函数调用
         if (statement instanceof Expr.FuncCallExpr expr) {
             int reg = funcInfo.getUsed();
-            generateFuncCallExpr(expr);
+            generateFuncCallExpr(expr,0);
             funcInfo.resetRegister(reg);
         }
     }
@@ -99,7 +99,7 @@ public class InstructionGenerator {
         List<Expr> exprs = assignStatement.getLeft();
         //调用前寄存器数量
         int beforeReg = funcInfo.getUsed();
-        assignStatement.getRight().forEach(this::generateExpr);
+        assignStatement.getRight().forEach(expr->generateExpr(expr,1));
         int afterReg = funcInfo.getUsed();
         for (int i = 0; i < exprs.size(); i++) {
             Expr expr = exprs.get(i);
@@ -136,10 +136,10 @@ public class InstructionGenerator {
                     //什么也不做，因为变量已经是nil了
                 }
             } else if (expr instanceof Expr.DotExpr dotExpr) {
-                    int left =generateExpr(dotExpr.getLeft());
+                    int left =generateExpr(dotExpr.getLeft(),1);
                     Expr.NameExpr nameExpr = (Expr.NameExpr) dotExpr.getRight();
                     //转成常量
-                    int right = generateExpr(new StringValue(nameExpr.getName()));
+                    int right = generateExpr(new StringValue(nameExpr.getName()),1);
                 if (value <= afterReg) {
                     funcInfo.addCode(new SETTABLE(left,right,value));
                 } else{
@@ -147,8 +147,8 @@ public class InstructionGenerator {
                 }
 
             } else if (expr instanceof Expr.IndexExpr indexExpr) {
-                int left =generateExpr(indexExpr.getLeft());
-                int right = generateExpr(indexExpr.getRight());
+                int left =generateExpr(indexExpr.getLeft(),1);
+                int right = generateExpr(indexExpr.getRight(),1);
                 if (value <= afterReg) {
                     funcInfo.addCode(new SETTABLE(left,right,value));
                 } else{
@@ -186,7 +186,7 @@ public class InstructionGenerator {
         } else {
             //获取当前的寄存器
             int curReg = funcInfo.getUsed();
-            returnStatement.getExprs().forEach(this::generateExpr);
+            returnStatement.getExprs().forEach(expr->generateExpr(expr,1));
             //将范围内的寄存器内容返回
             funcInfo.addCode(new RETURNMULTI(curReg + 1, funcInfo.getUsed()));
         }
@@ -208,7 +208,7 @@ public class InstructionGenerator {
         //记录当前寄存器
         int beforeReg = funcInfo.getUsed();
         //执行后面的表达式
-        localDefineStatement.getExprs().forEach(this::generateExpr);
+        localDefineStatement.getExprs().forEach(expr -> generateExpr(expr,1));
         int afterReg = funcInfo.getUsed();
         //进行赋值
         for (int i = 0; i < varReg.size(); i++) {
@@ -229,7 +229,7 @@ public class InstructionGenerator {
         breakLabel.add(endLabel);
         continueLabel.add(startLabel);
         int curReg = funcInfo.getUsed();
-        int reg = generateExpr(whileStatement.getCondition());
+        int reg = generateExpr(whileStatement.getCondition(),1);
         funcInfo.addCode(new TEST(reg));
         //如果为假，跳到结尾
         funcInfo.addCode(new JMP(endLabel));
@@ -323,7 +323,7 @@ public class InstructionGenerator {
         DynamicLabel endLabel = new DynamicLabel();
         //处理if
         //获取第一个表达式的值
-        int reg1 = generateExpr(ifStatement.getIfCond());
+        int reg1 = generateExpr(ifStatement.getIfCond(),1);
         funcInfo.addCode(new TEST(reg1));
         //跳到假出口
         funcInfo.addCode(new JMP(falseLabel));
@@ -346,7 +346,7 @@ public class InstructionGenerator {
                 }
                 DynamicLabel tempFalseLabel = new DynamicLabel();
                 elseIfFalseLabel.add(tempFalseLabel);
-                int reg = generateExpr(elseifConds.get(i));
+                int reg = generateExpr(elseifConds.get(i),1);
                 funcInfo.addCode(new TEST(reg));
                 //跳到假出口
                 funcInfo.addCode(new JMP(tempFalseLabel));
@@ -413,8 +413,8 @@ public class InstructionGenerator {
     }
 
     public int generateRelExpr(Expr.RelExpr relExpr) {
-        int reg1 = generateExpr(relExpr.getLeft());
-        int reg2 = generateExpr(relExpr.getRight());
+        int reg1 = generateExpr(relExpr.getLeft(),1);
+        int reg2 = generateExpr(relExpr.getRight(),1);
         switch (relExpr.getOp()) {
             case "==" -> funcInfo.addCode(new EQ(reg1, reg2));
             case ">" -> funcInfo.addCode(new GT(reg1, reg2));
@@ -428,8 +428,8 @@ public class InstructionGenerator {
     }
 
     public int generateCalExpr(Expr.CalExpr calExpr) {
-        int reg1 = generateExpr(calExpr.getLeft());
-        int reg2 = generateExpr(calExpr.getRight());
+        int reg1 = generateExpr(calExpr.getLeft(),1);
+        int reg2 = generateExpr(calExpr.getRight(),1);
         switch (calExpr.getOp()) {
             case "+" -> funcInfo.addCode(new ADD(reg1, reg1, reg2));
             case "-" -> funcInfo.addCode(new SUB(reg1, reg1, reg2));
@@ -455,32 +455,32 @@ public class InstructionGenerator {
      * reg2 是table
      *
      */
-    public int generateColonExpr(Expr.ColonExpr colonExpr) {
-        int reg1 = generateExpr(colonExpr.getLeft());
+    public int generateColonExpr(Expr.ColonExpr colonExpr,int expect) {
+        int reg1 = generateExpr(colonExpr.getLeft(),1);
         int reg2 = generateStringValue(new StringValue(colonExpr.getName()));
         funcInfo.addCode(new GETTABLEMETHOD(reg1, reg2));
         return reg1;
     }
 
     public int generateDotExpr(Expr.DotExpr dotExpr) {
-        int reg1 = generateExpr(dotExpr.getLeft());
-        int reg2 = generateExpr(dotExpr.getRight());
+        int reg1 = generateExpr(dotExpr.getLeft(),1);
+        int reg2 = generateExpr(dotExpr.getRight(),1);
         funcInfo.addCode(new GETTABLE(reg1, reg2));
         funcInfo.freeRegisterWithIndex(reg2);
         return reg1;
     }
 
     public int generateAndExpr(Expr.AndExpr expr) {
-        int reg1 = generateExpr(expr.getLeft());
-        int reg2 = generateExpr(expr.getRight());
+        int reg1 = generateExpr(expr.getLeft(),1);
+        int reg2 = generateExpr(expr.getRight(),1);
         funcInfo.addCode(new AND(reg1, reg1, reg2));
         funcInfo.freeRegisterWithIndex(reg2);
         return reg1;
     }
 
     public int generateOrExpr(Expr.OrExpr expr) {
-        int reg1 = generateExpr(expr.getLeft());
-        int reg2 = generateExpr(expr.getRight());
+        int reg1 = generateExpr(expr.getLeft(),1);
+        int reg2 = generateExpr(expr.getRight(),1);
         funcInfo.addCode(new OR(reg1, reg1, reg2));
         funcInfo.freeRegisterWithIndex(reg2);
         return reg1;
@@ -516,13 +516,13 @@ public class InstructionGenerator {
             if (key instanceof Expr.NameExpr nameExpr) {
                 reg2 = generateStringValue(new StringValue(nameExpr.getName()));
             } else {
-                reg2 = generateExpr(key);
+                reg2 = generateExpr(key,1);
             }
-            int reg3 = generateExpr(value);
+            int reg3 = generateExpr(value,1);
             funcInfo.addCode(new SETTABLE(reg1, reg2, reg3));
             funcInfo.resetRegister(reg1);
         });
-        return 0;
+        return reg1;
     }
 
     public int generateNilExpr(NilValue nilValue) {
@@ -554,27 +554,33 @@ public class InstructionGenerator {
     }
 
     public int generateIndexExpr(Expr.IndexExpr indexExpr) {
-        int reg1 = generateExpr(indexExpr.getLeft());
-        int reg2 = generateExpr(indexExpr.getRight());
+        int reg1 = generateExpr(indexExpr.getLeft(),1);
+        int reg2 = generateExpr(indexExpr.getRight(),1);
         funcInfo.addCode(new GETTABLE(reg1, reg2));
         return reg1;
     }
 
-    public int generateFuncCallExpr(Expr.FuncCallExpr funcCallExpr) {
+    public int generateFuncCallExpr(Expr.FuncCallExpr funcCallExpr,int expect) {
         //获取函数所在的寄存器
-        int reg1 = generateExpr(funcCallExpr.getFunc());
+        int reg1 = generateExpr(funcCallExpr.getFunc(),1);
         //处理函数参数
-        funcCallExpr.getExprs().forEach(this::generateExpr);
+        funcCallExpr.getExprs().forEach(expr->{
+            generateExpr(expr, 1);
+        });
         funcInfo.addCode(new CALL(reg1, reg1 + 1, funcInfo.getUsed()));
         //调用函数，返回值，从reg1开始放置，寄存器的调整，由虚拟机实现
         return reg1;
     }
 
+    public int generateMultiArg(Expr.MultiArg multiArg, int expect) {
+       return 0;
+    }
 
     /**
      * 返回表达式的值存储的寄存器位置
+     * @param expect  期望表达式的值，占用了几个寄存器
      */
-    public int generateExpr(Expr expr) {
+    public int generateExpr(Expr expr,int expect) {
         if (expr instanceof NilValue nilValue) {
             return generateNilExpr(nilValue);
         }
@@ -615,10 +621,13 @@ public class InstructionGenerator {
             return generateDotExpr(dotExpr);
         }
         if (expr instanceof Expr.FuncCallExpr funcCallExpr) {
-            return generateFuncCallExpr(funcCallExpr);
+            return generateFuncCallExpr(funcCallExpr,expect);
         }
         if (expr instanceof Expr.ColonExpr colonExpr) {
-            return generateColonExpr(colonExpr);
+            return generateColonExpr(colonExpr,expect);
+        }
+        if (expr instanceof Expr.MultiArg multiArg) {
+            return generateMultiArg(multiArg,expect);
         }
         return 0;
     }

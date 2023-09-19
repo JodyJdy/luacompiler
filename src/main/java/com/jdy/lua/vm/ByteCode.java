@@ -586,9 +586,13 @@ public interface ByteCode {
      * 参数范围 为
      *  b -> c
      *  如果 b = a 说明是 a:b()这种调用
+     *
+     *
+     *  d 表示 返回值数量， 如果d = -1 表示全部返回
      */
 
     class CALL extends ThreeArgByteCode{
+        int d;
         @Override
         public String toString() {
             return "CALL{" +
@@ -597,8 +601,32 @@ public interface ByteCode {
                     ", c=" + c +
                     '}';
         }
-        public CALL(int a, int b,int c) {
+
+        public CALL(int a, int b, int c, int d) {
+            super(a, b, c);
+            this.d = d;
+        }
+
+        public CALL(int a, int b, int c) {
             super(a, b,c);
+        }
+    }
+    /**
+     * 处理 ... 参数
+     * 将...的参数的 b个元素  以寄存器a开始，放置
+     * 如果 b 为 -1， 表示全部放置
+     */
+    class VARARGS extends TwoArgByteCode{
+        @Override
+        public String toString() {
+            return "VARARGS{" +
+                    "a=" + a +
+                    ", b=" + b +
+                    '}';
+        }
+
+        public VARARGS(int a, int b) {
+            super(a, b);
         }
     }
 
