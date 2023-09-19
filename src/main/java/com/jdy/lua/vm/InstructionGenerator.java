@@ -460,10 +460,10 @@ public class InstructionGenerator {
      * reg2 是table
      *
      */
-    public int generateColonExpr(Expr.CalExpr colonExpr) {
+    public int generateColonExpr(Expr.ColonExpr colonExpr) {
         int reg1 = generateExpr(colonExpr.getLeft());
-        int reg2 = generateExpr(colonExpr.getRight());
-        funcInfo.addCode(new GETTABLEMETHOD(reg1, reg1));
+        int reg2 = generateStringValue(new StringValue(colonExpr.getName()));
+        funcInfo.addCode(new GETTABLEMETHOD(reg1, reg2));
         return reg1;
     }
 
