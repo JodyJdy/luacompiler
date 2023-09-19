@@ -446,6 +446,9 @@ public interface ByteCode {
      * 对应的值设置为 nil
      */
     class SAVENIL extends TwoArgByteCode{
+        public static int LOCAL_VAR = 0;
+        public static int UPVAL = 1;
+        public static int GLOBAL = 2;
         @Override
         public String toString() {
             String type = a == 0 ? "localVar" : (a == 1) ? "UpVal" : " globalVar";
@@ -514,20 +517,14 @@ public interface ByteCode {
      * 寄存器下标b中的值 保存到 变量下标 a里面
      */
     class SAVEVAR extends TwoArgByteCode{
-        private boolean bIsFunc = false;
 
 
         @Override
         public String toString() {
             return "SAVEVAR{" +
                     "a=" + a +
-                    ", b=" + b + (bIsFunc ? " b is func ":" ")+
+                    ", b=" + b +
                     '}';
-        }
-
-        public SAVEVAR(int a, int b, boolean bIsFunc) {
-            super(a, b);
-            this.bIsFunc = bIsFunc;
         }
 
         public SAVEVAR(int a, int b) {
@@ -541,11 +538,7 @@ public interface ByteCode {
 
     class SAVEGLOBAL extends  TwoArgByteCode{
 
-        private boolean bIsFunc = false;
 
-        public void setbIsFunc(boolean bIsFunc) {
-            this.bIsFunc = bIsFunc;
-        }
         public SAVEGLOBAL(int a, int b) {
             super(a, b);
         }
@@ -554,7 +547,7 @@ public interface ByteCode {
         public String toString() {
             return "SAVEGLOBAL{" +
                     "a=" + a +
-                    ", b=" + b + (bIsFunc? " b is func ?":"")+
+                    ", b=" + b +
                     '}';
         }
     }
@@ -566,12 +559,11 @@ public interface ByteCode {
      */
 
     class SAVEUPVAL extends TwoArgByteCode{
-        private boolean bIsFunc = false;
         @Override
         public String toString() {
             return "SAVEUPVAL{" +
                     "a=" + a +
-                    ", b=" + b + "b is func ? " + bIsFunc +
+                    ", b=" + b +
                     '}';
         }
 
@@ -634,43 +626,9 @@ public interface ByteCode {
         }
     }
 
-    /**
-     *  将 b 寄存器的内容 拷贝到 a 寄存器
-     */
-    class COPY extends TwoArgByteCode{
-        @Override
-        public String toString() {
-            return "COPY{" +
-                    "a=" + a +
-                    ", b=" + b +
-                    '}';
-        }
 
-        public COPY(int a, int b) {
-            super(a, b);
-        }
-    }
 
     /**
-     * 将a ，b 寄存器中的内容 进行交换
-     */
-    class EXCHANGE extends TwoArgByteCode{
-
-        @Override
-        public String toString() {
-            return "EXCHANGE{" +
-                    "a=" + a +
-                    ", b=" + b +
-                    '}';
-        }
-
-        public EXCHANGE(int a, int b) {
-            super(a, b);
-        }
-    }
-
-    /**
-     * j
      * 返回多个参数
      * 将 a -> b 寄存器里面的内容 存储到 a 寄存器里面
      *
@@ -685,7 +643,6 @@ public interface ByteCode {
                     ", b=" + b +
                     '}';
         }
-
         public RETURNMULTI(int a, int b) {
             super(a, b);
         }
@@ -728,8 +685,6 @@ public interface ByteCode {
      */
     class GETTABLE extends TwoArgByteCode{
 
-
-
         @Override
         public String toString() {
             return "GETTABLE{" +
@@ -758,26 +713,6 @@ public interface ByteCode {
             super(a);
         }
     }
-
-//    /**
-//     * 将 b - > c 寄存器中的内容，
-//     * 添加到 a 寄存器对应的table中
-//     */
-//    class SETARRAY extends ThreeArgByteCode{
-//        @Override
-//        public String toString() {
-//            return "SETARRAY{" +
-//                    "a=" + a +
-//                    ", b=" + b +
-//                    ", c=" + c +
-//                    '}';
-//        }
-//
-//        public SETARRAY(int a, int b, int c) {
-//            super(a, b, c);
-//        }
-//    }
-//
 
     /**
      *
@@ -826,26 +761,5 @@ public interface ByteCode {
 
     }
 
-    /**
-     * 如果一个寄存器里面存放了多个值 （例如: 多返回值函数, ... ）
-     *
-     *  将 b 寄存器的多值 下标为 c 的值 存放在 a寄存器里面
-     *
-     */
-
-//    class GETMULTI extends ThreeArgByteCode{
-//        @Override
-//        public String toString() {
-//            return "GETMULTI{" +
-//                    "a=" + a +
-//                    ", b=" + b +
-//                    ", c=" + c +
-//                    '}';
-//        }
-//
-//        public GETMULTI(int a, int b, int c) {
-//            super(a, b, c);
-//        }
-//    }
 
 }
