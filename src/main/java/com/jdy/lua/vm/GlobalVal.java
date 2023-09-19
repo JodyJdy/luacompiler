@@ -17,6 +17,10 @@ public class GlobalVal {
         return name;
     }
 
+    public void setVal(Value val) {
+        this.val = val;
+    }
+
     public Value getVal() {
         return val;
     }
@@ -30,5 +34,14 @@ public class GlobalVal {
         this.index = index;
         this.name = name;
         this.val = val;
+    }
+
+    @Override
+    public String toString() {
+        return "GlobalVal{" +
+                "index=" + index +
+                ", name='" + name + '\'' +
+                ", val=" + val +
+                '}';
     }
 }

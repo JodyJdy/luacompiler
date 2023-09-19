@@ -1,6 +1,5 @@
 package com.jdy.lua.vm;
 
-import com.jdy.lua.data.NilValue;
 import com.jdy.lua.data.Value;
 
 /**
@@ -10,6 +9,10 @@ import com.jdy.lua.data.Value;
  * @data 2023/9/18 14:46
  */
 public class StackElement {
+    public void setValue(Value value) {
+        this.value = value;
+    }
+
     /**
      * 是否是本地变量
      */
@@ -32,8 +35,9 @@ public class StackElement {
      */
     private Value value;
 
-    public StackElement(Value value) {
+    public StackElement(Value value,int index) {
         this.value = value;
+        this.index = index;
     }
 
     public StackElement(String name, Value val,int index) {
@@ -49,9 +53,6 @@ public class StackElement {
         this.value = value;
     }
 
-    public static StackElement empty(){
-        return new StackElement(NilValue.NIL);
-    }
 
     public boolean isLocalVar() {
         return isLocalVar;
@@ -71,5 +72,16 @@ public class StackElement {
 
     public Value getValue() {
         return value;
+    }
+
+    @Override
+    public String toString() {
+        return "StackElement{" +
+                "isLocalVar=" + isLocalVar +
+                ", index=" + index +
+                ", varName='" + varName + '\'' +
+                ", capture=" + capture +
+                ", value=" + value +
+                '}';
     }
 }

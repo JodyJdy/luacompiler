@@ -1,4 +1,9 @@
-a=1
-b=2
-a,b = b,a
-print(a,b)
+
+local function x(a,b)
+end
+
+
+local y = x(1,2) + x(3,4)
+
+
+

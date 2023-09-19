@@ -1,9 +1,6 @@
 package com.jdy.lua.vm;
 
-import com.jdy.lua.data.DataTypeEnum;
-import com.jdy.lua.data.NilValue;
-import com.jdy.lua.data.StringValue;
-import com.jdy.lua.data.Value;
+import com.jdy.lua.data.*;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -58,19 +55,51 @@ public class FuncInfo implements Value {
      */
     private static final List<Value> constant = new ArrayList<>();
 
+    static {
+        constant.add(BoolValue.TRUE);
+        constant.add(BoolValue.FALSE);
+        constant.add(NilValue.NIL);
+    }
+
+
     /**
      * 当前block的寄存器
      */
     private final List<StackElement> registers = new ArrayList<>();
 
+
+    /**
+     * 存储全局的函数，采用常量的方式粗粒函数
+     */
+    private final static List<FuncInfo> allFuncs = new ArrayList<>();
+
+
     private int used = -1;
     private FuncInfo parent;
 
-    public FuncInfo() {
+    private FuncInfo(int globalFuncIndex,FuncInfo parent) {
+        this.globalFuncIndex = globalFuncIndex;
+        this.parent = parent;
     }
 
-    public FuncInfo(FuncInfo parent) {
-        this.parent = parent;
+    private FuncInfo(int globalFuncIndex) {
+        this.globalFuncIndex = globalFuncIndex;
+    }
+    /**
+     * 当前函数的全局索引
+     */
+    private final int globalFuncIndex;
+
+    public static FuncInfo createFunc(){
+        FuncInfo funcInfo = new FuncInfo(FuncInfo.allFuncs.size());
+        allFuncs.add(funcInfo);
+        return funcInfo;
+    }
+
+    public static FuncInfo createFunc(FuncInfo parent) {
+        FuncInfo funcInfo = new FuncInfo(FuncInfo.allFuncs.size(),parent);
+        allFuncs.add(funcInfo);
+        return funcInfo;
     }
 
     /**
@@ -80,7 +109,7 @@ public class FuncInfo implements Value {
         used++;
         //用nil填充寄存器的值
         if (used == registers.size()) {
-            registers.add(new StackElement(NilValue.NIL));
+            registers.add(new StackElement(NilValue.NIL,used));
         }
         return used;
     }
@@ -98,13 +127,6 @@ public class FuncInfo implements Value {
 
 
 
-    public void freeRegister() {
-        if (used - 1 < 0) {
-            throw new RuntimeException("没有足够的寄存器释放");
-        }
-        used--;
-    }
-
     /**
      * 申请n个寄存器
      * 返回第一个申请的寄存器下标
@@ -113,7 +135,7 @@ public class FuncInfo implements Value {
         int size = registers.size();
         for (int i = used + 1; i <= used + n; i++) {
             if (i >= size) {
-                registers.add(new StackElement(NilValue.NIL));
+                registers.add(new StackElement(NilValue.NIL,i));
             }
         }
         int s = used + 1;
@@ -154,7 +176,9 @@ public class FuncInfo implements Value {
     }
     public int addVar(String name, Value val) {
         int reg = this.allocRegister();
-        registers.set(reg, new StackElement(name, val, reg));
+        StackElement var = new StackElement(name, val, reg);
+        registers.set(reg, var);
+        localVarMap.put(name, var);
         return reg;
     }
 
@@ -172,10 +196,12 @@ public class FuncInfo implements Value {
         return temp;
     }
 
-    public static void addGlobalVal(String name, Value val) {
-        GlobalVal globalVal = new GlobalVal(globalVar.size(), name, val);
+    public static int  addGlobalVal(String name, Value val) {
+        int index = globalVar.size();
+        GlobalVal globalVal = new GlobalVal(index, name, val);
         globalVar.add(globalVal);
         globalVarMap.put(name, globalVal);
+        return index;
     }
     public static int searchGlobalIndex(String name) {
         GlobalVal val = searchGlobal(name);
@@ -197,6 +223,10 @@ public class FuncInfo implements Value {
     }
     public void addCode(ByteCode byteCode) {
         codes.add(byteCode);
+    }
+
+    public static Value getConstant(int index) {
+        return constant.get(index);
     }
 
     public static int getConstantIndex(String val) {
@@ -232,10 +262,6 @@ public class FuncInfo implements Value {
         this.hasMultiArg = hasMultiArg;
     }
 
-    public void setRegisterVal(int reg, Value val) {
-        registers.set(reg, new StackElement(val));
-    }
-
     /**
      * 普通参数
      */
@@ -250,4 +276,91 @@ public class FuncInfo implements Value {
     public int getUsed() {
         return used;
     }
+
+    public boolean isObjMethod() {
+        return isObjMethod;
+    }
+
+    public List<ByteCode> getCodes() {
+        return codes;
+    }
+
+    public Map<String, LabelMessage> getLabelLocation() {
+        return labelLocation;
+    }
+
+    public List<UpVal> getUpVal() {
+        return upVal;
+    }
+
+    public Map<String, UpVal> getUpValMap() {
+        return upValMap;
+    }
+
+    public Map<String, StackElement> getLocalVarMap() {
+        return localVarMap;
+    }
+
+    public List<StackElement> getRegisters() {
+        return registers;
+    }
+
+    public FuncInfo getParent() {
+        return parent;
+    }
+
+    public List<String> getParamNames() {
+        return paramNames;
+    }
+
+    public boolean isHasMultiArg() {
+        return hasMultiArg;
+    }
+
+
+    public void showDebug(){
+        System.out.println("-------------- 常量池----------------");
+        System.out.println(FuncInfo.constant);
+        System.out.println("------------ 当前寄存器信息-----------------");
+        for (int i = 0; i < registers.size(); i++) {
+            System.out.println(registers.get(i));
+        }
+        //global
+        System.out.println("-----------全局变量 ---------");
+        for (GlobalVal globalVal : globalVar) {
+            System.out.println(globalVal);
+        }
+        //upval
+        System.out.println("----------upval---------");
+        upVal.forEach(System.out::println);
+        //字节码
+        this.fillJMP();
+        System.out.println("--------byte code ------");
+        for (int i = 0; i < codes.size(); i++) {
+            System.out.println("pc=  "+i+"  "  +codes.get(i));
+        }
+    }
+
+    /**
+     * 填充jmp指令的调整位置
+     */
+    public void fillJMP(){
+        codes.forEach(code->{
+            if (code instanceof ByteCode.JMP jmp) {
+                jmp.applyLabel();
+            }
+        });
+    }
+
+    public static GlobalVal getGlobalVal(int index) {
+        return globalVar.get(index);
+    }
+
+    public int getGlobalFuncIndex() {
+        return globalFuncIndex;
+    }
+    public static List<FuncInfo>  funcInfos(){
+        return allFuncs;
+    }
+
 }

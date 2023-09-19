@@ -8,6 +8,7 @@ import com.jdy.lua.executor.Checker;
 import com.jdy.lua.executor.Executor;
 import com.jdy.lua.parser.Parser;
 import com.jdy.lua.statement.Statement;
+import com.jdy.lua.vm.FuncInfo;
 import org.antlr.v4.runtime.BufferedTokenStream;
 import org.antlr.v4.runtime.CharStreams;
 
@@ -24,6 +25,7 @@ public class NativeLoader {
      * 加载需要的方法
      */
     public static void loadLibrary(){
+        //为 ast 调用添加 native方法
         Block.addNative(Math.TABLE_NAME,Math.MATH);
         Block.addNative("print",GlobalMethod.print());
         Block.addNative("println",GlobalMethod.println());
@@ -32,6 +34,17 @@ public class NativeLoader {
         Block.addNative("getmetatable",GlobalMethod.getmetatable());
         Block.addNative("ipairs",GenericFor.ipairs());
         Block.addNative("pairs",GenericFor.pairs());
+
+        //为 vm 调用添加native方法
+
+        FuncInfo.addGlobalVal(Math.TABLE_NAME,Math.MATH);
+        FuncInfo.addGlobalVal("print",GlobalMethod.print());
+        FuncInfo.addGlobalVal("println",GlobalMethod.println());
+        FuncInfo.addGlobalVal("type",GlobalMethod.type());
+        FuncInfo.addGlobalVal("setmetatable",GlobalMethod.setmetatable());
+        FuncInfo.addGlobalVal("getmetatable",GlobalMethod.getmetatable());
+        FuncInfo.addGlobalVal("ipairs",GenericFor.ipairs());
+        FuncInfo.addGlobalVal("pairs",GenericFor.pairs());
     }
     public static void setModulePath(String modulePath) {
         NativeLoader.modulePath = modulePath;
