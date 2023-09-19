@@ -265,6 +265,9 @@ public class InstructionGenerator {
         for (String param : body.getParamNames()) {
             newFunc.addVar(param, NilValue.NIL);
         }
+        if (body.isHasMultiArg()) {
+            newFunc.addVar("...", NIL);
+        }
         //生成相关指令
         InstructionGenerator instructionGenerator = new InstructionGenerator(newFunc);
         instructionGenerator.generateStatement(func.getFuncBody().getBlockStatement());
@@ -450,6 +453,19 @@ public class InstructionGenerator {
         return reg1;
     }
 
+    /**
+     * 执行后
+     *
+     * reg1 是函数
+     * reg2 是table
+     *
+     */
+    public int generateColonExpr(Expr.CalExpr colonExpr) {
+        int reg1 = generateExpr(colonExpr.getLeft());
+        int reg2 = generateExpr(colonExpr.getRight());
+        funcInfo.addCode(new GETTABLEMETHOD(reg1, reg1));
+        return reg1;
+    }
 
     public int generateDotExpr(Expr.DotExpr dotExpr) {
         int reg1 = generateExpr(dotExpr.getLeft());
@@ -550,16 +566,11 @@ public class InstructionGenerator {
     }
 
     public int generateFuncCallExpr(Expr.FuncCallExpr funcCallExpr) {
-        //获取函数
+        //获取函数所在的寄存器
         int reg1 = generateExpr(funcCallExpr.getFunc());
         //处理函数参数
         funcCallExpr.getExprs().forEach(this::generateExpr);
-        //对象方法调用，需要传入self
-        if (funcCallExpr.getFunc() instanceof Expr.ColonExpr) {
-            funcInfo.addCode(new CALL(reg1, reg1, funcInfo.getUsed()));
-        } else {
-            funcInfo.addCode(new CALL(reg1, reg1 + 1, funcInfo.getUsed()));
-        }
+        funcInfo.addCode(new CALL(reg1, reg1 + 1, funcInfo.getUsed()));
         //调用函数，返回值，从reg1开始放置，寄存器的调整，由虚拟机实现
         return reg1;
     }
@@ -610,6 +621,9 @@ public class InstructionGenerator {
         }
         if (expr instanceof Expr.FuncCallExpr funcCallExpr) {
             return generateFuncCallExpr(funcCallExpr);
+        }
+        if (expr instanceof Expr.ColonExpr colonExpr) {
+            return generateColonExpr(colonExpr);
         }
         return 0;
     }

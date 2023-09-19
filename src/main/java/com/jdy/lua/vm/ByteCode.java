@@ -1,6 +1,6 @@
 package com.jdy.lua.vm;
 
-import lombok.Getter;
+import org.antlr.v4.runtime.Token;
 
 /**
  * 字节码设计
@@ -597,15 +597,50 @@ public interface ByteCode {
                     ", c=" + c +
                     '}';
         }
-
         public CALL(int a, int b,int c) {
             super(a, b,c);
         }
     }
 
     /**
+     *  将 b 寄存器的内容 拷贝到 a 寄存器
+     */
+    class COPY extends TwoArgByteCode{
+        @Override
+        public String toString() {
+            return "COPY{" +
+                    "a=" + a +
+                    ", b=" + b +
+                    '}';
+        }
+
+        public COPY(int a, int b) {
+            super(a, b);
+        }
+    }
+
+    /**
+     * 将a ，b 寄存器中的内容 进行交换
+     */
+    class EXCHANGE extends TwoArgByteCode{
+
+        @Override
+        public String toString() {
+            return "EXCHANGE{" +
+                    "a=" + a +
+                    ", b=" + b +
+                    '}';
+        }
+
+        public EXCHANGE(int a, int b) {
+            super(a, b);
+        }
+    }
+
+    /**
+     * j
      * 返回多个参数
-     * 将 b -> c 寄存器里面的内容 存储到 a 寄存器里面
+     * 将 a -> b 寄存器里面的内容 存储到 a 寄存器里面
      */
 
     class RETURNMULTI extends TwoArgByteCode{
@@ -632,9 +667,35 @@ public interface ByteCode {
     }
 
     /**
+     * 获取 table的对象方法
+     *
+     * a:b
+     * 结果是
+     *   方法 表
+     *   方便函数调用
+     */
+    class GETTABLEMETHOD extends TwoArgByteCode{
+
+        @Override
+        public String toString() {
+            return "GETTABLEMETHOD{" +
+                    "a=" + a +
+                    ", b=" + b +
+                    '}';
+        }
+
+        public GETTABLEMETHOD(int a, int b) {
+            super(a, b);
+        }
+    }
+    /**
+     *
      * 将 寄存器A中的Table， 下标b 的内容读取到寄存器A里面
      */
     class GETTABLE extends TwoArgByteCode{
+
+
+
         @Override
         public String toString() {
             return "GETTABLE{" +

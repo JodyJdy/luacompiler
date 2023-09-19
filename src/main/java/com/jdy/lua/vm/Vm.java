@@ -1,9 +1,9 @@
 package com.jdy.lua.vm;
 
-import com.jdy.lua.data.CalculateValue;
-import com.jdy.lua.data.NilValue;
-import com.jdy.lua.data.Value;
+import com.jdy.lua.data.*;
+import com.jdy.lua.executor.Checker;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static com.jdy.lua.data.BoolValue.FALSE;
@@ -25,6 +25,7 @@ public class Vm {
     public static Value execute(FuncInfo entry) {
         List<ByteCode> codeList = entry.getCodes();
         List<StackElement> registers = entry.getRegisters();
+        Value result = NIL;
         int pc = 0;
         while (pc < codeList.size()) {
             ByteCode code = codeList.get(pc);
@@ -233,10 +234,57 @@ public class Vm {
                entry.getUpVal().get(saveupval.a).getUp()
                        .setValue(registers.get(saveupval.b).getValue());
             }
-
+            if (code instanceof RETURN re) {
+                break;
+            }
+            if (code instanceof RETURNMULTI returnmulti) {
+                List<Value> returnList = new ArrayList<>();
+                for (int i = returnmulti.a; i <= returnmulti.b; i++) {
+                    returnList.add(registers.get(i).getValue());
+                }
+                result = new MultiValue(returnList);
+                break;
+            }
+            if (code instanceof NEWTABLE newtable) {
+                registers.get(newtable.a).setValue(new Table());
+            }
+            if (code instanceof GETTABLE gettable) {
+                Table table = Checker.checkTable(registers.get(gettable.a).getValue());
+                Value val = table.get(registers.get(gettable.b).getValue());
+                registers.get(gettable.a).setValue(val);
+            }
+            if (code instanceof GETTABLEMETHOD gettablemethod) {
+                Table table = Checker.checkTable(registers.get(gettablemethod.a).getValue());
+                Value val = table.get(registers.get(gettablemethod.b).getValue());
+                //交换值
+                registers.get(gettablemethod.a).setValue(val);
+                registers.get(gettablemethod.b) .setValue(table);
+            }
+            if (code instanceof SETTABLENIL settablenil) {
+                Table table = Checker.checkTable(registers.get(settablenil.a).getValue());
+                Value key = table.get(registers.get(settablenil.b).getValue());
+                table.addVal(key,NIL);
+            }
+            if (code instanceof SETTABLE settable) {
+                Table table = Checker.checkTable(registers.get(settable.a).getValue());
+                Value key = table.get(registers.get(settable.b).getValue());
+                Value value = table.get(registers.get(settable.c).getValue());
+                table.addVal(key,value);
+            }
+            if (code instanceof CALL call) {
+                //获取函数
+                FuncInfo funcInfo = (FuncInfo) registers.get(call.a).getValue();
+                List<Value> args = new ArrayList<>();
+                //准备参数
+                for (int x = call.b; x <= call.c; x++) {
+                    args.add(registers.get(x).getValue());
+                }
+                Value returnValue = funcInfo.call(args);
+                //调整寄存器
+            }
             pc++;
         }
-        return NilValue.NIL;
+        return result;
     }
 
 

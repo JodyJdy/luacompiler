@@ -3,6 +3,7 @@ package com.jdy.lua.data;
 import com.jdy.lua.executor.Checker;
 import com.jdy.lua.executor.Executor;
 import com.jdy.lua.statement.Expr;
+import com.jdy.lua.vm.FuncInfo;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;

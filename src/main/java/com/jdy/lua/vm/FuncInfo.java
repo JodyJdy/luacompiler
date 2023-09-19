@@ -39,6 +39,7 @@ public class FuncInfo implements Value {
      */
     private final List<UpVal> upVal = new ArrayList<>();
     private final Map<String, UpVal> upValMap = new HashMap<>();
+
     /**
      * block范围内的变量
      */
@@ -361,6 +362,32 @@ public class FuncInfo implements Value {
     }
     public static List<FuncInfo>  funcInfos(){
         return allFuncs;
+    }
+
+
+    /**
+     * 调用 当前函数
+     * @param values
+     * @return
+     */
+    public Value call(List<Value> values) {
+        int i = 0;
+        if (values.size() > 0) {
+            if (this.isObjMethod) {
+                registers.get(i).setValue(values.get(i));
+                i++;
+            }
+            for (String param : paramNames) {
+                if (i < values.size()) {
+                    registers.get(i).setValue(values.get(i));
+                }
+                i++;
+            }
+            if (i < values.size() && this.hasMultiArg) {
+               registers.get(i) .setValue(new MultiValue(values.subList(i,values.size())));
+            }
+        }
+        return Vm.execute(this);
     }
 
 }
