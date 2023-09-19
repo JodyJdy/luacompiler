@@ -27,6 +27,8 @@ public class Vm {
         List<StackElement> registers = entry.getRegisters();
         Value result = NIL;
         int pc = 0;
+        //记录开始寄存器
+        int s = entry.getUsed();
         while (pc < codeList.size()) {
             ByteCode code = codeList.get(pc);
 
@@ -239,7 +241,13 @@ public class Vm {
             }
             if (code instanceof RETURNMULTI returnmulti) {
                 List<Value> returnList = new ArrayList<>();
-                for (int i = returnmulti.a; i <= returnmulti.b; i++) {
+                int realB;
+                if (returnmulti.b == -1) {
+                    realB =  entry.getUsed();
+                }else{
+                    realB = returnmulti.b;
+                }
+                for (int i = returnmulti.a; i <= realB; i++) {
                     returnList.add(registers.get(i).getValue());
                 }
                 result = new MultiValue(returnList);
@@ -275,15 +283,80 @@ public class Vm {
                 //获取函数
                 FuncInfo funcInfo = (FuncInfo) registers.get(call.a).getValue();
                 List<Value> args = new ArrayList<>();
-                //准备参数
-                for (int x = call.b; x <= call.c; x++) {
-                    args.add(registers.get(x).getValue());
+                int realC;
+                //表示栈顶所有的都被处理
+                if (call.c == -1) {
+                    realC = registers.size() -1;
+                } else{
+                    realC = call.c;
+                }
+                int i =0;
+                for (; i < funcInfo.getParamNames().size(); i++) {
+                    if (i + call.b <= realC) {
+                        args.add(registers.get(i + call.b).getValue());
+                    } else{
+                        args.add(NIL);
+                    }
+                }
+                //全都放到 ...参数中去
+                if (funcInfo.hasMultiArg) {
+                    while ( i + call.b <= realC){
+                        args.add(registers.get(i + call.b).getValue());
+                        i++;
+                    }
                 }
                 Value returnValue = funcInfo.call(args);
                 //调整寄存器
+                int expect = call.d;
+                //将所有结果保留
+                if (expect == -1) {
+                    if (returnValue instanceof NilValue) {
+                        expect = 1;
+                    } else if (returnValue instanceof MultiValue multiValue) {
+                        expect = multiValue.getValueList().size();
+                    }
+                }
+                //可能不够，扩容
+                while (entry.getUsed() < call.a + expect - 1) {
+                    entry.allocRegister();
+                }
+                //可能多了，裁剪寄存器数量
+                entry.resetRegister(call.a + expect -1);
+                //放值
+                if (returnValue instanceof NilValue) {
+                    for (i = call.a; i <= entry.getUsed(); i++) {
+                       registers.get(i) .setValue(NIL);
+                    }
+                } else{
+                    List<Value> list = ((MultiValue)returnValue).getValueList();
+                    for (i = 0; i < list.size(); i++) {
+                        registers.get(call.a + i).setValue(list.get(i));
+                    }
+                }
+            }
+
+            if (code instanceof VARARGS varargs) {
+                StackElement element = entry.searchVar("...");
+                MultiValue multiValue = (MultiValue) element.getValue();
+                int realB;
+                if (varargs.b == -1) {
+                    realB = multiValue.getValueList().size();
+                } else{
+                    realB = varargs.b;
+                }
+                //尝试扩容
+                while(entry.getUsed() <= varargs.a + realB -1){
+                    entry.allocRegister();
+                }
+                //
+                for (int i = 0; i < realB; i++) {
+                    registers.get(varargs.a + i).setValue(multiValue.getValueList().get(i));
+                }
             }
             pc++;
         }
+        //还原
+        entry.resetRegister(s);
         return result;
     }
 

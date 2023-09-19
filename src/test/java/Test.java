@@ -6,6 +6,7 @@ import com.jdy.lua.statement.Statement;
 import com.jdy.lua.vm.FuncInfo;
 import com.jdy.lua.vm.GlobalVal;
 import com.jdy.lua.vm.InstructionGenerator;
+import com.jdy.lua.vm.Vm;
 import org.antlr.v4.runtime.BufferedTokenStream;
 import org.antlr.v4.runtime.CharStreams;
 
@@ -19,8 +20,11 @@ public class Test {
         FuncInfo funcInfo = FuncInfo.createFunc();
         InstructionGenerator instructionGenerator = new InstructionGenerator(funcInfo);
         instructionGenerator.generateStatement(result);
-
         FuncInfo.funcInfos().forEach(FuncInfo::showDebug);
+
+        Vm.execute(funcInfo);
+
+        FuncInfo.showGlobal();
 
 
 

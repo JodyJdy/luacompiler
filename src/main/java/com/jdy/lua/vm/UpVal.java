@@ -39,5 +39,5 @@ public class UpVal {
     /**
      * 下标
      */
-    private int index;
+    private final int index;
 }

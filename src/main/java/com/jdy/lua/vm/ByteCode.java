@@ -585,7 +585,10 @@ public interface ByteCode {
      * 调用寄存器a 里面的函数，
      * 参数范围 为
      *  b -> c
+     *  如果c为-1，那么是 b 到栈顶部
      *  如果 b = a 说明是 a:b()这种调用
+     *
+     *  返回值保存在 以 a 开始的寄存器中
      *
      *
      *  d 表示 返回值数量， 如果d = -1 表示全部返回
@@ -599,6 +602,7 @@ public interface ByteCode {
                     "a=" + a +
                     ", b=" + b +
                     ", c=" + c +
+                    ", d=" + d +
                     '}';
         }
 
@@ -669,6 +673,8 @@ public interface ByteCode {
      * j
      * 返回多个参数
      * 将 a -> b 寄存器里面的内容 存储到 a 寄存器里面
+     *
+     * b == -1 表示到 栈顶的全返回
      */
 
     class RETURNMULTI extends TwoArgByteCode{

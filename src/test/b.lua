@@ -1,9 +1,12 @@
 
-local function x(a,b)
+function a(...)
+    return  ...
 end
 
 
-local y = x(1,2) + x(3,4)
+a(1,2,3)
+
+
 
 
 

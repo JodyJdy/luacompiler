@@ -319,17 +319,19 @@ public class FuncInfo implements Value {
     }
 
 
-    public void showDebug(){
+    public static void showGlobal(){
         System.out.println("-------------- 常量池----------------");
         System.out.println(FuncInfo.constant);
-        System.out.println("------------ 当前寄存器信息-----------------");
-        for (int i = 0; i < registers.size(); i++) {
-            System.out.println(registers.get(i));
-        }
         //global
         System.out.println("-----------全局变量 ---------");
         for (GlobalVal globalVal : globalVar) {
             System.out.println(globalVal);
+        }
+    }
+    public void showDebug(){
+        System.out.println("------------ 当前寄存器信息-----------------");
+        for (int i = 0; i < registers.size(); i++) {
+            System.out.println(registers.get(i));
         }
         //upval
         System.out.println("----------upval---------");

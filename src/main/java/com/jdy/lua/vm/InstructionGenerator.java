@@ -96,13 +96,29 @@ public class InstructionGenerator {
     }
 
     public void generateAssignStatement(AssignStatement assignStatement) {
-        List<Expr> exprs = assignStatement.getLeft();
+        List<Expr> leftExprs = assignStatement.getLeft();
+        List<Expr> rightExprs = assignStatement.getRight();
         //调用前寄存器数量
         int beforeReg = funcInfo.getUsed();
-        assignStatement.getRight().forEach(expr->generateExpr(expr,1));
+        int n = rightExprs.size();
+        //表达式数量足够，每个取一个
+        if (n >= leftExprs.size()) {
+            rightExprs.forEach(expr->generateExpr(expr,1));
+        } else{
+            int i= 0;
+            //表达式数量不够，前n-1只取一个，最后一个如果可以多取就多取
+            for (; i < n - 1; i++) {
+                generateExpr(rightExprs.get(i),1);
+            }
+            if (hasMultiRet(rightExprs.get(n - 1))) {
+                generateExpr(rightExprs.get(n - 1), leftExprs.size() - n + 1);
+            } else{
+                generateExpr(rightExprs.get(n - 1), 1);
+            }
+        }
         int afterReg = funcInfo.getUsed();
-        for (int i = 0; i < exprs.size(); i++) {
-            Expr expr = exprs.get(i);
+        for (int i = 0; i < leftExprs.size(); i++) {
+            Expr expr = leftExprs.get(i);
             //获取值所在的寄存器
             int value = i + beforeReg + 1;
             if (expr instanceof Expr.NameExpr nameExpr) {
@@ -186,9 +202,19 @@ public class InstructionGenerator {
         } else {
             //获取当前的寄存器
             int curReg = funcInfo.getUsed();
-            returnStatement.getExprs().forEach(expr->generateExpr(expr,1));
+            List<Expr> exprs = returnStatement.getExprs();
+            for (int i = 0; i < exprs.size() - 1; i++) {
+                generateExpr(exprs.get(i),1);
+            }
+            Expr last = exprs.get(exprs.size() - 1);
+            boolean hasMulti = hasMultiRet(last);
+            if (hasMulti) {
+                generateExpr(last, -1);
+            } else{
+                generateExpr(last, 1);
+            }
             //将范围内的寄存器内容返回
-            funcInfo.addCode(new RETURNMULTI(curReg + 1, funcInfo.getUsed()));
+            funcInfo.addCode(new RETURNMULTI(curReg + 1, hasMulti ? -1 : funcInfo.getUsed()));
         }
     }
 
@@ -208,7 +234,23 @@ public class InstructionGenerator {
         //记录当前寄存器
         int beforeReg = funcInfo.getUsed();
         //执行后面的表达式
-        localDefineStatement.getExprs().forEach(expr -> generateExpr(expr,1));
+        List<Expr> exprs = localDefineStatement.getExprs();
+        int n = exprs.size();
+        if (n >= varNames.size()) {
+            //表达式数量足够多，每个表达式只取一个
+            localDefineStatement.getExprs().forEach(expr -> generateExpr(expr,1));
+        } else{
+            int i= 0;
+            //表达式数量不够，前n-1只取一个，最后一个如果可以多取就多取
+            for (; i < n - 1; i++) {
+                generateExpr(exprs.get(i),1);
+            }
+            if (hasMultiRet(exprs.get(n - 1))) {
+                generateExpr(exprs.get(n - 1), varNames.size() - n + 1);
+            } else{
+                generateExpr(exprs.get(n - 1), 1);
+            }
+        }
         int afterReg = funcInfo.getUsed();
         //进行赋值
         for (int i = 0; i < varReg.size(); i++) {
@@ -217,10 +259,24 @@ public class InstructionGenerator {
             if (valueReg <= afterReg) {
                 funcInfo.addCode(new SAVEVAR(varReg.get(i), valueReg));
             } else {
+                //默认只为nil，不用处理
                 break;
             }
         }
         funcInfo.resetRegister(beforeReg);
+    }
+
+    /**
+     * 表达式是否回返回多个值
+     */
+    private boolean hasMultiRet(Expr expr) {
+        if (expr instanceof Expr.FuncCallExpr) {
+            return true;
+        }
+        if (expr instanceof Expr.MultiArg) {
+            return true;
+        }
+        return false;
     }
 
     public void generateWhile(WhileStatement whileStatement) {
@@ -563,17 +619,29 @@ public class InstructionGenerator {
     public int generateFuncCallExpr(Expr.FuncCallExpr funcCallExpr,int expect) {
         //获取函数所在的寄存器
         int reg1 = generateExpr(funcCallExpr.getFunc(),1);
+        List<Expr> exprs = funcCallExpr.getExprs();
         //处理函数参数
-        funcCallExpr.getExprs().forEach(expr->{
-            generateExpr(expr, 1);
-        });
-        funcInfo.addCode(new CALL(reg1, reg1 + 1, funcInfo.getUsed()));
-        //调用函数，返回值，从reg1开始放置，寄存器的调整，由虚拟机实现
+        boolean hasMultiRet = false;
+        if (!exprs.isEmpty()) {
+            for (int i = 0; i < exprs.size() - 1; i++) {
+                generateExpr(exprs.get(i),1);
+            }
+            Expr lastExpr = exprs.get(exprs.size() - 1);
+            hasMultiRet = hasMultiRet(lastExpr);
+            generateExpr(lastExpr, hasMultiRet ? -1 : 1);
+        }
+        funcInfo.addCode(new CALL(reg1, reg1 + 1,hasMultiRet ?-1:funcInfo.getUsed(),expect));
+        //释放多余寄存器，只需要留有 expect个就行
+        if (expect != -1) {
+            funcInfo.resetRegister(reg1 + expect - 1);
+        }
         return reg1;
     }
 
     public int generateMultiArg(Expr.MultiArg multiArg, int expect) {
-       return 0;
+        int a = funcInfo.allocRegister();
+        funcInfo.addCode(new VARARGS(a, expect));
+        return a;
     }
 
     /**

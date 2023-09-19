@@ -26,7 +26,7 @@ public class GlobalVal {
     }
 
     int index;
-    private String name;
+    private final String name;
 
     private Value val;
 
