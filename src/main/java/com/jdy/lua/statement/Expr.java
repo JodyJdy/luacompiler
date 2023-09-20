@@ -248,7 +248,7 @@ public interface Expr  {
          * @param right
          */
         public void addExpr(Expr right) {
-            exprExprMap.put(new NumberValue(exprExprMap.size()), right);
+            exprExprMap.put(new NumberValue(exprExprMap.size() + 1), right);
         }
 
         public void addExpr(Expr left, Expr right) {

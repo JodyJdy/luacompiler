@@ -1,10 +1,14 @@
 
-function a(...)
-    return  ...
+function a(x)
+   if x > 1 then
+      a(x-1)
+   end
+
 end
 
+a(2)
 
-a(1,2,3)
+
 
 
 

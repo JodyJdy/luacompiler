@@ -4,7 +4,6 @@ import com.jdy.lua.luanative.NativeLoader;
 import com.jdy.lua.parser.Parser;
 import com.jdy.lua.statement.Statement;
 import com.jdy.lua.vm.FuncInfo;
-import com.jdy.lua.vm.GlobalVal;
 import com.jdy.lua.vm.InstructionGenerator;
 import com.jdy.lua.vm.Vm;
 import org.antlr.v4.runtime.BufferedTokenStream;
@@ -20,10 +19,12 @@ public class Test {
         FuncInfo funcInfo = FuncInfo.createFunc();
         InstructionGenerator instructionGenerator = new InstructionGenerator(funcInfo);
         instructionGenerator.generateStatement(result);
-        FuncInfo.funcInfos().forEach(FuncInfo::showDebug);
 
         Vm.execute(funcInfo);
 
+        System.out.println("---------------执行结束--------------");
+
+        FuncInfo.funcInfos().forEach(FuncInfo::showDebug);
         FuncInfo.showGlobal();
 
 

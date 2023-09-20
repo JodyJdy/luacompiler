@@ -115,6 +115,16 @@ public class FuncInfo implements Value {
         return used;
     }
 
+    /**
+     * 如果当前寄存器小于n的话将寄存器扩容到N
+     * @param n
+     */
+    public void allocRegister2N(int n) {
+        while (used < n) {
+            allocRegister();
+        }
+    }
+
 
     /**
      *释放指定的寄存器

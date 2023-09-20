@@ -13,6 +13,8 @@ import org.antlr.v4.runtime.Token;
 public interface ByteCode {
 
 
+
+
     /**
      * 无参 指令
      */
@@ -102,6 +104,16 @@ public interface ByteCode {
     }
 
     /**
+     * 用于计算的
+     * 字节码
+     */
+    abstract class Calculate extends ThreeArgByteCode{
+        public Calculate(int a, int b, int c) {
+            super(a, b, c);
+        }
+    }
+
+    /**
      * 加法指令
      * <p>
      * add a  b c
@@ -109,7 +121,7 @@ public interface ByteCode {
      * 将 寄存器b 和 寄存器 c 里面的内容 相加 放入到 a中
      */
 
-    class ADD extends ThreeArgByteCode {
+    class ADD extends Calculate {
         public ADD(int a, int b, int c) {
             super(a, b, c);
         }
@@ -131,7 +143,7 @@ public interface ByteCode {
      * <p>
      * 将 寄存器b 和 寄存器 c 里面的内容 相减 放入到 a中
      */
-    class SUB extends ThreeArgByteCode {
+    class SUB extends Calculate {
         public SUB(int a, int b, int c) {
             super(a, b, c);
         }
@@ -145,7 +157,7 @@ public interface ByteCode {
                     '}';
         }
     }
-    class MUL extends ThreeArgByteCode{
+    class MUL extends Calculate{
         @Override
         public String toString() {
             return "MUL{" +
@@ -159,7 +171,7 @@ public interface ByteCode {
             super(a, b, c);
         }
     }
-    class DIV extends ThreeArgByteCode{
+    class DIV extends Calculate{
         @Override
         public String toString() {
             return "DIV{" +
@@ -173,7 +185,7 @@ public interface ByteCode {
             super(a, b, c);
         }
     }
-    class MOD extends ThreeArgByteCode{
+    class MOD extends Calculate{
         @Override
         public String toString() {
             return "MOD{" +
@@ -187,7 +199,7 @@ public interface ByteCode {
             super(a, b, c);
         }
     }
-    class INTMOD extends ThreeArgByteCode{
+    class INTMOD extends Calculate{
         @Override
         public String toString() {
             return "INTMOD{" +
@@ -201,7 +213,7 @@ public interface ByteCode {
             super(a, b, c);
         }
     }
-    class POW extends ThreeArgByteCode{
+    class POW extends Calculate{
         @Override
         public String toString() {
             return "POW{" +
@@ -215,7 +227,7 @@ public interface ByteCode {
             super(a, b, c);
         }
     }
-    class BITAND extends ThreeArgByteCode{
+    class BITAND extends Calculate{
         @Override
         public String toString() {
             return "BITAND{" +
@@ -229,7 +241,7 @@ public interface ByteCode {
             super(a, b, c);
         }
     }
-    class BITOR extends ThreeArgByteCode{
+    class BITOR extends Calculate{
         @Override
         public String toString() {
             return "BITOR{" +
@@ -243,7 +255,7 @@ public interface ByteCode {
             super(a, b, c);
         }
     }
-    class BITLEFTMOVE extends ThreeArgByteCode{
+    class BITLEFTMOVE extends Calculate{
         @Override
         public String toString() {
             return "BITLEFTMOVE{" +
@@ -257,12 +269,12 @@ public interface ByteCode {
             super(a, b, c);
         }
     }
-    class BITRIGHTMOVE extends ThreeArgByteCode{
+    class BITRIGHTMOVE extends Calculate{
         public BITRIGHTMOVE(int a, int b, int c) {
             super(a, b, c);
         }
     }
-    class CAT extends ThreeArgByteCode{
+    class CAT extends Calculate{
         @Override
         public String toString() {
             return "CAT{" +
@@ -277,7 +289,7 @@ public interface ByteCode {
         }
     }
 
-    class AND extends ThreeArgByteCode{
+    class AND extends Calculate{
         public AND(int a, int b, int c) {
             super(a, b, c);
         }
@@ -291,7 +303,7 @@ public interface ByteCode {
                     '}';
         }
     }
-    class OR extends ThreeArgByteCode{
+    class OR extends Calculate{
         @Override
         public String toString() {
             return "OR{" +
@@ -322,7 +334,13 @@ public interface ByteCode {
         }
     }
 
-    class EQ extends TwoArgByteCode{
+    class Compare extends TwoArgByteCode{
+        public Compare(int a, int b) {
+            super(a, b);
+        }
+    }
+
+    class EQ extends Compare{
         @Override
         public String toString() {
             return "EQ{" +
@@ -336,7 +354,7 @@ public interface ByteCode {
         }
     }
 
-    class NE extends TwoArgByteCode {
+    class NE extends Compare {
         @Override
         public String toString() {
             return "NE{" +
@@ -349,7 +367,7 @@ public interface ByteCode {
             super(a, b);
         }
     }
-    class GE extends TwoArgByteCode{
+    class GE extends Compare{
         @Override
         public String toString() {
             return "GE{" +
@@ -362,7 +380,7 @@ public interface ByteCode {
             super(a, b);
         }
     }
-    class GT extends TwoArgByteCode{
+    class GT extends Compare{
         @Override
         public String toString() {
             return "GT{" +
@@ -376,7 +394,7 @@ public interface ByteCode {
         }
     }
 
-    class LT extends TwoArgByteCode{
+    class LT extends Compare{
         @Override
         public String toString() {
             return "LT{" +
@@ -389,7 +407,7 @@ public interface ByteCode {
             super(a, b);
         }
     }
-    class LE extends TwoArgByteCode{
+    class LE extends Compare{
         @Override
         public String toString() {
             return "LE{" +

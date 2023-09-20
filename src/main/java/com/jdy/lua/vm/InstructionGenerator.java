@@ -231,7 +231,6 @@ public class InstructionGenerator {
         }
         //生成相关指令
         InstructionGenerator instructionGenerator = new InstructionGenerator(localFunc);
-        instructionGenerator.generateStatement(localFunctionStatement.getFuncBody().getBlockStatement());
         int reg = funcInfo.addVar(localFunctionStatement.getFuncName(), NIL);
         int reg2 = funcInfo.allocRegister();
         funcInfo.addCode(new LOADFUNC(reg2,funcInfo.getGlobalFuncIndex()));
@@ -239,6 +238,8 @@ public class InstructionGenerator {
         funcInfo.addCode(new SAVEVAR(reg, reg2));
         localFunc.fillJMP();
         funcInfo.freeRegisterWithIndex(reg2);
+
+        instructionGenerator.generateStatement(localFunctionStatement.getFuncBody().getBlockStatement());
     }
 
     public void generateReturnStatement(ReturnStatement returnStatement) {
@@ -333,32 +334,33 @@ public class InstructionGenerator {
         if (body.isHasMultiArg()) {
             newFunc.addVar("...", NIL);
         }
-        //生成相关指令
-        InstructionGenerator instructionGenerator = new InstructionGenerator(newFunc);
-        instructionGenerator.generateStatement(func.getFuncBody().getBlockStatement());
         //存储
         List<String> tableMethodPrefix = new ArrayList<>();
         String funcName = null;
         if (funcType instanceof BasicFuncType name) {
             FuncInfo.addGlobalVal(name.getFuncName(), newFunc);
-            return;
-        } else if (funcType instanceof TableExtendMethod tableExtendMethod) {
-            tableMethodPrefix = tableExtendMethod.getFatherTableNames();
-            funcName = tableExtendMethod.getMethodName();
-        } else if (funcType instanceof TableMethod tableMethod) {
-            tableMethodPrefix = tableMethod.getTableNames();
-            funcName = tableMethod.getMethodName();
+        } else {
+            if (funcType instanceof TableExtendMethod tableExtendMethod) {
+                tableMethodPrefix = tableExtendMethod.getFatherTableNames();
+                funcName = tableExtendMethod.getMethodName();
+            } else if (funcType instanceof TableMethod tableMethod) {
+                tableMethodPrefix = tableMethod.getTableNames();
+                funcName = tableMethod.getMethodName();
+            }
+            //处理table的方法
+            int tableReg = getTable(tableMethodPrefix);
+            //将函数名加载到寄存器中
+            int indexIndex = FuncInfo.getConstantIndex(funcName);
+            int indexReg = funcInfo.allocRegister();
+            funcInfo.addCode(new LOADCONSTANT(indexReg, indexIndex));
+            funcInfo.addCode(new SETTABLE(tableReg, indexReg, funcInfo.getGlobalFuncIndex(), true));
+            //释放占用的三个寄存器
+            funcInfo.freeRegister(3);
+            newFunc.fillJMP();
         }
-        //处理table的方法
-        int tableReg = getTable(tableMethodPrefix);
-        //将函数名加载到寄存器中
-        int indexIndex = FuncInfo.getConstantIndex(funcName);
-        int indexReg = funcInfo.allocRegister();
-        funcInfo.addCode(new LOADCONSTANT(indexReg, indexIndex));
-        funcInfo.addCode(new SETTABLE(tableReg, indexReg, funcInfo.getGlobalFuncIndex(), true));
-        //释放占用的三个寄存器
-        funcInfo.freeRegister(3);
-        newFunc.fillJMP();
+        //生成相关指令
+        InstructionGenerator instructionGenerator = new InstructionGenerator(newFunc);
+        instructionGenerator.generateStatement(func.getFuncBody().getBlockStatement());
     }
 
 
@@ -529,7 +531,8 @@ public class InstructionGenerator {
 
     public int generateDotExpr(Expr.DotExpr dotExpr) {
         int reg1 = generateExpr(dotExpr.getLeft(), SINGLE);
-        int reg2 = generateExpr(dotExpr.getRight(), SINGLE);
+        Expr.NameExpr nameExpr = (Expr.NameExpr) dotExpr.getRight();
+        int reg2 = generateStringValue(new StringValue(nameExpr.getName()));
         funcInfo.addCode(new GETTABLE(reg1, reg2));
         funcInfo.freeRegisterWithIndex(reg2);
         return reg1;
@@ -563,12 +566,12 @@ public class InstructionGenerator {
             func.addVar("...", NilValue.NIL);
         }
         InstructionGenerator instructionGenerator = new InstructionGenerator(func);
-        instructionGenerator.generateStatement(function.getBlockStatement());
         int reg = funcInfo.allocRegister();
         //将函数加载到寄存器中
         funcInfo.addCode(new LOADFUNC(reg, func.getGlobalFuncIndex()));
         //填充jmp
         func.fillJMP();
+        instructionGenerator.generateStatement(function.getBlockStatement());
         return reg;
     }
 
