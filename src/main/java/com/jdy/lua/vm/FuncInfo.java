@@ -75,6 +75,9 @@ public class FuncInfo implements Value {
     private final static List<FuncInfo> allFuncs = new ArrayList<>();
 
 
+    /**
+     * 寄存器的使用情况  （指令生成时）
+     */
     private int used = -1;
     private FuncInfo parent;
 
@@ -139,22 +142,6 @@ public class FuncInfo implements Value {
 
 
     /**
-     * 申请n个寄存器
-     * 返回第一个申请的寄存器下标
-     */
-    public int allocRegister(int n) {
-        int size = registers.size();
-        for (int i = used + 1; i <= used + n; i++) {
-            if (i >= size) {
-                registers.add(new StackElement(NilValue.NIL,i));
-            }
-        }
-        int s = used + 1;
-        used += n;
-        return s;
-    }
-
-    /**
      * 重置寄存器的使用
      * @param n
      */
@@ -176,11 +163,17 @@ public class FuncInfo implements Value {
     }
 
     public StackElement searchParentVar(String name) {
-        if (parent != null) {
+
+        FuncInfo tempParent = parent;
+        int level = 1;
+        while (tempParent != null) {
             StackElement result;
             if ((result = parent.searchVar(name)) != null) {
                 return result;
             }
+            level++;
+        }
+        if (parent != null) {
             return parent.searchVar(name);
         }
         return null;
@@ -213,13 +206,6 @@ public class FuncInfo implements Value {
         globalVar.add(globalVal);
         globalVarMap.put(name, globalVal);
         return index;
-    }
-    public static int searchGlobalIndex(String name) {
-        GlobalVal val = searchGlobal(name);
-        if (val != null) {
-            return val.index;
-        }
-        return -1;
     }
     public static GlobalVal searchGlobal(String name) {
         return globalVarMap.get(name);
