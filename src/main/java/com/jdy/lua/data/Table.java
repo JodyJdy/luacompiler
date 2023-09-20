@@ -85,12 +85,12 @@ public class Table implements CalculateValue {
 
     public Value get(float key) {
         // lua 下标从1开始
-        return get(String.valueOf(key - 1));
+        return get(String.valueOf(key));
     }
 
     public Value get(int key) {
         // lua 下标从1开始
-        return get(String.valueOf(key - 1));
+        return get(String.valueOf(key));
     }
 
     public Value get(String key) {

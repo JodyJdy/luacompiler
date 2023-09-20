@@ -1,7 +1,5 @@
 package com.jdy.lua.vm;
 
-import org.antlr.v4.runtime.Token;
-
 /**
  * 字节码设计
  *
@@ -755,16 +753,12 @@ public interface ByteCode {
      * 将寄存器A，下标b的内容 设置为 c寄存器的内容
      */
     class SETTABLE extends ThreeArgByteCode{
-        /**
-         * c 是否是函数
-         */
-        private boolean cIsFunc = false;
         @Override
         public String toString() {
             return "SETTABLE{" +
                     "a=" + a +
                     ", b=" + b +
-                    ", c=" + c + (cIsFunc ? " c is func ":"")+
+                    ", c=" + c +
                     '}';
         }
 
@@ -772,10 +766,6 @@ public interface ByteCode {
             super(a, b, c);
         }
 
-        public SETTABLE(int a, int b, int c, boolean cIsFunc) {
-            super(a, b, c);
-            this.cIsFunc = cIsFunc;
-        }
 
     }
 

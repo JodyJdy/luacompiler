@@ -24,117 +24,103 @@ public class Vm {
     /**
      * 执行入口的entry
      */
-    public static Value execute(FuncInfo entry) {
-        List<ByteCode> codeList = entry.getCodes();
-        List<StackElement> registers = entry.getRegisters();
+    public static Value execute(RuntimeFunc runtimeFunc) {
+        List<ByteCode> codeList = runtimeFunc.funcInfo.getCodes();
+        List<StackElement> registers = runtimeFunc.registers;
         Value result = NIL;
         int pc = 0;
-        int startStack = entry.getUsed();
         while (pc < codeList.size()) {
             ByteCode code = codeList.get(pc);
+//            System.out.println(code);
 
             if (code instanceof JMP jmp) {
                 pc = jmp.a;
                 continue;
-            }
-            if (code instanceof Calculate calculate) {
+            } else if (code instanceof Calculate calculate) {
+                checkStack(runtimeFunc, calculate);
                 runCalculate(calculate, registers);
-            }
-            if (code instanceof Compare compare) {
+            } else if (code instanceof Compare compare) {
+                checkStack(runtimeFunc, compare);
                 runCompare(compare, registers);
-            }
-            if (code instanceof TEST test) {
+            } else if (code instanceof TEST test) {
                 StackElement val = registers.get(test.a);
                 //为真继续执行
                 if (val.getValue() != NIL && val.getValue() != FALSE) {
                     pc++;
                 }
-            }
-
-            if (code instanceof LOADVAR loadvar) {
+            } else if (code instanceof LOADVAR loadvar) {
+                checkStack(runtimeFunc, loadvar.a, loadvar.b);
                 registers.get(loadvar.a).setValue(registers.get(loadvar.b).getValue());
-            }
-            if (code instanceof LOADUPVAR loadupvar) {
-                registers.get(loadupvar.a).setValue(entry.getUpVal().get(loadupvar.b).getUp().getValue());
-            }
-            if (code instanceof LOADGLOBAL loadglobal) {
+            } else if (code instanceof LOADUPVAR loadupvar) {
+                checkStack(runtimeFunc, loadupvar.a, -1);
+                registers.get(loadupvar.a).setValue(runtimeFunc.upValList.get(loadupvar.b).up.getValue());
+            } else if (code instanceof LOADGLOBAL loadglobal) {
+                checkStack(runtimeFunc, loadglobal.a, -1);
                 registers.get(loadglobal.a).setValue(
                         FuncInfo.getGlobalVal(loadglobal.b).getVal()
                 );
-            }
-            if (code instanceof LOADCONSTANT loadconstant) {
+            } else if (code instanceof LOADCONSTANT loadconstant) {
+                checkStack(runtimeFunc, loadconstant.a, -1);
                 registers.get(loadconstant.a).setValue(
                         FuncInfo.getConstant(loadconstant.b)
                 );
-            }
-            if (code instanceof LOADFUNC loadfunc) {
-                registers.get(loadfunc.a).setValue(
-                        FuncInfo.funcInfos().get(loadfunc.b)
-                );
-            }
-            if (code instanceof SAVENIL savenil) {
+            } else if (code instanceof LOADFUNC loadfunc) {
+                runLoadFunc(loadfunc, runtimeFunc);
+            } else if (code instanceof SAVENIL savenil) {
                 if (savenil.a == SAVENIL.LOCAL_VAR) {
+                    checkStack(runtimeFunc, -1, savenil.b);
                     registers.get(savenil.b).setValue(NIL);
                 } else if (savenil.a == SAVENIL.UPVAL) {
-                    entry.getUpVal().get(savenil.b).getUp().setValue(NIL);
+                    runtimeFunc.upValList.get(savenil.b).up.setValue(NIL);
                 } else {
                     FuncInfo.getGlobalVal(savenil.b).setVal(NIL);
                 }
-            }
-            if (code instanceof SAVEVAR savevar) {
+            } else if (code instanceof SAVEVAR savevar) {
+                checkStack(runtimeFunc, savevar.a, savevar.b);
                 registers.get(savevar.a).setValue(registers.get(savevar.b).getValue());
-            }
-            if (code instanceof SAVEGLOBAL saveglobal) {
+            } else if (code instanceof SAVEGLOBAL saveglobal) {
                 FuncInfo.getGlobalVal(saveglobal.a)
                         .setVal(registers.get(saveglobal.b).getValue());
-            }
-            if (code instanceof SAVEUPVAL saveupval) {
-                entry.getUpVal().get(saveupval.a).getUp()
+            } else if (code instanceof SAVEUPVAL saveupval) {
+                runtimeFunc.upValList.get(saveupval.a).up
                         .setValue(registers.get(saveupval.b).getValue());
-            }
-            if (code instanceof RETURN) {
+            } else if (code instanceof RETURN) {
                 break;
-            }
-            if (code instanceof RETURNMULTI returnmulti) {
-                result = runReturnMulti(returnmulti, entry, registers);
+            } else if (code instanceof RETURNMULTI returnmulti) {
+                result = runReturnMulti(returnmulti, runtimeFunc, registers);
                 break;
-            }
-            if (code instanceof NEWTABLE newtable) {
+            } else if (code instanceof NEWTABLE newtable) {
+                checkStack(runtimeFunc, newtable.a, -1);
                 registers.get(newtable.a).setValue(new Table());
-            }
-            if (code instanceof GETTABLE gettable) {
+            } else if (code instanceof GETTABLE gettable) {
+                checkStack(runtimeFunc, gettable.a, gettable.b);
                 Table table = Checker.checkTable(registers.get(gettable.a).getValue());
                 Value val = table.get(registers.get(gettable.b).getValue());
                 registers.get(gettable.a).setValue(val);
-            }
-            if (code instanceof GETTABLEMETHOD gettablemethod) {
+            } else if (code instanceof GETTABLEMETHOD gettablemethod) {
+                checkStack(runtimeFunc, gettablemethod.a, gettablemethod.b);
                 Table table = Checker.checkTable(registers.get(gettablemethod.a).getValue());
                 Value val = table.get(registers.get(gettablemethod.b).getValue());
                 //交换值
                 registers.get(gettablemethod.a).setValue(val);
                 registers.get(gettablemethod.b).setValue(table);
-            }
-            if (code instanceof SETTABLENIL settablenil) {
+            } else if (code instanceof SETTABLENIL settablenil) {
+                checkStack(runtimeFunc, settablenil.a, settablenil.b);
                 Table table = Checker.checkTable(registers.get(settablenil.a).getValue());
                 Value key = table.get(registers.get(settablenil.b).getValue());
                 table.addVal(key, NIL);
-            }
-            if (code instanceof SETTABLE settable) {
+            } else if (code instanceof SETTABLE settable) {
                 Table table = Checker.checkTable(registers.get(settable.a).getValue());
                 Value key = registers.get(settable.b).getValue();
                 Value value = registers.get(settable.c).getValue();
                 table.addVal(key, value);
-            }
-            if (code instanceof CALL call) {
-                runCall(call, entry, registers);
-            }
-            if (code instanceof VARARGS varargs) {
-                runVarargs(varargs, entry, registers);
+            } else if (code instanceof CALL call) {
+                runCall(call, runtimeFunc, registers);
+            } else if (code instanceof VARARGS varargs) {
+                runVarargs(varargs, runtimeFunc, registers);
             }
             pc++;
         }
-        //还原堆栈
-        entry.resetRegister(startStack);
         return result;
     }
 
@@ -222,47 +208,54 @@ public class Vm {
         }
     }
 
-    private static Value runReturnMulti(RETURNMULTI code, FuncInfo entry, List<StackElement> registers) {
+    private static Value runReturnMulti(RETURNMULTI code, RuntimeFunc runtimeFunc, List<StackElement> registers) {
         List<Value> returnList = new ArrayList<>();
         int realB;
         if (code.b == -1) {
-            realB = entry.getUsed();
+            realB = runtimeFunc.used;
         } else {
             realB = code.b;
         }
+        checkStack(runtimeFunc, realB, code.a);
         for (int i = code.a; i <= realB; i++) {
             returnList.add(registers.get(i).getValue());
         }
         return new MultiValue(returnList);
     }
 
-    private static void runVarargs(VARARGS code, FuncInfo entry, List<StackElement> registers) {
-        StackElement element = entry.searchVar("...");
+    private static void runVarargs(VARARGS code, RuntimeFunc runtimeFunc, List<StackElement> registers) {
+        if (!runtimeFunc.funcInfo.hasMultiArg) {
+            throw new RuntimeException("函数不存在可变参数");
+        }
+        //如果有可变参数，最后一个参数就是
+        StackElement element = runtimeFunc.registers.get(runtimeFunc.finalParamArg);
         MultiValue multiValue = (MultiValue) element.getValue();
         //获取实际的 varargs需要的数量
         int realB;
         if (code.b == -1) {
             realB = multiValue.getValueList().size();
         } else {
-            realB = Math.min(code.b,multiValue.getValueList().size());
+            realB = Math.min(code.b, multiValue.getValueList().size());
         }
         //如果有必要，进行扩容
-        entry.allocRegister2N(code.a + realB - 1);
+        runtimeFunc.allocRegister2N(code.a + realB - 1);
         for (int i = 0; i < realB; i++) {
             registers.get(code.a + i).setValue(multiValue.getValueList().get(i));
         }
     }
 
-    private static void runCall(CALL call, FuncInfo entry, List<StackElement> registers) {
+    private static void runCall(CALL call, RuntimeFunc runtimeFunc, List<StackElement> registers) {
         Value func = registers.get(call.a).getValue();
         List<Value> args;
         Value returnValue;
-        if (func instanceof FuncInfo funcInfo) {
-            args = prepareArgs(entry.getUsed(),funcInfo.getParamNames().size(), funcInfo.hasMultiArg, call, registers);
-            returnValue = funcInfo.call(args);
+        if (func instanceof RuntimeFunc realCall) {
+            FuncInfo info = realCall.funcInfo;
+            args = prepareArgs(info.isObjMethod, runtimeFunc.used, info.paramNames.size(),
+                    info.hasMultiArg, call, registers);
+            returnValue = realCall.call(args);
         } else if (func instanceof NativeFunction nativeFunction) {
             NativeFuncBody body = (NativeFuncBody) nativeFunction.getBody();
-            args = prepareArgs(entry.getUsed(),body.getParamNames().size(), body.isHasMultiArg(), call, registers);
+            args = prepareArgs(false, runtimeFunc.used, body.getParamNames().size(), body.isHasMultiArg(), call, registers);
             returnValue = nativeFunction.execute(args);
         } else {
             throw new RuntimeException("不支持的函数类型");
@@ -272,9 +265,9 @@ public class Vm {
         //最后一个值存放的寄存器位置
         int endRegisters = call.a + finalReturnValue.size() - 1;
         //可能不够，扩容
-        entry.allocRegister2N(endRegisters);
+        runtimeFunc.allocRegister2N(endRegisters);
         //可能多了，裁剪寄存器数量
-        entry.resetRegister(endRegisters);
+        runtimeFunc.resetRegister(endRegisters);
         //将结果放到寄存器中
         for (int i = 0; i < finalReturnValue.size(); i++) {
             registers.get(call.a + i).setValue(finalReturnValue.get(i));
@@ -284,7 +277,7 @@ public class Vm {
     /**
      * 准备函数的参数
      */
-    private static List<Value> prepareArgs(int stackTop,int paramSize, boolean hasMultiArg, CALL call, List<StackElement> registers) {
+    private static List<Value> prepareArgs(boolean objMethod, int stackTop, int paramSize, boolean hasMultiArg, CALL call, List<StackElement> registers) {
         List<Value> args = new ArrayList<>();
         // 第一个参数的位置
         int startArg = call.b;
@@ -297,6 +290,11 @@ public class Vm {
             endArg = call.c;
         }
         int i = 0;
+        //调用对象方法，对象自身
+        if (objMethod) {
+            args.add(registers.get(i + startArg).getValue());
+            i++;
+        }
         for (; i < paramSize; i++) {
             if (i + startArg <= endArg) {
                 args.add(registers.get(i + startArg).getValue());
@@ -341,6 +339,39 @@ public class Vm {
             values.add(NIL);
         }
         return values;
+    }
+
+
+    /**
+     * 此函数是 核心， 通过对LOADFUNC 进行处理， 将函数转换成运行时函数
+     */
+    private static void runLoadFunc(LOADFUNC loadfunc, RuntimeFunc runtimeFunc) {
+        checkStack(runtimeFunc, loadfunc.a, -1);
+        FuncInfo loadFuncInfo = FuncInfo.funcInfos().get(loadfunc.b);
+        RuntimeFunc funcRuntime = new RuntimeFunc(loadFuncInfo, runtimeFunc);
+        runtimeFunc.registers.get(loadfunc.a).setValue(
+                funcRuntime);
+    }
+
+    private static void checkStack(RuntimeFunc runtime, Calculate calculate) {
+        int max = Math.max(Math.max(calculate.a, calculate.b), calculate.c);
+        if (max > runtime.used) {
+            runtime.allocRegister2N(max);
+        }
+    }
+
+    private static void checkStack(RuntimeFunc runtimeFunc, Compare compare) {
+        int max = Math.max(compare.a, compare.b);
+        if (max > runtimeFunc.used) {
+            runtimeFunc.allocRegister2N(max);
+        }
+    }
+
+    private static void checkStack(RuntimeFunc runtimeFunc, int a, int b) {
+        int max = Math.max(a, b);
+        if (max > runtimeFunc.used) {
+            runtimeFunc.allocRegister2N(max);
+        }
     }
 
 }

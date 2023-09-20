@@ -128,11 +128,15 @@ public class Parser {
             elseExprs.add(parseExpr(ifStat.exp(i)));
         }
         List<Statement.BlockStatement> elseBlock = new ArrayList<>();
-        for (int i = 1; i < ifStat.block().size() - 1; i++) {
+        //最后的ElseIF
+        int lastElseIf = ifStat.block().size() == ifStat.exp().size() ? ifStat.block().size() : ifStat.block().size() - 1;
+
+        for (int i = 1; i < lastElseIf ; i++) {
             elseBlock.add((Statement.BlockStatement) parseBlock(ifStat.block(i)));
         }
         Statement.BlockStatement end = null;
-        if (ifStat.block().size() > 1) {
+        //需要有else
+        if (ifStat.block().size() > 1 && ifStat.block().size() > ifStat.exp().size()) {
             end = (Statement.BlockStatement) parseBlock(ifStat.block(ifStat.block().size() - 1));
         }
         return new Statement.IfStatement(ifExpr, ifBlock, elseExprs, elseBlock, end);

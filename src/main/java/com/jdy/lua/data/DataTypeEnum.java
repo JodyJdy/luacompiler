@@ -16,6 +16,7 @@ public enum DataTypeEnum {
     TABLE("table"),
     MULTI("multi"),
    // 暂时不支持 thread和userdata
+    VM_RUNTIME_FUNC("vm_runtime_func")
     ;
     private final String str;
     DataTypeEnum(String str) {

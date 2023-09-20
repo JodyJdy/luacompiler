@@ -1,5 +1,6 @@
 package com.jdy.lua.vm;
 
+import com.jdy.lua.data.DataTypeEnum;
 import com.jdy.lua.data.Value;
 
 /**
@@ -35,6 +36,14 @@ public class GlobalVal {
         this.name = name;
         this.val = val;
     }
+
+   public boolean isFunc(){
+        return val.type() == DataTypeEnum.FUNCTION && val instanceof FuncInfo;
+   }
+   public int getFunGlobalIndex(){
+        return ((FuncInfo)val).getGlobalFuncIndex();
+   }
+
 
     @Override
     public String toString() {

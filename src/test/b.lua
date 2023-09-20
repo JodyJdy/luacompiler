@@ -1,16 +1,17 @@
 
-function a(x)
-   if x > 1 then
-      a(x-1)
-   end
+
+function a()
+
+    local  x =1
+
+    if x == 1 then
+        local v = 2
+    end
+
+    print(v)
+
 
 end
 
-a(2)
 
-
-
-
-
-
-
+a()

@@ -21,13 +21,14 @@ public class UpVal {
      * 父级的父级 就是 2
      * 表示向上查找的层级
      */
-    private int level;
+    private final int level;
 
     @Override
     public String toString() {
         return "UpVal{" +
                 "up=" + up +
                 ", index=" + index +
+                ",level=" +level +
                 '}';
     }
 
@@ -39,12 +40,25 @@ public class UpVal {
         return index;
     }
 
-    public UpVal(StackElement up, int index) {
+
+    public UpVal(StackElement up, int index,int level) {
         this.up = up;
         this.index = index;
+        this.level = level;
     }
     /**
      * 下标
      */
     private final int index;
+
+    public int getLevel() {
+        return level;
+    }
+
+   public boolean  isFunc(){
+       return up.isFunc();
+   }
+   public int funcIndex(){
+        return up.funcIndex();
+   }
 }

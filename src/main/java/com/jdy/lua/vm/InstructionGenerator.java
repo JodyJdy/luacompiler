@@ -61,6 +61,10 @@ public class InstructionGenerator {
             generateWhile(whileStatement);
             return;
         }
+        if (statement instanceof RepeatStatement repeatStatement) {
+            generateRepeat(repeatStatement);
+            return;
+        }
         if (statement instanceof FunctionStatement functionStatement) {
             generateFunc(functionStatement);
         }
@@ -181,6 +185,36 @@ public class InstructionGenerator {
             funcInfo.addCode(new SETTABLENIL(left, right));
         }
     }
+    public void generateNumberFor(NumberForStatement numberForStatement) {
+        int  curReg = funcInfo.getUsed();
+        int varReg = funcInfo.addVar(numberForStatement.getVar(), NIL);
+        int reg1 = generateExpr(numberForStatement.getExpr1(), 1);
+        //设置初始值
+        funcInfo.addCode(new SAVEVAR(varReg,reg1));
+        int reg2 = generateExpr(numberForStatement.getExpr2(), 1);
+        int reg3 = generateExpr(numberForStatement.getExpr3() == null ? new NumberValue(1) : numberForStatement.getExpr3() , 1);
+        //判断reg3 大于0 还是小于0
+        int reg4 = funcInfo.allocRegister();
+        int zero = FuncInfo.getConstantIndex(new NumberValue(0));
+        funcInfo.addCode(new LOADCONSTANT(reg4,zero));
+        //reg3 是否小于0
+        funcInfo.addCode(new GT(reg4,reg3));
+        //如果是
+        funcInfo.addCode(new TEST(reg4));
+        DynamicLabel start = new DynamicLabel(funcInfo.getNextPc());
+        //开始值和终止值不相同
+        funcInfo.addCode(new NE(reg1,reg2));
+
+
+
+
+
+
+
+
+        funcInfo.resetRegister(curReg);
+
+    }
 
 
     public void generateAssignStatement(AssignStatement assignStatement) {
@@ -233,10 +267,9 @@ public class InstructionGenerator {
         InstructionGenerator instructionGenerator = new InstructionGenerator(localFunc);
         int reg = funcInfo.addVar(localFunctionStatement.getFuncName(), NIL);
         int reg2 = funcInfo.allocRegister();
-        funcInfo.addCode(new LOADFUNC(reg2,funcInfo.getGlobalFuncIndex()));
+        funcInfo.addCode(new LOADFUNC(reg2,localFunc.getGlobalFuncIndex()));
         //存储
         funcInfo.addCode(new SAVEVAR(reg, reg2));
-        localFunc.fillJMP();
         funcInfo.freeRegisterWithIndex(reg2);
 
         instructionGenerator.generateStatement(localFunctionStatement.getFuncBody().getBlockStatement());
@@ -295,6 +328,25 @@ public class InstructionGenerator {
         return expr instanceof Expr.MultiArg;
     }
 
+    public void generateRepeat(RepeatStatement repeatStatement) {
+        DynamicLabel endLabel = new DynamicLabel();
+        DynamicLabel startLabel = new DynamicLabel(funcInfo.getNextPc());
+        breakLabel.add(endLabel);
+        int curReg = funcInfo.getUsed();
+        //执行block的内容
+        generateStatement(repeatStatement.getBlockStatement());
+        int reg = generateExpr(repeatStatement.getCondition(), SINGLE);
+        funcInfo.addCode(new TEST(reg));
+        //如果为假，跳到结尾
+        funcInfo.addCode(new JMP(endLabel));
+        //跳到开始位置
+        funcInfo.addCode(new JMP(startLabel));
+        //结束
+        endLabel.setPc(funcInfo.getNextPc());
+        breakLabel.pop();
+        //还原寄存器
+        funcInfo.resetRegister(curReg);
+    }
     public void generateWhile(WhileStatement whileStatement) {
         DynamicLabel endLabel = new DynamicLabel();
         DynamicLabel startLabel = new DynamicLabel(funcInfo.getNextPc());
@@ -347,16 +399,18 @@ public class InstructionGenerator {
                 tableMethodPrefix = tableMethod.getTableNames();
                 funcName = tableMethod.getMethodName();
             }
+            int beforeReg = funcInfo.getUsed();
             //处理table的方法
             int tableReg = getTable(tableMethodPrefix);
             //将函数名加载到寄存器中
             int indexIndex = FuncInfo.getConstantIndex(funcName);
             int indexReg = funcInfo.allocRegister();
             funcInfo.addCode(new LOADCONSTANT(indexReg, indexIndex));
-            funcInfo.addCode(new SETTABLE(tableReg, indexReg, funcInfo.getGlobalFuncIndex(), true));
-            //释放占用的三个寄存器
-            funcInfo.freeRegister(3);
-            newFunc.fillJMP();
+            int funcReg = funcInfo.allocRegister();
+            funcInfo.addCode(new LOADFUNC(funcReg,newFunc.getGlobalFuncIndex()));
+            funcInfo.addCode(new SETTABLE(tableReg, indexReg, funcReg));
+            //释放占用寄存器
+            funcInfo.resetRegister(beforeReg);
         }
         //生成相关指令
         InstructionGenerator instructionGenerator = new InstructionGenerator(newFunc);
@@ -439,6 +493,9 @@ public class InstructionGenerator {
             }
             generateStatement(ifStatement.getElseBlock());
         } else {
+            if (!elseIfFalseLabel.isEmpty()) {
+                elseIfFalseLabel.get(elseIfFalseLabel.size() - 1).setPc(funcInfo.getNextPc());
+            }
             falseLabel.setPc(funcInfo.getNextPc());
         }
         //设置结尾跳转位置
@@ -468,16 +525,31 @@ public class InstructionGenerator {
         GlobalVal globalVal;
 
         if ((elem = funcInfo.searchVar(expr.getName())) != null) {
-            funcInfo.addCode(new LOADVAR(reg, elem.getIndex()));
+            if (elem.isFunc()) {
+               funcInfo.addCode(new LOADFUNC(reg,elem.funcIndex()));
+            } else{
+                funcInfo.addCode(new LOADVAR(reg, elem.getIndex()));
+            }
             return reg;
         } else if ((upVal = funcInfo.searchUpVal(expr.getName())) != null) {
-            funcInfo.addCode(new LOADUPVAR(reg, upVal.getIndex()));
+            if (upVal.isFunc()) {
+                funcInfo.addCode(new LOADFUNC(reg, upVal.funcIndex()));
+            } else {
+                funcInfo.addCode(new LOADUPVAR(reg, upVal.getIndex()));
+            }
             return reg;
         } else if ((globalVal = FuncInfo.searchGlobal(expr.getName())) != null) {
-            funcInfo.addCode(new LOADGLOBAL(reg, globalVal.getIndex()));
+            if (globalVal.isFunc()) {
+               funcInfo.addCode(new LOADFUNC(reg, globalVal.getFunGlobalIndex()));
+            } else{
+                funcInfo.addCode(new LOADGLOBAL(reg, globalVal.getIndex()));
+            }
             return reg;
+        } else{
+            //不存在就将nil 放入寄存器
+            funcInfo.addCode(new SAVENIL(SAVENIL.LOCAL_VAR,reg));
         }
-        throw new RuntimeException(String.format("变量:%s不存在", expr.getName()));
+        return reg;
     }
 
     public int generateRelExpr(Expr.RelExpr relExpr) {
@@ -569,8 +641,6 @@ public class InstructionGenerator {
         int reg = funcInfo.allocRegister();
         //将函数加载到寄存器中
         funcInfo.addCode(new LOADFUNC(reg, func.getGlobalFuncIndex()));
-        //填充jmp
-        func.fillJMP();
         instructionGenerator.generateStatement(function.getBlockStatement());
         return reg;
     }

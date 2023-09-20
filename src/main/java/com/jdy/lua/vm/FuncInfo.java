@@ -23,16 +23,16 @@ public class FuncInfo implements Value {
      * 是否是对象实例方法
      * a:b()这种
      */
-    private boolean isObjMethod = false;
+    boolean isObjMethod = false;
     /**
      * 只有 函数定义 和最外层的  block 拥有 codes
      */
-    private final List<ByteCode> codes = new ArrayList<>();
+   final List<ByteCode> codes = new ArrayList<>();
 
     /**
      * 函数中使用到的label
      */
-    private final Map<String, LabelMessage> labelLocation = new HashMap<>();
+    final Map<String, LabelMessage> labelLocation = new HashMap<>();
 
     /**
      * 引用的 父级 block 中的变量
@@ -136,6 +136,9 @@ public class FuncInfo implements Value {
         if (n != used) {
             throw new RuntimeException("寄存器分配错误");
         }
+        if (registers.get(n).isLocalVar()) {
+            localVarMap.remove(registers.get(n).getVarName());
+        }
         used--;
     }
 
@@ -146,13 +149,17 @@ public class FuncInfo implements Value {
      * @param n
      */
     public void resetRegister(int n) {
+        //将其中的变量进行删除
+        if (n < used) {
+            for (int i = n + 1; i <= used; i++) {
+                StackElement elem = registers.get(i);
+                if (elem.isLocalVar()) {
+                    localVarMap.remove(elem.getVarName());
+                }
+            }
+
+        }
         used = n;
-    }
-    /**
-     * 释放n个寄存器
-     */
-    public void freeRegister(int n) {
-        used -= n;
     }
 
     /**
@@ -162,22 +169,6 @@ public class FuncInfo implements Value {
         return localVarMap.get(name);
     }
 
-    public StackElement searchParentVar(String name) {
-
-        FuncInfo tempParent = parent;
-        int level = 1;
-        while (tempParent != null) {
-            StackElement result;
-            if ((result = parent.searchVar(name)) != null) {
-                return result;
-            }
-            level++;
-        }
-        if (parent != null) {
-            return parent.searchVar(name);
-        }
-        return null;
-    }
     public int addVar(String name, Value val) {
         int reg = this.allocRegister();
         StackElement var = new StackElement(name, val, reg);
@@ -191,9 +182,18 @@ public class FuncInfo implements Value {
         if (temp != null) {
             return temp;
         }
-        StackElement val  = searchParentVar(name);
-        if (val != null) {
-            temp = new UpVal(val, upVal.size());
+        FuncInfo tempParent = parent;
+        StackElement result= null;
+        int level = 1;
+        while (tempParent != null) {
+            if ((result = tempParent.searchVar(name)) != null) {
+                break;
+            }
+            level++;
+            tempParent = tempParent.parent;
+        }
+        if (result != null) {
+            temp = new UpVal(result, upVal.size(),level);
             upVal.add(temp);
             upValMap.put(name, temp);
         }
@@ -326,14 +326,13 @@ public class FuncInfo implements Value {
     }
     public void showDebug(){
         System.out.println("------------ 当前寄存器信息-----------------");
-        for (int i = 0; i < registers.size(); i++) {
-            System.out.println(registers.get(i));
+        for (StackElement register : registers) {
+            System.out.println(register);
         }
         //upval
         System.out.println("----------upval---------");
         upVal.forEach(System.out::println);
         //字节码
-        this.fillJMP();
         System.out.println("--------byte code ------");
         for (int i = 0; i < codes.size(); i++) {
             System.out.println("pc=  "+i+"  "  +codes.get(i));
@@ -343,11 +342,13 @@ public class FuncInfo implements Value {
     /**
      * 填充jmp指令的调整位置
      */
-    public void fillJMP(){
-        codes.forEach(code->{
-            if (code instanceof ByteCode.JMP jmp) {
-                jmp.applyLabel();
-            }
+    public static void fillJMP(){
+        FuncInfo.allFuncs.forEach(funcInfo -> {
+            funcInfo.codes.forEach(code->{
+                if (code instanceof ByteCode.JMP jmp) {
+                    jmp.applyLabel();
+                }
+            });
         });
     }
 
@@ -362,30 +363,5 @@ public class FuncInfo implements Value {
         return allFuncs;
     }
 
-
-    /**
-     * 调用 当前函数
-     * @param values
-     * @return
-     */
-    public Value call(List<Value> values) {
-        int i = 0;
-        if (values.size() > 0) {
-            if (this.isObjMethod) {
-                registers.get(i).setValue(values.get(i));
-                i++;
-            }
-            for (String param : paramNames) {
-                if (i < values.size()) {
-                    registers.get(i).setValue(values.get(i));
-                }
-                i++;
-            }
-            if (i < values.size() && this.hasMultiArg) {
-               registers.get(i) .setValue(new MultiValue(values.subList(i,values.size())));
-            }
-        }
-        return Vm.execute(this);
-    }
 
 }

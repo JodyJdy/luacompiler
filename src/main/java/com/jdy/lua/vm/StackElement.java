@@ -1,5 +1,6 @@
 package com.jdy.lua.vm;
 
+import com.jdy.lua.data.DataTypeEnum;
 import com.jdy.lua.data.Value;
 
 /**
@@ -83,5 +84,13 @@ public class StackElement {
                 ", capture=" + capture +
                 ", value=" + value +
                 '}';
+    }
+
+
+    public boolean isFunc(){
+        return value.type() == DataTypeEnum.FUNCTION && value instanceof FuncInfo;
+    }
+    public int funcIndex(){
+        return  ((FuncInfo)value).getGlobalFuncIndex();
     }
 }
