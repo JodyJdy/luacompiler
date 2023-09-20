@@ -16,6 +16,13 @@ public class UpVal {
      */
     private StackElement up;
 
+    /**
+     * 如果是 父级 就是 1
+     * 父级的父级 就是 2
+     * 表示向上查找的层级
+     */
+    private int level;
+
     @Override
     public String toString() {
         return "UpVal{" +
