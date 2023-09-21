@@ -196,6 +196,8 @@ public class Vm {
                         registers[i + genericfor.a].setValue(resultList.get(i));
                     }
                 }
+            } else if (code instanceof SetTableArray setTableArray) {
+                runSetTableArray(setTableArray);
             }
             pc++;
         }
@@ -312,6 +314,17 @@ public class Vm {
         resetRegisters(code.a + realB - 1);
         for (int i = 0; i < realB; i++) {
             registers[code.a + i].setValue(multiValue.getValueList().get(i));
+        }
+    }
+
+    private void runSetTableArray(SetTableArray setTableArray){
+       Table table = Checker.checkTable(registers[setTableArray.a] .getValue());
+       int end = setTableArray.c;
+        if (end == -1) {
+            end = runtimeFunc.used;
+        }
+        for (int i = setTableArray.b; i <= end; i++) {
+           table.addVal(registers[i].getValue());
         }
     }
 

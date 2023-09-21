@@ -83,7 +83,8 @@ public class Table implements CalculateValue {
     }
 
     public void addVal(Value value) {
-        String key = String.valueOf(map.size());
+        String key = String.valueOf(map.size() + 1);
+        checkKeyExist(key);
         map.put(key, value);
     }
 

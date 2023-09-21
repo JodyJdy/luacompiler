@@ -1,9 +1,6 @@
 package com.jdy.lua.vm;
 
-import com.jdy.lua.data.BoolValue;
-import com.jdy.lua.data.NilValue;
-import com.jdy.lua.data.NumberValue;
-import com.jdy.lua.data.StringValue;
+import com.jdy.lua.data.*;
 import com.jdy.lua.statement.Expr;
 import com.jdy.lua.statement.Statement;
 
@@ -12,6 +9,7 @@ import java.util.List;
 import java.util.Stack;
 
 import static com.jdy.lua.data.NilValue.NIL;
+import static com.jdy.lua.executor.Checker.checkMultiValue;
 import static com.jdy.lua.statement.Statement.*;
 import static com.jdy.lua.vm.ByteCode.*;
 
@@ -236,8 +234,8 @@ public class InstructionGenerator {
             // ipairs, pairs 这种，返回 s,f,var  占用三个寄存器
             if (expr instanceof Expr.FuncCallExpr funcCallExpr) {
                 generateExpr(funcCallExpr, 3);
-                regCount+=3;
-            }  else {
+                regCount += 3;
+            } else {
                 generateExpr(expr, 1);
                 regCount++;
             }
@@ -247,7 +245,7 @@ public class InstructionGenerator {
         }
         DynamicLabel endLabel = new DynamicLabel();
         DynamicLabel startLabel = new DynamicLabel(funcInfo.getNextPc());
-        funcInfo.addCode(new GenericFor(beforeReg+1,afterReg,afterReg+1,afterReg+regCount));
+        funcInfo.addCode(new GenericFor(beforeReg + 1, afterReg, afterReg + 1, afterReg + regCount));
         funcInfo.addCode(new Jmp(endLabel));
         generateStatement(genericFor.getBlockStatement());
         funcInfo.addCode(new Jmp(startLabel));
@@ -260,8 +258,8 @@ public class InstructionGenerator {
         //获取模块名的常量下标
         int constantIndex = FuncInfo.getConstantIndex(requireModule.getModuleName());
         //获取加载到的全局变量下标
-        int varIndex  = FuncInfo.addGlobalVal(requireModule.getModuleName(), NIL);
-        funcInfo.addCode(new LoadGlobalModule(varIndex,constantIndex));
+        int varIndex = FuncInfo.addGlobalVal(requireModule.getModuleName(), NIL);
+        funcInfo.addCode(new LoadGlobalModule(varIndex, constantIndex));
     }
 
 
@@ -712,15 +710,19 @@ public class InstructionGenerator {
         int reg1 = funcInfo.allocRegister();
         funcInfo.addCode(new NewTable(reg1));
         tableExpr.getExprExprMap().forEach((key, value) -> {
-            //当成常量去处理
-            int reg2;
-            if (key instanceof Expr.NameExpr nameExpr) {
-                reg2 = generateStringValue(new StringValue(nameExpr.getName()));
+            if (value instanceof Expr.MultiArg || value instanceof Expr.FuncCallExpr) {
+                generateExpr(value, UNKNOWN);
+                funcInfo.addCode(new SetTableArray(reg1, reg1 + 1, UNKNOWN));
             } else {
-                reg2 = generateExpr(key, SINGLE);
+                int reg2;
+                if (key instanceof Expr.NameExpr nameExpr) {
+                    reg2 = generateStringValue(new StringValue(nameExpr.getName()));
+                } else {
+                    reg2 = generateExpr(key, SINGLE);
+                }
+                int reg3 = generateExpr(value, SINGLE);
+                funcInfo.addCode(new SetTable(reg1, reg2, reg3));
             }
-            int reg3 = generateExpr(value, SINGLE);
-            funcInfo.addCode(new SetTable(reg1, reg2, reg3));
             funcInfo.resetRegister(reg1);
         });
         return reg1;
@@ -787,7 +789,7 @@ public class InstructionGenerator {
     public int generateModule(RequireModule requireModule) {
         int reg = funcInfo.allocRegister();
         int constantIndex = FuncInfo.getConstantIndex(requireModule.getModuleName());
-        funcInfo.addCode(new LoadModule(reg,constantIndex));
+        funcInfo.addCode(new LoadModule(reg, constantIndex));
         return reg;
     }
 

@@ -727,7 +727,7 @@ public class Executor {
                 //key是表达式
                 key = k.visitExpr(this);
             }
-            if (v instanceof MultiArg) {
+            if (v instanceof MultiArg || v instanceof FuncCallExpr) {
                 MultiValue mul = checkMultiValue(v.visitExpr(this));
                 mul.getValueList().forEach(table::addVal);
             } else{

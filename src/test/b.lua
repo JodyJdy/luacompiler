@@ -1,11 +1,10 @@
-function a(...)
-  x={...}
-   print(x)
+function x (...)
+
+    local c = {...}
+    print(c)
 end
 
 
-
-a(1,2,3)
-
+x(1,2,3,4,5)
 
 

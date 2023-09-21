@@ -766,7 +766,25 @@ public interface ByteCode {
         public SetTable(int a, int b, int c) {
             super(a, b, c);
         }
+    }
 
+    /**
+     * 表a， 添加 寄存器 b -> c范围的数据
+     * 如果c == -1 表示不确定数量
+     */
+    class SetTableArray extends ThreeArgByteCode{
+        @Override
+        public String toString() {
+            return "SetTableArray{" +
+                    "a=" + a +
+                    ", b=" + b +
+                    ", c=" + c +
+                    '}';
+        }
+
+        public SetTableArray(int a, int b, int c) {
+            super(a, b, c);
+        }
     }
 
     /**
