@@ -2,13 +2,19 @@ package com.jdy.lua.luanative;
 
 import com.jdy.lua.antlr4.LuaLexer;
 import com.jdy.lua.antlr4.LuaParser;
+import com.jdy.lua.data.MultiValue;
+import com.jdy.lua.data.NilValue;
 import com.jdy.lua.data.Table;
+import com.jdy.lua.data.Value;
 import com.jdy.lua.executor.Block;
 import com.jdy.lua.executor.Checker;
 import com.jdy.lua.executor.Executor;
 import com.jdy.lua.parser.Parser;
 import com.jdy.lua.statement.Statement;
 import com.jdy.lua.vm.FuncInfo;
+import com.jdy.lua.vm.InstructionGenerator;
+import com.jdy.lua.vm.RuntimeFunc;
+import com.jdy.lua.vm.Vm;
 import org.antlr.v4.runtime.BufferedTokenStream;
 import org.antlr.v4.runtime.CharStreams;
 
@@ -57,6 +63,10 @@ public class NativeLoader {
     private static final Set<String> loadingModule = Collections.synchronizedSet(new HashSet<>());
 
     private static String modulePath;
+
+    /**
+     *加载ast执行需要的模块
+     */
     public static Table loadModule(String moduleName) {
         if (modulePath == null) {
             throw new RuntimeException("未配置模块地址");
@@ -79,5 +89,43 @@ public class NativeLoader {
         } catch (IOException e) {
             throw new RuntimeException(String.format("模块:%s读取失败",moduleName));
         }
+    }
+
+    /**
+     * 加载 vm 运行需要的模块
+     * @param moduleName
+     * @return
+     */
+    public static Table loadVmModule(String moduleName) {
+        if (modulePath == null) {
+            throw new RuntimeException("未配置模块地址");
+        }
+        String path = modulePath + File.separator + moduleName+".lua";
+        if (loadingModule.contains(path)) {
+            throw new RuntimeException(String.format("模块:%s 循环出现了循环依赖", path));
+        }
+        try {
+            loadingModule.add(path);
+            FileInputStream moduleFile = new FileInputStream(path);
+            LuaParser luaParser = new LuaParser(new BufferedTokenStream(new LuaLexer(CharStreams.fromStream(moduleFile))));
+            LuaParser.ChunkContext context = luaParser.chunk();
+            Statement result = Parser.parseBlock(context.block());
+            FuncInfo funcInfo = FuncInfo.createFunc();
+            InstructionGenerator instructionGenerator = new InstructionGenerator(funcInfo);
+            instructionGenerator.generateStatement(result);
+            FuncInfo.fillJMP();
+            Value val = Vm.execute(new RuntimeFunc(funcInfo,null));
+            if (val instanceof NilValue) {
+                throw new RuntimeException(String.format("模块:%s读取失败", moduleName));
+            } else if (val instanceof MultiValue mul) {
+                return Checker.checkTable(mul.getValueList().get(0));
+            }
+            loadingModule.remove(path);
+        } catch (FileNotFoundException e) {
+            throw new RuntimeException(String.format("模块:%s找不到",moduleName));
+        } catch (IOException e) {
+            throw new RuntimeException(String.format("模块:%s读取失败",moduleName));
+        }
+        return new Table();
     }
 }

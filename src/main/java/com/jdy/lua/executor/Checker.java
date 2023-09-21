@@ -12,6 +12,8 @@ public class Checker {
         return (Table) value;
     }
 
+
+
     public static Function checkFunc(Value val){
         if (!(val instanceof com.jdy.lua.data.Function)) {
             throw new RuntimeException("函数不存在");
@@ -38,6 +40,21 @@ public class Checker {
             throw new RuntimeException(value.toString()+ " 不是字符串");
         }
         return (StringValue) value;
+    }
+
+    public static String checkStringVal(Value value) {
+        if (!(value instanceof StringValue)) {
+            throw new RuntimeException(value.toString()+ " 不是字符串");
+        }
+        return  ((StringValue) value).getVal();
+    }
+
+
+    public static CalculateValue checkCalculate(Value value) {
+        if (!(value instanceof CalculateValue)) {
+            throw new RuntimeException(value.toString()+ " 不是数字");
+        }
+        return (CalculateValue) value;
     }
 
     public static NumberValue checkNumber(Value value) {

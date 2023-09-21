@@ -27,7 +27,7 @@ public class FuncInfo implements Value {
     /**
      * 只有 函数定义 和最外层的  block 拥有 codes
      */
-   final List<ByteCode> codes = new ArrayList<>();
+    final List<ByteCode> codes = new ArrayList<>();
 
     /**
      * 函数中使用到的label
@@ -81,7 +81,7 @@ public class FuncInfo implements Value {
     private int used = -1;
     private FuncInfo parent;
 
-    private FuncInfo(int globalFuncIndex,FuncInfo parent) {
+    private FuncInfo(int globalFuncIndex, FuncInfo parent) {
         this.globalFuncIndex = globalFuncIndex;
         this.parent = parent;
     }
@@ -89,19 +89,20 @@ public class FuncInfo implements Value {
     private FuncInfo(int globalFuncIndex) {
         this.globalFuncIndex = globalFuncIndex;
     }
+
     /**
      * 当前函数的全局索引
      */
     private final int globalFuncIndex;
 
-    public static FuncInfo createFunc(){
+    public static FuncInfo createFunc() {
         FuncInfo funcInfo = new FuncInfo(FuncInfo.allFuncs.size());
         allFuncs.add(funcInfo);
         return funcInfo;
     }
 
     public static FuncInfo createFunc(FuncInfo parent) {
-        FuncInfo funcInfo = new FuncInfo(FuncInfo.allFuncs.size(),parent);
+        FuncInfo funcInfo = new FuncInfo(FuncInfo.allFuncs.size(), parent);
         allFuncs.add(funcInfo);
         return funcInfo;
     }
@@ -113,13 +114,14 @@ public class FuncInfo implements Value {
         used++;
         //用nil填充寄存器的值
         if (used == registers.size()) {
-            registers.add(new StackElement(NilValue.NIL,used));
+            registers.add(new StackElement(NilValue.NIL, used));
         }
         return used;
     }
 
     /**
      * 如果当前寄存器小于n的话将寄存器扩容到N
+     *
      * @param n
      */
     public void allocRegister2N(int n) {
@@ -130,7 +132,7 @@ public class FuncInfo implements Value {
 
 
     /**
-     *释放指定的寄存器
+     * 释放指定的寄存器
      */
     public void freeRegisterWithIndex(int n) {
         if (n != used) {
@@ -143,9 +145,9 @@ public class FuncInfo implements Value {
     }
 
 
-
     /**
      * 重置寄存器的使用
+     *
      * @param n
      */
     public void resetRegister(int n) {
@@ -158,6 +160,10 @@ public class FuncInfo implements Value {
                 }
             }
 
+        } else if (n > used) {
+            while (used != n) {
+                allocRegister();
+            }
         }
         used = n;
     }
@@ -183,7 +189,7 @@ public class FuncInfo implements Value {
             return temp;
         }
         FuncInfo tempParent = parent;
-        StackElement result= null;
+        StackElement result = null;
         int level = 1;
         while (tempParent != null) {
             if ((result = tempParent.searchVar(name)) != null) {
@@ -193,20 +199,21 @@ public class FuncInfo implements Value {
             tempParent = tempParent.parent;
         }
         if (result != null) {
-            temp = new UpVal(result, upVal.size(),level);
+            temp = new UpVal(result, upVal.size(), level);
             upVal.add(temp);
             upValMap.put(name, temp);
         }
         return temp;
     }
 
-    public static int  addGlobalVal(String name, Value val) {
+    public static int addGlobalVal(String name, Value val) {
         int index = globalVar.size();
         GlobalVal globalVal = new GlobalVal(index, name, val);
         globalVar.add(globalVal);
         globalVarMap.put(name, globalVal);
         return index;
     }
+
     public static GlobalVal searchGlobal(String name) {
         return globalVarMap.get(name);
     }
@@ -218,6 +225,7 @@ public class FuncInfo implements Value {
     public DataTypeEnum type() {
         return DataTypeEnum.FUNCTION;
     }
+
     public void addCode(ByteCode byteCode) {
         codes.add(byteCode);
     }
@@ -229,6 +237,7 @@ public class FuncInfo implements Value {
     public static int getConstantIndex(String val) {
         return getConstantIndex(new StringValue(val));
     }
+
     public static int getConstantIndex(Value v) {
         for (int i = 0; i < constant.size(); i++) {
             if (constant.get(i).equals(v)) {
@@ -241,12 +250,13 @@ public class FuncInfo implements Value {
 
 
     public void addLabel(String labelName) {
-        labelLocation.put(labelName, new LabelMessage(codes.size(),used));
+        labelLocation.put(labelName, new LabelMessage(codes.size(), used));
     }
 
-    public int getNextPc(){
+    public int getNextPc() {
         return codes.size();
     }
+
     public LabelMessage getLabel(String labelName) {
         return labelLocation.get(labelName);
     }
@@ -315,7 +325,7 @@ public class FuncInfo implements Value {
     }
 
 
-    public static void showGlobal(){
+    public static void showGlobal() {
         System.out.println("-------------- 常量池----------------");
         System.out.println(FuncInfo.constant);
         //global
@@ -324,7 +334,8 @@ public class FuncInfo implements Value {
             System.out.println(globalVal);
         }
     }
-    public void showDebug(){
+
+    public void showDebug() {
         System.out.println("------------ 当前寄存器信息-----------------");
         for (StackElement register : registers) {
             System.out.println(register);
@@ -335,16 +346,16 @@ public class FuncInfo implements Value {
         //字节码
         System.out.println("--------byte code ------");
         for (int i = 0; i < codes.size(); i++) {
-            System.out.println("pc=  "+i+"  "  +codes.get(i));
+            System.out.println("pc=  " + i + "  " + codes.get(i));
         }
     }
 
     /**
      * 填充jmp指令的调整位置
      */
-    public static void fillJMP(){
+    public static void fillJMP() {
         FuncInfo.allFuncs.forEach(funcInfo -> {
-            funcInfo.codes.forEach(code->{
+            funcInfo.codes.forEach(code -> {
                 if (code instanceof ByteCode.JMP jmp) {
                     jmp.applyLabel();
                 }
@@ -359,7 +370,8 @@ public class FuncInfo implements Value {
     public int getGlobalFuncIndex() {
         return globalFuncIndex;
     }
-    public static List<FuncInfo>  funcInfos(){
+
+    public static List<FuncInfo> funcInfos() {
         return allFuncs;
     }
 

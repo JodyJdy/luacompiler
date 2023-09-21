@@ -49,9 +49,10 @@ public class RuntimeFunc implements Value {
     }
 
     private void init() {
-        //栈的数量进行调整，与FuncInfo 保持一致
-        //设置栈大小为256
-        allocRegister2N(funcInfo.getUsed());
+        //栈的数量进行调整，与FuncInfo 的最大值保持一致，不是当前的 funcInfo.used
+        resetRegister(funcInfo.getRegisters().size());
+        //栈的已经使用和funcInfo保持一致
+        used = funcInfo.getUsed();
         //拷贝 UpVal
         for (UpVal upVal : funcInfo.getUpVal()) {
             StackElement runtime = getRuntimeUpValValue(upVal);
@@ -88,26 +89,23 @@ public class RuntimeFunc implements Value {
 
     public int allocRegister() {
         used++;
-        //用nil填充寄存器的值
+        //只在需要扩容的时候扩容，用nil填充寄存器的值
         if (used == registers.size()) {
             registers.add(new StackElement(NilValue.NIL, used));
         }
         return used;
     }
 
-    public void resetRegister(int n) {
-        used = n;
-    }
-
     /**
-     * 如果当前寄存器小于n的话将寄存器扩容到N
-     *
-     * @param n
+     * 将寄存器数量调整到 n，如果不够，进行扩容
      */
-    public void allocRegister2N(int n) {
-        while (used < n) {
-            allocRegister();
+    public void resetRegister(int n) {
+       if (n > used) {
+            while (used !=  n) {
+                allocRegister();
+            }
         }
+        used = n;
     }
 
     /**

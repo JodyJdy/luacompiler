@@ -766,7 +766,180 @@ public interface ByteCode {
             super(a, b, c);
         }
 
+    }
 
+    /**
+     * 数值循环
+     *
+     * 处理从 a, a + 1, a + 2  的三个寄存器
+     *
+     * a 存放初始值
+     * a+1 存放 终值
+     * a+2 存放 步长
+     *
+     * 如果 步长 > 0
+     * 判断 初始值 是否 小于等于 终值， 是继续
+     * 如果步长 < 0
+     * 判断初始值是否 大于等于终值， 是继续
+     */
+    class NUMBERFOR extends SingleArgByteCode{
+        @Override
+        public String toString() {
+            return "NUMBERFOR{" +
+                    "a= " + a
+                    + "}";
+        }
+
+        public NUMBERFOR(int a) {
+            super(a);
+        }
+    }
+
+    /**
+     *执行初始值的累加步长的操作
+     *
+     * a 是初始值所在的寄存器
+     */
+    class ENDNUMBERFOR extends SingleArgByteCode{
+        @Override
+        public String toString() {
+            return "ENDNUMBERFOR{" +
+                    "a=" + a +
+                    '}';
+        }
+
+        public ENDNUMBERFOR(int a) {
+            super(a);
+        }
+    }
+
+    /**
+     *
+     * 参数范围
+     * a->b
+     *
+     * 表达式范围
+     * c -> d
+     *
+     * 如果可以继续循环 pc+1
+
+     */
+
+    class GENERICFOR extends ThreeArgByteCode{
+        int d;
+        public GENERICFOR(int a, int b, int c,int d) {
+            super(a, b, c);
+            this.d = d;
+        }
+
+        @Override
+        public String toString() {
+            return "GENERICFOR{" +
+                    ", a=" + a +
+                    ", b=" + b +
+                    ", c=" + c +
+                    ",  d=" + d +
+                    '}';
+        }
+    }
+
+
+    /**
+     * 计算a寄存器里面内容的长度，放在a寄存器里面
+     */
+    class LENGTH extends SingleArgByteCode{
+        @Override
+        public String toString() {
+            return "LENGTH{" +
+                    "a=" + a +
+                    '}';
+        }
+        public LENGTH(int a) {
+            super(a);
+        }
+    }
+
+    /**
+     *对a寄存器里面的内容进行 not 运行 结果存放在 a里面
+     */
+    class NOT extends SingleArgByteCode{
+
+        @Override
+        public String toString() {
+            return "NOT{" +
+                    "a=" + a +
+                    '}';
+        }
+
+        public NOT(int a) {
+            super(a);
+        }
+    }
+
+    /**
+       进行 ~ 运算
+     */
+    class BITREVERSE extends SingleArgByteCode{
+        @Override
+        public String toString() {
+            return "BITREVERSE{" +
+                    "a=" + a +
+                    '}';
+        }
+
+        public BITREVERSE(int a) {
+            super(a);
+        }
+    }
+
+    /**
+     * 对a寄存器进行   - 运算
+     */
+    class SINGLESUB extends SingleArgByteCode{
+        public SINGLESUB(int a) {
+            super(a);
+        }
+
+        @Override
+        public String toString() {
+            return "SINGLESUB{" +
+                    "a=" + a +
+                    '}';
+        }
+    }
+
+
+    /**
+     * 将常量 b 作为模块加载到全局变量 a中
+     */
+    class LOADGLOBALMODULE extends TwoArgByteCode{
+        @Override
+        public String toString() {
+            return "LOADMODULE{" +
+                    "a=" + a +
+                    ", b=" + b +
+                    '}';
+        }
+
+        public LOADGLOBALMODULE(int a, int b) {
+            super(a, b);
+        }
+    }
+    /**
+     *  将常量 b 作为模块加载到寄存器 a中
+     */
+    class LOADMODULE extends TwoArgByteCode{
+        @Override
+        public String toString() {
+            return "LOADMODULE{" +
+                    "a=" + a +
+                    ", b=" + b +
+                    '}';
+        }
+
+        public LOADMODULE(int a, int b) {
+            super(a, b);
+        }
     }
 
 

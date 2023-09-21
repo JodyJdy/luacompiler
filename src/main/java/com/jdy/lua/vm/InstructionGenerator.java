@@ -92,6 +92,17 @@ public class InstructionGenerator {
             generateAssignStatement(assignStatement);
             return;
         }
+        if (statement instanceof NumberForStatement numberForStatement) {
+            generateNumberFor(numberForStatement);
+            return;
+        }
+        if (statement instanceof GenericForStatement genericfor) {
+            generateGenericFor(genericfor);
+            return;
+        }
+        if (statement instanceof RequireModule requireModule) {
+            generateModuleStatement(requireModule);
+        }
         //不考虑返回值的函数调用
         if (statement instanceof Expr.FuncCallExpr expr) {
             int reg = funcInfo.getUsed();
@@ -185,35 +196,72 @@ public class InstructionGenerator {
             funcInfo.addCode(new SETTABLENIL(left, right));
         }
     }
+
     public void generateNumberFor(NumberForStatement numberForStatement) {
-        int  curReg = funcInfo.getUsed();
-        int varReg = funcInfo.addVar(numberForStatement.getVar(), NIL);
-        int reg1 = generateExpr(numberForStatement.getExpr1(), 1);
+        int curReg = funcInfo.getUsed();
+        int init = generateExpr(numberForStatement.getExpr1(), SINGLE);
+        //定义变量
+        int reg1 = funcInfo.addVar(numberForStatement.getVar(), NIL);
+        DynamicLabel endLabel = new DynamicLabel();
+        DynamicLabel startLabel = new DynamicLabel();
+        breakLabel.add(endLabel);
         //设置初始值
-        funcInfo.addCode(new SAVEVAR(varReg,reg1));
-        int reg2 = generateExpr(numberForStatement.getExpr2(), 1);
-        int reg3 = generateExpr(numberForStatement.getExpr3() == null ? new NumberValue(1) : numberForStatement.getExpr3() , 1);
-        //判断reg3 大于0 还是小于0
-        int reg4 = funcInfo.allocRegister();
-        int zero = FuncInfo.getConstantIndex(new NumberValue(0));
-        funcInfo.addCode(new LOADCONSTANT(reg4,zero));
-        //reg3 是否小于0
-        funcInfo.addCode(new GT(reg4,reg3));
-        //如果是
-        funcInfo.addCode(new TEST(reg4));
-        DynamicLabel start = new DynamicLabel(funcInfo.getNextPc());
-        //开始值和终止值不相同
-        funcInfo.addCode(new NE(reg1,reg2));
-
-
-
-
-
-
-
-
+        funcInfo.addCode(new SAVEVAR(reg1, init));
+        int reg2 = generateExpr(numberForStatement.getExpr2(), SINGLE);
+        int reg3 = generateExpr(numberForStatement.getExpr3() == null ? new NumberValue(1) : numberForStatement.getExpr3(), 1);
+        startLabel.setPc(funcInfo.getNextPc());
+        funcInfo.addCode(new NUMBERFOR(reg1));
+        funcInfo.addCode(new JMP(endLabel));
+        generateStatement(numberForStatement.getBlockStatement());
+        funcInfo.addCode(new ENDNUMBERFOR(reg1));
+        funcInfo.addCode(new JMP(startLabel));
+        endLabel.setPc(funcInfo.getNextPc());
+        breakLabel.pop();
         funcInfo.resetRegister(curReg);
+    }
 
+    public void generateGenericFor(GenericForStatement genericFor) {
+        //记录当前寄存器
+        final List<String> varNames = genericFor.getVars();
+        final List<Integer> varReg = new ArrayList<>();
+        //添加变量，获取变量的寄存器位置
+        int beforeReg = funcInfo.getUsed();
+        varNames.forEach(var -> varReg.add(funcInfo.addVar(var, NilValue.NIL)));
+        int afterReg = funcInfo.getUsed();
+        // beforeReg + 1, afterReg 之间就是循环变量
+        //处理右侧表达式
+        //记录使用的寄存器数量
+        int regCount = 0;
+        for (Expr expr : genericFor.getExpList()) {
+            // ipairs, pairs 这种，返回 s,f,var  占用三个寄存器
+            if (expr instanceof Expr.FuncCallExpr funcCallExpr) {
+                generateExpr(funcCallExpr, 3);
+                regCount+=3;
+            }  else {
+                generateExpr(expr, 1);
+                regCount++;
+            }
+        }
+        if (regCount % 3 != 0) {
+            throw new RuntimeException("不符合泛型for循环语法");
+        }
+        DynamicLabel endLabel = new DynamicLabel();
+        DynamicLabel startLabel = new DynamicLabel(funcInfo.getNextPc());
+        funcInfo.addCode(new GENERICFOR(beforeReg+1,afterReg,afterReg+1,afterReg+regCount));
+        funcInfo.addCode(new JMP(endLabel));
+        generateStatement(genericFor.getBlockStatement());
+        funcInfo.addCode(new JMP(startLabel));
+        endLabel.setPc(funcInfo.getNextPc());
+        funcInfo.resetRegister(beforeReg);
+
+    }
+
+    public void generateModuleStatement(RequireModule requireModule) {
+        //获取模块名的常量下标
+        int constantIndex = FuncInfo.getConstantIndex(requireModule.getModuleName());
+        //获取加载到的全局变量下标
+        int varIndex  = FuncInfo.addGlobalVal(requireModule.getModuleName(), NIL);
+        funcInfo.addCode(new LOADGLOBALMODULE(varIndex,constantIndex));
     }
 
 
@@ -267,10 +315,10 @@ public class InstructionGenerator {
         InstructionGenerator instructionGenerator = new InstructionGenerator(localFunc);
         int reg = funcInfo.addVar(localFunctionStatement.getFuncName(), NIL);
         int reg2 = funcInfo.allocRegister();
-        funcInfo.addCode(new LOADFUNC(reg2,localFunc.getGlobalFuncIndex()));
+        funcInfo.addCode(new LOADFUNC(reg2, localFunc.getGlobalFuncIndex()));
         //存储
         funcInfo.addCode(new SAVEVAR(reg, reg2));
-        funcInfo.freeRegisterWithIndex(reg2);
+        funcInfo.resetRegister(reg);
 
         instructionGenerator.generateStatement(localFunctionStatement.getFuncBody().getBlockStatement());
     }
@@ -347,6 +395,7 @@ public class InstructionGenerator {
         //还原寄存器
         funcInfo.resetRegister(curReg);
     }
+
     public void generateWhile(WhileStatement whileStatement) {
         DynamicLabel endLabel = new DynamicLabel();
         DynamicLabel startLabel = new DynamicLabel(funcInfo.getNextPc());
@@ -407,7 +456,7 @@ public class InstructionGenerator {
             int indexReg = funcInfo.allocRegister();
             funcInfo.addCode(new LOADCONSTANT(indexReg, indexIndex));
             int funcReg = funcInfo.allocRegister();
-            funcInfo.addCode(new LOADFUNC(funcReg,newFunc.getGlobalFuncIndex()));
+            funcInfo.addCode(new LOADFUNC(funcReg, newFunc.getGlobalFuncIndex()));
             funcInfo.addCode(new SETTABLE(tableReg, indexReg, funcReg));
             //释放占用寄存器
             funcInfo.resetRegister(beforeReg);
@@ -526,8 +575,8 @@ public class InstructionGenerator {
 
         if ((elem = funcInfo.searchVar(expr.getName())) != null) {
             if (elem.isFunc()) {
-               funcInfo.addCode(new LOADFUNC(reg,elem.funcIndex()));
-            } else{
+                funcInfo.addCode(new LOADFUNC(reg, elem.funcIndex()));
+            } else {
                 funcInfo.addCode(new LOADVAR(reg, elem.getIndex()));
             }
             return reg;
@@ -540,14 +589,14 @@ public class InstructionGenerator {
             return reg;
         } else if ((globalVal = FuncInfo.searchGlobal(expr.getName())) != null) {
             if (globalVal.isFunc()) {
-               funcInfo.addCode(new LOADFUNC(reg, globalVal.getFunGlobalIndex()));
-            } else{
+                funcInfo.addCode(new LOADFUNC(reg, globalVal.getFunGlobalIndex()));
+            } else {
                 funcInfo.addCode(new LOADGLOBAL(reg, globalVal.getIndex()));
             }
             return reg;
-        } else{
+        } else {
             //不存在就将nil 放入寄存器
-            funcInfo.addCode(new SAVENIL(SAVENIL.LOCAL_VAR,reg));
+            funcInfo.addCode(new SAVENIL(SAVENIL.LOCAL_VAR, reg));
         }
         return reg;
     }
@@ -564,6 +613,19 @@ public class InstructionGenerator {
             case "~=" -> funcInfo.addCode(new NE(reg1, reg2));
         }
         funcInfo.resetRegister(reg1);
+        return reg1;
+    }
+
+
+    public int generateUnaryExpr(Expr.UnaryExpr unaryExpr) {
+        int reg1 = generateExpr(unaryExpr.getExpr(), SINGLE);
+        switch (unaryExpr.getOp()) {
+            case "#" -> funcInfo.addCode(new LENGTH(reg1));
+            case "not" -> funcInfo.addCode(new NOT(reg1));
+            case "-" -> funcInfo.addCode(new SINGLESUB(reg1));
+            case "~" -> funcInfo.addCode(new BITREVERSE(reg1));
+            default -> throw new RuntimeException("不支持的异常");
+        }
         return reg1;
     }
 
@@ -606,7 +668,7 @@ public class InstructionGenerator {
         Expr.NameExpr nameExpr = (Expr.NameExpr) dotExpr.getRight();
         int reg2 = generateStringValue(new StringValue(nameExpr.getName()));
         funcInfo.addCode(new GETTABLE(reg1, reg2));
-        funcInfo.freeRegisterWithIndex(reg2);
+        funcInfo.resetRegister(reg1);
         return reg1;
     }
 
@@ -614,7 +676,7 @@ public class InstructionGenerator {
         int reg1 = generateExpr(expr.getLeft(), SINGLE);
         int reg2 = generateExpr(expr.getRight(), SINGLE);
         funcInfo.addCode(new AND(reg1, reg1, reg2));
-        funcInfo.freeRegisterWithIndex(reg2);
+        funcInfo.resetRegister(reg1);
         return reg1;
     }
 
@@ -622,7 +684,7 @@ public class InstructionGenerator {
         int reg1 = generateExpr(expr.getLeft(), SINGLE);
         int reg2 = generateExpr(expr.getRight(), SINGLE);
         funcInfo.addCode(new OR(reg1, reg1, reg2));
-        funcInfo.freeRegisterWithIndex(reg2);
+        funcInfo.resetRegister(reg1);
         return reg1;
     }
 
@@ -706,9 +768,9 @@ public class InstructionGenerator {
         //处理函数参数
         boolean hasMultiRet = false;
         if (!args.isEmpty()) {
-            hasMultiRet =executeExprsCheckMulti(UNKNOWN,args);
+            hasMultiRet = executeExprsCheckMulti(UNKNOWN, args);
         }
-        funcInfo.addCode(new CALL(reg1, reg1 + 1, hasMultiRet ? UNKNOWN : funcInfo.getUsed(), expect));
+        funcInfo.addCode(new CALL(reg1, reg1 + 1, hasMultiRet ? UNKNOWN : reg1 + args.size(), expect));
         //释放多余寄存器，从 reg1 开始 只需要留有 expect个就行
         if (expect != -1) {
             funcInfo.resetRegister(reg1 + expect - 1);
@@ -722,6 +784,13 @@ public class InstructionGenerator {
         return a;
     }
 
+    public int generateModule(RequireModule requireModule) {
+        int reg = funcInfo.allocRegister();
+        int constantIndex = FuncInfo.getConstantIndex(requireModule.getModuleName());
+        funcInfo.addCode(new LOADMODULE(reg,constantIndex));
+        return reg;
+    }
+
     /**
      * 返回表达式的值存储的寄存器位置
      *
@@ -730,51 +799,40 @@ public class InstructionGenerator {
     public int generateExpr(Expr expr, int expect) {
         if (expr instanceof NilValue nilValue) {
             return generateNilExpr(nilValue);
-        }
-        if (expr instanceof BoolValue boolValue) {
+        } else if (expr instanceof BoolValue boolValue) {
             return generateBooleanExpr(boolValue);
-        }
-        if (expr instanceof Expr.IndexExpr indexExpr) {
+        } else if (expr instanceof Expr.IndexExpr indexExpr) {
             return generateIndexExpr(indexExpr);
-        }
-        if (expr instanceof StringValue stringValue) {
+        } else if (expr instanceof StringValue stringValue) {
             return generateStringValue(stringValue);
-        }
-        if (expr instanceof NumberValue numberValue) {
+        } else if (expr instanceof NumberValue numberValue) {
             return generateNumberExpr(numberValue);
-        }
-        if (expr instanceof Expr.TableExpr tableExpr) {
+        } else if (expr instanceof Expr.TableExpr tableExpr) {
             return generateTableExpr(tableExpr);
-        }
-        if (expr instanceof Expr.Function function) {
+        } else if (expr instanceof Expr.Function function) {
             return generateFuncExpr(function);
-        }
-        if (expr instanceof Expr.CalExpr calExpr) {
+        } else if (expr instanceof Expr.CalExpr calExpr) {
             return generateCalExpr(calExpr);
-        }
-        if (expr instanceof Expr.RelExpr relExpr) {
+        } else if (expr instanceof Expr.RelExpr relExpr) {
             return generateRelExpr(relExpr);
-        }
-        if (expr instanceof Expr.NameExpr nameExpr) {
+        } else if (expr instanceof Expr.NameExpr nameExpr) {
             return generateNameExpr(nameExpr);
-        }
-        if (expr instanceof Expr.AndExpr andExpr) {
+        } else if (expr instanceof Expr.AndExpr andExpr) {
             return generateAndExpr(andExpr);
-        }
-        if (expr instanceof Expr.OrExpr orExpr) {
+        } else if (expr instanceof Expr.OrExpr orExpr) {
             return generateOrExpr(orExpr);
-        }
-        if (expr instanceof Expr.DotExpr dotExpr) {
+        } else if (expr instanceof Expr.DotExpr dotExpr) {
             return generateDotExpr(dotExpr);
-        }
-        if (expr instanceof Expr.FuncCallExpr funcCallExpr) {
+        } else if (expr instanceof Expr.FuncCallExpr funcCallExpr) {
             return generateFuncCallExpr(funcCallExpr, expect);
-        }
-        if (expr instanceof Expr.ColonExpr colonExpr) {
+        } else if (expr instanceof Expr.ColonExpr colonExpr) {
             return generateColonExpr(colonExpr);
-        }
-        if (expr instanceof Expr.MultiArg) {
+        } else if (expr instanceof Expr.MultiArg) {
             return generateMultiArg(expect);
+        } else if (expr instanceof Expr.UnaryExpr unaryExpr) {
+            return generateUnaryExpr(unaryExpr);
+        } else if (expr instanceof RequireModule requireModule) {
+            return generateModule(requireModule);
         }
         return 0;
     }
