@@ -6,6 +6,7 @@ import com.jdy.lua.data.NilValue;
 import com.jdy.lua.data.Value;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -37,9 +38,7 @@ public class RuntimeFunc implements Value {
      * 最后一个参数的 寄存器索引
      */
     final int finalParamArg;
-
-    final List<StackElement> registers = new ArrayList<>();
-
+     StackElement[] registers;
 
     public RuntimeFunc(FuncInfo funcInfo, RuntimeFunc parent) {
         this.funcInfo = funcInfo;
@@ -78,7 +77,7 @@ public class RuntimeFunc implements Value {
             level--;
         }
         //获取到target
-        return target.registers.get(stackIndex);
+        return target.registers[stackIndex];
     }
 
     @Override
@@ -89,9 +88,15 @@ public class RuntimeFunc implements Value {
 
     public int allocRegister() {
         used++;
+        if (registers == null) {
+            registers = new StackElement[0];
+        }
         //只在需要扩容的时候扩容，用nil填充寄存器的值
-        if (used == registers.size()) {
-            registers.add(new StackElement(NilValue.NIL, used));
+        if (used == registers.length) {
+            registers =  Arrays.copyOf(registers, registers.length + 5);
+            for (int i = used; i < registers.length;i++) {
+                registers[i] = new StackElement(NilValue.NIL,i);
+            }
         }
         return used;
     }
@@ -115,17 +120,17 @@ public class RuntimeFunc implements Value {
         int i = 0;
         if (values.size() > 0) {
             if (funcInfo.isObjMethod) {
-                registers.get(0).setValue(values.get(i));
+                registers[0].setValue(values.get(i));
                 i++;
             }
             for (String ignored : funcInfo.paramNames) {
                 if (i < values.size()) {
-                    registers.get(i).setValue(values.get(i));
+                    registers[i].setValue(values.get(i));
                 }
                 i++;
             }
             if (i < values.size() && funcInfo.hasMultiArg) {
-                registers.get(i).setValue(new MultiValue(values.subList(i, values.size())));
+                registers[i].setValue(new MultiValue(values.subList(i, values.size())));
             }
         }
         return Vm.execute(this);

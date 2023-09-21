@@ -26,141 +26,142 @@ public class Vm {
      * 执行入口的entry
      */
     public static Value execute(RuntimeFunc runtimeFunc) {
-        List<ByteCode> codeList = runtimeFunc.funcInfo.getCodes();
-        int len = codeList.size();
-        List<StackElement> registers = runtimeFunc.registers;
+        //使用数组能提升寻址性能
+        ByteCode[] codes = new ByteCode[runtimeFunc.funcInfo.codes.size()];
+        runtimeFunc.funcInfo.getCodes().toArray(codes);
+        int len = codes.length;
         Value result = NIL;
         int pc = 0;
         while (pc < len) {
-            ByteCode code = codeList.get(pc);
+            ByteCode code = codes[pc];
             if (code instanceof JMP jmp) {
                 pc = jmp.a;
                 continue;
             } else if (code instanceof Calculate calculate) {
-                runCalculate(calculate, registers);
+                runCalculate(calculate, runtimeFunc.registers);
             } else if (code instanceof Compare compare) {
-                runCompare(compare, registers);
+                runCompare(compare, runtimeFunc.registers);
             } else if (code instanceof TEST test) {
-                StackElement val = registers.get(test.a);
+                StackElement val = runtimeFunc.registers[test.a];
                 //为真继续执行
                 if (val.getValue() != NIL && val.getValue() != FALSE) {
                     pc++;
                 }
             } else if (code instanceof LOADVAR loadvar) {
-                registers.get(loadvar.a).setValue(registers.get(loadvar.b).getValue());
+                runtimeFunc.registers[loadvar.a].setValue(runtimeFunc.registers[loadvar.b].getValue());
             } else if (code instanceof LOADUPVAR loadupvar) {
-                registers.get(loadupvar.a).setValue(runtimeFunc.upValList.get(loadupvar.b).up.getValue());
+                runtimeFunc.registers[loadupvar.a].setValue(runtimeFunc.upValList.get(loadupvar.b).up.getValue());
             } else if (code instanceof LOADGLOBAL loadglobal) {
-                registers.get(loadglobal.a).setValue(
+                runtimeFunc.registers[loadglobal.a].setValue(
                         FuncInfo.getGlobalVal(loadglobal.b).getVal()
                 );
             } else if (code instanceof LOADCONSTANT loadconstant) {
-                registers.get(loadconstant.a).setValue(
+                runtimeFunc.registers[loadconstant.a].setValue(
                         FuncInfo.getConstant(loadconstant.b)
                 );
             } else if (code instanceof LOADFUNC loadfunc) {
                 runLoadFunc(loadfunc, runtimeFunc);
             } else if (code instanceof SAVENIL savenil) {
                 if (savenil.a == SAVENIL.LOCAL_VAR) {
-                    registers.get(savenil.b).setValue(NIL);
+                    runtimeFunc.registers[savenil.b].setValue(NIL);
                 } else if (savenil.a == SAVENIL.UPVAL) {
                     runtimeFunc.upValList.get(savenil.b).up.setValue(NIL);
                 } else {
                     FuncInfo.getGlobalVal(savenil.b).setVal(NIL);
                 }
             } else if (code instanceof SAVEVAR savevar) {
-                registers.get(savevar.a).setValue(registers.get(savevar.b).getValue());
+                runtimeFunc.registers[savevar.a].setValue(runtimeFunc.registers[savevar.b].getValue());
             } else if (code instanceof SAVEGLOBAL saveglobal) {
                 FuncInfo.getGlobalVal(saveglobal.a)
-                        .setVal(registers.get(saveglobal.b).getValue());
+                        .setVal(runtimeFunc.registers[saveglobal.b].getValue());
             } else if (code instanceof SAVEUPVAL saveupval) {
                 runtimeFunc.upValList.get(saveupval.a).up
-                        .setValue(registers.get(saveupval.b).getValue());
+                        .setValue(runtimeFunc.registers[saveupval.b].getValue());
             } else if (code instanceof RETURN) {
                 break;
             } else if (code instanceof RETURNMULTI returnmulti) {
-                result = runReturnMulti(returnmulti, runtimeFunc, registers);
+                result = runReturnMulti(returnmulti, runtimeFunc, runtimeFunc.registers);
                 break;
             } else if (code instanceof NEWTABLE newtable) {
-                registers.get(newtable.a).setValue(new Table());
+                runtimeFunc.registers[newtable.a].setValue(new Table());
             } else if (code instanceof GETTABLE gettable) {
-                Table table = Checker.checkTable(registers.get(gettable.a).getValue());
-                Value val = table.get(registers.get(gettable.b).getValue());
-                registers.get(gettable.a).setValue(val);
+                Table table = Checker.checkTable(runtimeFunc.registers[gettable.a].getValue());
+                Value val = table.get(runtimeFunc.registers[gettable.b].getValue());
+                runtimeFunc.registers[gettable.a].setValue(val);
             } else if (code instanceof GETTABLEMETHOD gettablemethod) {
-                Table table = Checker.checkTable(registers.get(gettablemethod.a).getValue());
-                Value val = table.get(registers.get(gettablemethod.b).getValue());
+                Table table = Checker.checkTable(runtimeFunc.registers[gettablemethod.a].getValue());
+                Value val = table.get(runtimeFunc.registers[gettablemethod.b].getValue());
                 //交换值
-                registers.get(gettablemethod.a).setValue(val);
-                registers.get(gettablemethod.b).setValue(table);
+                runtimeFunc.registers[gettablemethod.a].setValue(val);
+                runtimeFunc.registers[gettablemethod.b].setValue(table);
             } else if (code instanceof SETTABLENIL settablenil) {
-                Table table = Checker.checkTable(registers.get(settablenil.a).getValue());
-                Value key = table.get(registers.get(settablenil.b).getValue());
+                Table table = Checker.checkTable(runtimeFunc.registers[settablenil.a].getValue());
+                Value key = table.get(runtimeFunc.registers[settablenil.b].getValue());
                 table.addVal(key, NIL);
             } else if (code instanceof SETTABLE settable) {
-                Table table = Checker.checkTable(registers.get(settable.a).getValue());
-                Value key = registers.get(settable.b).getValue();
-                Value value = registers.get(settable.c).getValue();
+                Table table = Checker.checkTable(runtimeFunc.registers[settable.a].getValue());
+                Value key = runtimeFunc.registers[settable.b].getValue();
+                Value value = runtimeFunc.registers[settable.c].getValue();
                 table.addVal(key, value);
             } else if (code instanceof CALL call) {
-                runCall(call, runtimeFunc, registers);
+                runCall(call, runtimeFunc, runtimeFunc.registers);
             } else if (code instanceof VARARGS varargs) {
-                runVarargs(varargs, runtimeFunc, registers);
+                runVarargs(varargs, runtimeFunc, runtimeFunc.registers);
             } else if (code instanceof NUMBERFOR numberfor) {
-                NumberValue init = Checker.checkNumber(registers.get(numberfor.a).getValue());
-                NumberValue finalValue = Checker.checkNumber(registers.get(numberfor.a + 1).getValue());
-                NumberValue step = Checker.checkNumber(registers.get(numberfor.a + 2).getValue());
-                if (step.getF() > 0 && init.getF()<=finalValue.getF()) {
-                   pc++;
+                NumberValue init = Checker.checkNumber(runtimeFunc.registers[numberfor.a].getValue());
+                NumberValue finalValue = Checker.checkNumber(runtimeFunc.registers[numberfor.a + 1].getValue());
+                NumberValue step = Checker.checkNumber(runtimeFunc.registers[numberfor.a + 2].getValue());
+                if (step.getF() > 0 && init.getF() <= finalValue.getF()) {
+                    pc++;
                 }
                 if (step.getF() <= 0 && init.getF() >= finalValue.getF()) {
                     pc++;
                 }
 
             } else if (code instanceof ENDNUMBERFOR endnumberfor) {
-                NumberValue init = Checker.checkNumber(registers.get(endnumberfor.a).getValue());
-                NumberValue step = Checker.checkNumber(registers.get(endnumberfor.a + 2).getValue());
-                registers.get(endnumberfor.a).setValue(new NumberValue(init.getF() + step.getF()));
+                NumberValue init = Checker.checkNumber(runtimeFunc.registers[endnumberfor.a].getValue());
+                NumberValue step = Checker.checkNumber(runtimeFunc.registers[endnumberfor.a + 2].getValue());
+                runtimeFunc.registers[endnumberfor.a].setValue(new NumberValue(init.getF() + step.getF()));
             } else if (code instanceof LENGTH length) {
-                Value val = registers.get(length.a).getValue();
+                Value val = runtimeFunc.registers[length.a].getValue();
                 if (val instanceof StringValue str) {
-                   registers.get(length.a) .setValue(new NumberValue(str.getVal().length()));
+                    runtimeFunc.registers[length.a].setValue(new NumberValue(str.getVal().length()));
                 } else if (val instanceof Table table) {
-                    registers.get(length.a) .setValue(table.len());
+                    runtimeFunc.registers[length.a].setValue(table.len());
                 }
             } else if (code instanceof NOT not) {
-                Value val = registers.get(not.a).getValue();
+                Value val = runtimeFunc.registers[not.a].getValue();
                 if (FALSE.equals(val)) {
-                    registers.get(not.a).setValue(TRUE);
-                } else{
-                    registers.get(not.a).setValue(FALSE);
+                    runtimeFunc.registers[not.a].setValue(TRUE);
+                } else {
+                    runtimeFunc.registers[not.a].setValue(FALSE);
                 }
             } else if (code instanceof SINGLESUB singlesub) {
-                NumberValue val = Checker.checkNumber(registers.get(singlesub.a).getValue());
-                registers.get(singlesub.a).setValue(new NumberValue(val.getF() * -1));
+                NumberValue val = Checker.checkNumber(runtimeFunc.registers[singlesub.a].getValue());
+                runtimeFunc.registers[singlesub.a].setValue(new NumberValue(val.getF() * -1));
             } else if (code instanceof BITREVERSE bitreverse) {
-                CalculateValue val = Checker.checkCalculate(registers.get(bitreverse.a).getValue());
-                registers.get(bitreverse.a).setValue(val.unm());
-            } else if(code instanceof LOADGLOBALMODULE loadglobalmodule){
+                CalculateValue val = Checker.checkCalculate(runtimeFunc.registers[bitreverse.a].getValue());
+                runtimeFunc.registers[bitreverse.a].setValue(val.unm());
+            } else if (code instanceof LOADGLOBALMODULE loadglobalmodule) {
                 String moduleName = Checker.checkStringVal(FuncInfo.getConstant(loadglobalmodule.b));
                 Table table = NativeLoader.loadVmModule(moduleName);
                 FuncInfo.getGlobalVal(loadglobalmodule.a).setVal(table);
-            }else if(code instanceof LOADMODULE loadmodule){
+            } else if (code instanceof LOADMODULE loadmodule) {
                 String moduleName = Checker.checkStringVal(FuncInfo.getConstant(loadmodule.b));
                 Table table = NativeLoader.loadVmModule(moduleName);
-                registers.get(loadmodule.a).setValue(table);
-            }else if (code instanceof GENERICFOR genericfor) {
+                runtimeFunc.registers[loadmodule.a].setValue(table);
+            } else if (code instanceof GENERICFOR genericfor) {
                 //三个一组 s,f,var
                 List<Value> resultList = new ArrayList<>();
                 for (int i = genericfor.c; i <= genericfor.d; i += 3) {
-                    Value val = registers.get(i).getValue();
-                    List<Value> args = List.of(registers.get(i + 1).getValue(), registers.get(i + 2).getValue());
+                    Value val = runtimeFunc.registers[i].getValue();
+                    List<Value> args = List.of(runtimeFunc.registers[i + 1].getValue(), runtimeFunc.registers[i + 2].getValue());
                     Value returnVal;
                     if (val instanceof NativeFunction nativeFunction) {
                         returnVal = nativeFunction.execute(args);
                     } else if (val instanceof RuntimeFunc runtimeFunc1) {
                         returnVal = runtimeFunc1.call(args);
-                    } else{
+                    } else {
                         throw new RuntimeException("错误的泛型for循环参数");
                     }
                     //结束循环
@@ -173,15 +174,15 @@ public class Vm {
                             break;
                         }
                         //更新变量的值
-                        registers.get(i+2).setValue(multiValue.getValueList().get(0));
+                        runtimeFunc.registers[i + 2].setValue(multiValue.getValueList().get(0));
                         resultList.addAll(multiValue.getValueList());
                     }
                 }
                 //表示可以继续执行
                 if (!resultList.isEmpty()) {
                     pc++;
-                    for (int i = 0; i < resultList.size() && i + genericfor.a <= genericfor.b;i++ ) {
-                        registers.get(i+ genericfor.a) .setValue(resultList.get(i));
+                    for (int i = 0; i < resultList.size() && i + genericfor.a <= genericfor.b; i++) {
+                        runtimeFunc.registers[i + genericfor.a].setValue(resultList.get(i));
                     }
                 }
             }
@@ -190,91 +191,91 @@ public class Vm {
         return result;
     }
 
-    private static void runCalculate(Calculate code, List<StackElement> registers) {
-        StackElement left = registers.get(code.b);
-        StackElement right = registers.get(code.c);
+    private static void runCalculate(Calculate code, StackElement[] registers) {
+        StackElement left = registers[code.b];
+        StackElement right = registers[code.c];
         Value l = left.getValue();
         Value r = right.getValue();
         if (l instanceof CalculateValue leftVal && r instanceof CalculateValue rightVal) {
             if (code instanceof ADD add) {
-                registers.get(add.a).setValue(leftVal.add(rightVal));
+                registers[add.a].setValue(leftVal.add(rightVal));
             }
             if (code instanceof SUB sub) {
-                registers.get(sub.a).setValue(leftVal.sub(rightVal));
+                registers[sub.a].setValue(leftVal.sub(rightVal));
             }
             if (code instanceof MUL mul) {
-                registers.get(mul.a).setValue(leftVal.mul(rightVal));
+                registers[mul.a].setValue(leftVal.mul(rightVal));
             }
             if (code instanceof DIV div) {
-                registers.get(div.a).setValue(leftVal.div(rightVal));
+                registers[div.a].setValue(leftVal.div(rightVal));
             }
             if (code instanceof MOD mod) {
-                registers.get(mod.a).setValue(leftVal.mod(rightVal));
+                registers[mod.a].setValue(leftVal.mod(rightVal));
             }
             if (code instanceof INTMOD intmod) {
-                registers.get(intmod.a).setValue(leftVal.intMod(rightVal));
+                registers[intmod.a].setValue(leftVal.intMod(rightVal));
             }
             if (code instanceof POW pow) {
-                registers.get(pow.a).setValue(leftVal.pow(rightVal));
+                registers[pow.a].setValue(leftVal.pow(rightVal));
             }
             if (code instanceof BITAND bitand) {
-                registers.get(bitand.a).setValue(leftVal.bitAnd(rightVal));
+                registers[bitand.a].setValue(leftVal.bitAnd(rightVal));
             }
             if (code instanceof BITOR bitor) {
-                registers.get(bitor.a).setValue(leftVal.bitOr(rightVal));
+                registers[bitor.a].setValue(leftVal.bitOr(rightVal));
             }
             if (code instanceof BITLEFTMOVE bitleftmove) {
-                registers.get(bitleftmove.a).setValue(leftVal.bitLeftMove(rightVal));
+                registers[bitleftmove.a].setValue(leftVal.bitLeftMove(rightVal));
             }
             if (code instanceof BITRIGHTMOVE bitrightmove) {
-                registers.get(bitrightmove.a).setValue(leftVal.bitOr(rightVal));
+                registers[bitrightmove.a].setValue(leftVal.bitOr(rightVal));
             }
             if (code instanceof CAT cat) {
-                registers.get(cat.a).setValue(leftVal.concat(rightVal));
+                registers[cat.a].setValue(leftVal.concat(rightVal));
             }
         }
         if (code instanceof AND and) {
             if (l == FALSE || r == NIL) {
-                registers.get(and.a).setValue(l);
+                registers[and.a].setValue(l);
             } else {
-                registers.get(and.a).setValue(r);
+                registers[and.a].setValue(r);
             }
         }
         if (code instanceof OR or) {
             if (l == TRUE || (l != FALSE && l != NIL)) {
-                registers.get(or.a).setValue(l);
+                registers[or.a].setValue(l);
             } else {
-                registers.get(or.a).setValue(r);
+                registers[or.a].setValue(r);
             }
         }
     }
 
-    private static void runCompare(Compare code, List<StackElement> registers) {
-        StackElement left = registers.get(code.a);
-        StackElement right = registers.get(code.b);
+    private static void runCompare(Compare code, StackElement[] registers) {
+        StackElement left = registers[code.a];
+        StackElement right = registers[code.b];
         Value leftVal = left.getValue();
         Value rightVal = right.getValue();
         if (code instanceof EQ) {
-            registers.get(code.a).setValue(leftVal.eq(rightVal));
+            registers[code.a].setValue(leftVal.eq(rightVal));
         }
         if (code instanceof NE) {
-            registers.get(code.a).setValue(leftVal.ne(rightVal));
+            registers[code.a].setValue(leftVal.ne(rightVal));
         }
         if (code instanceof GE) {
-            registers.get(code.a).setValue(leftVal.ge(rightVal));
+            registers[code.a].setValue(leftVal.ge(rightVal));
         }
         if (code instanceof GT) {
-            registers.get(code.a).setValue(leftVal.gt(rightVal));
+            registers[code.a].setValue(leftVal.gt(rightVal));
         }
         if (code instanceof LT) {
-            registers.get(code.a).setValue(leftVal.lt(rightVal));
+            registers[code.a].setValue(leftVal.lt(rightVal));
         }
         if (code instanceof LE) {
-            registers.get(code.a).setValue(leftVal.le(rightVal));
+            registers[code.a].setValue(leftVal.le(rightVal));
         }
     }
 
-    private static Value runReturnMulti(RETURNMULTI code, RuntimeFunc runtimeFunc, List<StackElement> registers) {
+    private static Value runReturnMulti(RETURNMULTI code, RuntimeFunc runtimeFunc, StackElement[] registers) {
         List<Value> returnList = new ArrayList<>();
         int realB;
         if (code.b == -1) {
@@ -283,21 +284,21 @@ public class Vm {
             realB = code.b;
         }
         for (int i = code.a; i <= realB; i++) {
-            if(i< registers.size()){
-                returnList.add(registers.get(i).getValue());
-            } else{
+            if (i < registers.length) {
+                returnList.add(registers[i].getValue());
+            } else {
                 returnList.add(NIL);
             }
         }
         return new MultiValue(returnList);
     }
 
-    private static void runVarargs(VARARGS code, RuntimeFunc runtimeFunc, List<StackElement> registers) {
+    private static void runVarargs(VARARGS code, RuntimeFunc runtimeFunc, StackElement[] registers) {
         if (!runtimeFunc.funcInfo.hasMultiArg) {
             throw new RuntimeException("函数不存在可变参数");
         }
         //如果有可变参数，最后一个参数就是
-        StackElement element = runtimeFunc.registers.get(runtimeFunc.finalParamArg);
+        StackElement element = runtimeFunc.registers[runtimeFunc.finalParamArg];
         MultiValue multiValue = (MultiValue) element.getValue();
         //获取实际的 varargs需要的数量
         int realB;
@@ -309,12 +310,12 @@ public class Vm {
         //如果有必要，进行扩容
         runtimeFunc.resetRegister(code.a + realB - 1);
         for (int i = 0; i < realB; i++) {
-            registers.get(code.a + i).setValue(multiValue.getValueList().get(i));
+            registers[code.a + i].setValue(multiValue.getValueList().get(i));
         }
     }
 
-    private static void runCall(CALL call, RuntimeFunc runtimeFunc, List<StackElement> registers) {
-        Value func = registers.get(call.a).getValue();
+    private static void runCall(CALL call, RuntimeFunc runtimeFunc, StackElement[] registers) {
+        Value func = registers[call.a].getValue();
         List<Value> args;
         Value returnValue;
         if (func instanceof RuntimeFunc realCall) {
@@ -336,14 +337,14 @@ public class Vm {
         runtimeFunc.resetRegister(endRegisters);
         //将结果放到寄存器中
         for (int i = 0; i < finalReturnValue.size(); i++) {
-            registers.get(call.a + i).setValue(finalReturnValue.get(i));
+            registers[ call.a + i ].setValue(finalReturnValue.get(i));
         }
     }
 
     /**
      * 准备函数的参数
      */
-    private static List<Value> prepareArgs(boolean objMethod, int stackTop, int paramSize, boolean hasMultiArg, CALL call, List<StackElement> registers) {
+    private static List<Value> prepareArgs(boolean objMethod, int stackTop, int paramSize, boolean hasMultiArg, CALL call, StackElement[] registers) {
         List<Value> args = new ArrayList<>();
         // 第一个参数的位置
         int startArg = call.b;
@@ -358,12 +359,12 @@ public class Vm {
         int i = 0;
         //调用对象方法，对象自身
         if (objMethod) {
-            args.add(registers.get(i + startArg).getValue());
+            args.add(registers[i + startArg].getValue());
             i++;
         }
         for (; i < paramSize; i++) {
             if (i + startArg <= endArg) {
-                args.add(registers.get(i + startArg).getValue());
+                args.add(registers[i + startArg].getValue());
             } else {
                 args.add(NIL);
             }
@@ -371,7 +372,7 @@ public class Vm {
         //全都放到 ...参数中去
         if (hasMultiArg) {
             while (i + startArg <= endArg) {
-                args.add(registers.get(i + startArg).getValue());
+                args.add(registers[i + startArg].getValue());
                 i++;
             }
         }
@@ -414,7 +415,7 @@ public class Vm {
     private static void runLoadFunc(LOADFUNC loadfunc, RuntimeFunc runtimeFunc) {
         FuncInfo loadFuncInfo = FuncInfo.funcInfos().get(loadfunc.b);
         RuntimeFunc funcRuntime = new RuntimeFunc(loadFuncInfo, runtimeFunc);
-        runtimeFunc.registers.get(loadfunc.a).setValue(
+        runtimeFunc.registers[loadfunc.a].setValue(
                 funcRuntime);
     }
 

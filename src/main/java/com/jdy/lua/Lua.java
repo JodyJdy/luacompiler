@@ -38,7 +38,9 @@ public class Lua {
         NativeLoader.loadLibrary();
         LuaParser.ChunkContext context = luaParser.chunk();
         Statement result = Parser.parseBlock(context.block());
+        long start = System.currentTimeMillis();
         new Executor((Statement.BlockStatement) result).execute();
+        System.out.println(System.currentTimeMillis() - start);
     }
 
     public static void run(File file) {
