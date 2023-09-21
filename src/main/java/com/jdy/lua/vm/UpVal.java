@@ -28,7 +28,7 @@ public class UpVal {
         return "UpVal{" +
                 "up=" + up +
                 ", index=" + index +
-                ",level=" +level +
+                ",level+" +level +
                 '}';
     }
 

@@ -57,6 +57,7 @@ public class FuncInfo implements Value {
     private static final List<Value> constant = new ArrayList<>();
 
     static {
+        //初始化默认常量
         constant.add(BoolValue.TRUE);
         constant.add(BoolValue.FALSE);
         constant.add(NilValue.NIL);
@@ -70,13 +71,13 @@ public class FuncInfo implements Value {
 
 
     /**
-     * 存储全局的函数，采用常量的方式粗粒函数
+     * 存储全局的函数，采用类似常量的方式处理函数
      */
     private final static List<FuncInfo> allFuncs = new ArrayList<>();
 
 
     /**
-     * 寄存器的使用情况  （指令生成时）
+     * 寄存器的使用情况 （指令生成时）
      */
     private int used = -1;
     private FuncInfo parent;
@@ -117,17 +118,6 @@ public class FuncInfo implements Value {
             registers.add(new StackElement(NilValue.NIL, used));
         }
         return used;
-    }
-
-    /**
-     * 如果当前寄存器小于n的话将寄存器扩容到N
-     *
-     * @param n
-     */
-    public void allocRegister2N(int n) {
-        while (used < n) {
-            allocRegister();
-        }
     }
 
 
@@ -316,13 +306,8 @@ public class FuncInfo implements Value {
         return parent;
     }
 
-    public List<String> getParamNames() {
-        return paramNames;
-    }
 
-    public boolean isHasMultiArg() {
-        return hasMultiArg;
-    }
+
 
 
     public static void showGlobal() {
@@ -351,12 +336,13 @@ public class FuncInfo implements Value {
     }
 
     /**
-     * 填充jmp指令的调整位置
+     *
+     * 填充jmp指令的跳转位置
      */
     public static void fillJMP() {
         FuncInfo.allFuncs.forEach(funcInfo -> {
             funcInfo.codes.forEach(code -> {
-                if (code instanceof ByteCode.JMP jmp) {
+                if (code instanceof ByteCode.Jmp jmp) {
                     jmp.applyLabel();
                 }
             });

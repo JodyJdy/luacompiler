@@ -2,6 +2,9 @@ package com.jdy.lua.vm;
 
 import lombok.Getter;
 
+/**
+ * label
+ */
 @Getter
 public class LabelMessage {
 

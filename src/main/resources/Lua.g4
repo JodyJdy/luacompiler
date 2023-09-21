@@ -96,6 +96,8 @@ stat
     | 'function' funcname funcbody
     | 'local' 'function' NAME funcbody
     | 'local' attnamelist ('=' explist)?
+    | COMMENT
+    | LINE_COMMENT
     ;
 
 require

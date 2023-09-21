@@ -45,80 +45,80 @@ public class Vm {
         int pc = from;
         while (pc < len) {
             ByteCode code = codes[pc];
-            if (code instanceof JMP jmp) {
+            if (code instanceof Jmp jmp) {
                 pc = jmp.a;
                 continue;
             } else if (code instanceof Calculate calculate) {
                 runCalculate(calculate);
             } else if (code instanceof Compare compare) {
                 runCompare(compare);
-            } else if (code instanceof TEST test) {
+            } else if (code instanceof Test test) {
                 StackElement val = registers[test.a];
                 //为真继续执行
                 if (val.getValue() != NIL && val.getValue() != FALSE) {
                     pc++;
                 }
-            } else if (code instanceof LOADVAR loadvar) {
+            } else if (code instanceof LoadVar loadvar) {
                 registers[loadvar.a].setValue(registers[loadvar.b].getValue());
-            } else if (code instanceof LOADUPVAR loadupvar) {
+            } else if (code instanceof LoadUpVar loadupvar) {
                 registers[loadupvar.a].setValue(runtimeFunc.upValList.get(loadupvar.b).up.getValue());
-            } else if (code instanceof LOADGLOBAL loadglobal) {
+            } else if (code instanceof LoadGlobal loadglobal) {
                 registers[loadglobal.a].setValue(
                         FuncInfo.getGlobalVal(loadglobal.b).getVal()
                 );
-            } else if (code instanceof LOADCONSTANT loadconstant) {
+            } else if (code instanceof LoadConstant loadconstant) {
                 registers[loadconstant.a].setValue(
                         FuncInfo.getConstant(loadconstant.b)
                 );
-            } else if (code instanceof LOADFUNC loadfunc) {
+            } else if (code instanceof LoadFunc loadfunc) {
                 runLoadFunc(loadfunc);
-            } else if (code instanceof SAVENIL savenil) {
-                if (savenil.a == SAVENIL.LOCAL_VAR) {
+            } else if (code instanceof SaveNil savenil) {
+                if (savenil.a == SaveNil.LOCAL_VAR) {
                     registers[savenil.b].setValue(NIL);
-                } else if (savenil.a == SAVENIL.UPVAL) {
+                } else if (savenil.a == SaveNil.UPVAL) {
                     runtimeFunc.upValList.get(savenil.b).up.setValue(NIL);
                 } else {
                     FuncInfo.getGlobalVal(savenil.b).setVal(NIL);
                 }
-            } else if (code instanceof SAVEVAR savevar) {
+            } else if (code instanceof SaveVar savevar) {
                 registers[savevar.a].setValue(registers[savevar.b].getValue());
-            } else if (code instanceof SAVEGLOBAL saveglobal) {
+            } else if (code instanceof SaveGlobal saveglobal) {
                 FuncInfo.getGlobalVal(saveglobal.a)
                         .setVal(registers[saveglobal.b].getValue());
-            } else if (code instanceof SAVEUPVAL saveupval) {
+            } else if (code instanceof SaveUpval saveupval) {
                 runtimeFunc.upValList.get(saveupval.a).up
                         .setValue(registers[saveupval.b].getValue());
-            } else if (code instanceof RETURN) {
+            } else if (code instanceof Return) {
                 break;
-            } else if (code instanceof RETURNMULTI returnmulti) {
+            } else if (code instanceof ReturnMulti returnmulti) {
                 result = runReturnMulti(returnmulti);
                 break;
-            } else if (code instanceof NEWTABLE newtable) {
+            } else if (code instanceof NewTable newtable) {
                 registers[newtable.a].setValue(new Table());
-            } else if (code instanceof GETTABLE gettable) {
+            } else if (code instanceof GetTable gettable) {
                 Table table = Checker.checkTable(registers[gettable.a].getValue());
                 Value val = table.get(registers[gettable.b].getValue());
                 registers[gettable.a].setValue(val);
-            } else if (code instanceof GETTABLEMETHOD gettablemethod) {
+            } else if (code instanceof GetTableMethod gettablemethod) {
                 Table table = Checker.checkTable(registers[gettablemethod.a].getValue());
                 Value val = table.get(registers[gettablemethod.b].getValue());
                 //交换值
                 registers[gettablemethod.a].setValue(val);
                 registers[gettablemethod.b].setValue(table);
-            } else if (code instanceof SETTABLENIL settablenil) {
+            } else if (code instanceof SetTableNil settablenil) {
                 Table table = Checker.checkTable(registers[settablenil.a].getValue());
                 Value key = table.get(registers[settablenil.b].getValue());
                 table.addVal(key, NIL);
-            } else if (code instanceof SETTABLE settable) {
+            } else if (code instanceof SetTable settable) {
                 Table table = Checker.checkTable(registers[settable.a].getValue());
                 Value key = registers[settable.b].getValue();
                 Value value = registers[settable.c].getValue();
                 table.addVal(key, value);
-            } else if (code instanceof CALL call) {
+            } else if (code instanceof Call call) {
                 runCall(call);
-            } else if (code instanceof VARARGS varargs) {
+            } else if (code instanceof VarArgs varargs) {
                 runVarargs(varargs);
-            } else if (code instanceof NUMBERFOR numberfor) {
+            } else if (code instanceof NumberFor numberfor) {
                 NumberValue init = Checker.checkNumber(registers[numberfor.a].getValue());
                 NumberValue finalValue = Checker.checkNumber(registers[numberfor.a + 1].getValue());
                 NumberValue step = Checker.checkNumber(registers[numberfor.a + 2].getValue());
@@ -129,39 +129,39 @@ public class Vm {
                     pc++;
                 }
 
-            } else if (code instanceof ENDNUMBERFOR endnumberfor) {
+            } else if (code instanceof EndNumberFor endnumberfor) {
                 NumberValue init = Checker.checkNumber(registers[endnumberfor.a].getValue());
                 NumberValue step = Checker.checkNumber(registers[endnumberfor.a + 2].getValue());
                 registers[endnumberfor.a].setValue(new NumberValue(init.getF() + step.getF()));
-            } else if (code instanceof LENGTH length) {
+            } else if (code instanceof Length length) {
                 Value val = registers[length.a].getValue();
                 if (val instanceof StringValue str) {
                     registers[length.a].setValue(new NumberValue(str.getVal().length()));
                 } else if (val instanceof Table table) {
                     registers[length.a].setValue(table.len());
                 }
-            } else if (code instanceof NOT not) {
+            } else if (code instanceof Not not) {
                 Value val = registers[not.a].getValue();
                 if (FALSE.equals(val)) {
                     registers[not.a].setValue(TRUE);
                 } else {
                     registers[not.a].setValue(FALSE);
                 }
-            } else if (code instanceof SINGLESUB singlesub) {
-                NumberValue val = Checker.checkNumber(registers[singlesub.a].getValue());
-                registers[singlesub.a].setValue(new NumberValue(val.getF() * -1));
-            } else if (code instanceof BITREVERSE bitreverse) {
+            } else if (code instanceof Negative negative) {
+                NumberValue val = Checker.checkNumber(registers[negative.a].getValue());
+                registers[negative.a].setValue(new NumberValue(val.getF() * -1));
+            } else if (code instanceof BitReverse bitreverse) {
                 CalculateValue val = Checker.checkCalculate(registers[bitreverse.a].getValue());
                 registers[bitreverse.a].setValue(val.unm());
-            } else if (code instanceof LOADGLOBALMODULE loadglobalmodule) {
+            } else if (code instanceof LoadGlobalModule loadglobalmodule) {
                 String moduleName = Checker.checkStringVal(FuncInfo.getConstant(loadglobalmodule.b));
                 Table table = NativeLoader.loadVmModule(moduleName);
                 FuncInfo.getGlobalVal(loadglobalmodule.a).setVal(table);
-            } else if (code instanceof LOADMODULE loadmodule) {
+            } else if (code instanceof LoadModule loadmodule) {
                 String moduleName = Checker.checkStringVal(FuncInfo.getConstant(loadmodule.b));
                 Table table = NativeLoader.loadVmModule(moduleName);
                 registers[loadmodule.a].setValue(table);
-            } else if (code instanceof GENERICFOR genericfor) {
+            } else if (code instanceof GenericFor genericfor) {
                 //三个一组 s,f,var
                 List<Value> resultList = new ArrayList<>();
                 for (int i = genericfor.c; i <= genericfor.d; i += 3) {
@@ -215,51 +215,39 @@ public class Vm {
         Value l = left.getValue();
         Value r = right.getValue();
         if (l instanceof CalculateValue leftVal && r instanceof CalculateValue rightVal) {
-            if (code instanceof ADD add) {
+            if (code instanceof Add add) {
                 registers[add.a].setValue(leftVal.add(rightVal));
-            }
-            if (code instanceof SUB sub) {
+            } else if (code instanceof Sub sub) {
                 registers[sub.a].setValue(leftVal.sub(rightVal));
-            }
-            if (code instanceof MUL mul) {
+            } else if (code instanceof MUL mul) {
                 registers[mul.a].setValue(leftVal.mul(rightVal));
-            }
-            if (code instanceof DIV div) {
+            } else if (code instanceof Div div) {
                 registers[div.a].setValue(leftVal.div(rightVal));
-            }
-            if (code instanceof MOD mod) {
+            } else if (code instanceof Mod mod) {
                 registers[mod.a].setValue(leftVal.mod(rightVal));
-            }
-            if (code instanceof INTMOD intmod) {
+            } else if (code instanceof IntMod intmod) {
                 registers[intmod.a].setValue(leftVal.intMod(rightVal));
-            }
-            if (code instanceof POW pow) {
+            } else if (code instanceof Pow pow) {
                 registers[pow.a].setValue(leftVal.pow(rightVal));
-            }
-            if (code instanceof BITAND bitand) {
+            } else if (code instanceof BitAnd bitand) {
                 registers[bitand.a].setValue(leftVal.bitAnd(rightVal));
-            }
-            if (code instanceof BITOR bitor) {
+            } else if (code instanceof BitOr bitor) {
                 registers[bitor.a].setValue(leftVal.bitOr(rightVal));
-            }
-            if (code instanceof BITLEFTMOVE bitleftmove) {
+            } else if (code instanceof BitLeftShift bitleftmove) {
                 registers[bitleftmove.a].setValue(leftVal.bitLeftMove(rightVal));
-            }
-            if (code instanceof BITRIGHTMOVE bitrightmove) {
-                registers[bitrightmove.a].setValue(leftVal.bitOr(rightVal));
-            }
-            if (code instanceof CAT cat) {
+            } else if (code instanceof BitRightShift bitRightShift) {
+                registers[bitRightShift.a].setValue(leftVal.bitOr(rightVal));
+            } else if (code instanceof Cat cat) {
                 registers[cat.a].setValue(leftVal.concat(rightVal));
             }
         }
-        if (code instanceof AND and) {
+        if (code instanceof And and) {
             if (l == FALSE || r == NIL) {
                 registers[and.a].setValue(l);
             } else {
                 registers[and.a].setValue(r);
             }
-        }
-        if (code instanceof OR or) {
+        } else if (code instanceof Or or) {
             if (l == TRUE || (l != FALSE && l != NIL)) {
                 registers[or.a].setValue(l);
             } else {
@@ -273,27 +261,22 @@ public class Vm {
         StackElement right = registers[code.b];
         Value leftVal = left.getValue();
         Value rightVal = right.getValue();
-        if (code instanceof EQ) {
+        if (code instanceof Eq) {
             registers[code.a].setValue(leftVal.eq(rightVal));
-        }
-        if (code instanceof NE) {
+        } else if (code instanceof Ne) {
             registers[code.a].setValue(leftVal.ne(rightVal));
-        }
-        if (code instanceof GE) {
+        } else if (code instanceof Ge) {
             registers[code.a].setValue(leftVal.ge(rightVal));
-        }
-        if (code instanceof GT) {
+        } else if (code instanceof Gt) {
             registers[code.a].setValue(leftVal.gt(rightVal));
-        }
-        if (code instanceof LT) {
+        } else if (code instanceof Lt) {
             registers[code.a].setValue(leftVal.lt(rightVal));
-        }
-        if (code instanceof LE) {
+        } else if (code instanceof Le) {
             registers[code.a].setValue(leftVal.le(rightVal));
         }
     }
 
-    private Value runReturnMulti(RETURNMULTI code) {
+    private Value runReturnMulti(ReturnMulti code) {
         List<Value> returnList = new ArrayList<>();
         int realB;
         if (code.b == -1) {
@@ -311,7 +294,7 @@ public class Vm {
         return new MultiValue(returnList);
     }
 
-    private void runVarargs(VARARGS code) {
+    private void runVarargs(VarArgs code) {
         if (!runtimeFunc.funcInfo.hasMultiArg) {
             throw new RuntimeException("函数不存在可变参数");
         }
@@ -332,7 +315,7 @@ public class Vm {
         }
     }
 
-    private void runCall(CALL call) {
+    private void runCall(Call call) {
         Value func = registers[call.a].getValue();
         List<Value> args;
         Value returnValue;
@@ -355,14 +338,14 @@ public class Vm {
         resetRegisters(endRegisters);
         //将结果放到寄存器中
         for (int i = 0; i < finalReturnValue.size(); i++) {
-            registers[ call.a + i ].setValue(finalReturnValue.get(i));
+            registers[call.a + i].setValue(finalReturnValue.get(i));
         }
     }
 
     /**
      * 准备函数的参数
      */
-    private List<Value> prepareArgs(boolean objMethod, int stackTop, int paramSize, boolean hasMultiArg, CALL call) {
+    private List<Value> prepareArgs(boolean objMethod, int stackTop, int paramSize, boolean hasMultiArg, Call call) {
         List<Value> args = new ArrayList<>();
         // 第一个参数的位置
         int startArg = call.b;
@@ -430,7 +413,7 @@ public class Vm {
     /**
      * 此函数是 核心， 通过对LOADFUNC 进行处理， 将函数转换成运行时函数
      */
-    private void runLoadFunc(LOADFUNC loadfunc) {
+    private void runLoadFunc(LoadFunc loadfunc) {
         FuncInfo loadFuncInfo = FuncInfo.funcInfos().get(loadfunc.b);
         RuntimeFunc funcRuntime = new RuntimeFunc(loadFuncInfo, runtimeFunc);
         registers[loadfunc.a].setValue(

@@ -73,15 +73,15 @@ public interface ByteCode {
      * jmp a
      * a 表示 跳转到的 pc 位置
      */
-    class JMP extends SingleArgByteCode {
+    class Jmp extends SingleArgByteCode {
         private DynamicLabel dynamicLabel;
 
-        public JMP(DynamicLabel dynamicLabel) {
+        public Jmp(DynamicLabel dynamicLabel) {
             super(0);
             this.dynamicLabel = dynamicLabel;
         }
 
-        public JMP(int a) {
+        public Jmp(int a) {
             super(a);
         }
         /**
@@ -119,8 +119,8 @@ public interface ByteCode {
      * 将 寄存器b 和 寄存器 c 里面的内容 相加 放入到 a中
      */
 
-    class ADD extends Calculate {
-        public ADD(int a, int b, int c) {
+    class Add extends Calculate {
+        public Add(int a, int b, int c) {
             super(a, b, c);
         }
 
@@ -141,8 +141,8 @@ public interface ByteCode {
      * <p>
      * 将 寄存器b 和 寄存器 c 里面的内容 相减 放入到 a中
      */
-    class SUB extends Calculate {
-        public SUB(int a, int b, int c) {
+    class Sub extends Calculate {
+        public Sub(int a, int b, int c) {
             super(a, b, c);
         }
 
@@ -169,7 +169,7 @@ public interface ByteCode {
             super(a, b, c);
         }
     }
-    class DIV extends Calculate{
+    class Div extends Calculate{
         @Override
         public String toString() {
             return "DIV{" +
@@ -179,11 +179,11 @@ public interface ByteCode {
                     '}';
         }
 
-        public DIV(int a, int b, int c) {
+        public Div(int a, int b, int c) {
             super(a, b, c);
         }
     }
-    class MOD extends Calculate{
+    class Mod extends Calculate{
         @Override
         public String toString() {
             return "MOD{" +
@@ -193,11 +193,11 @@ public interface ByteCode {
                     '}';
         }
 
-        public MOD(int a, int b, int c) {
+        public Mod(int a, int b, int c) {
             super(a, b, c);
         }
     }
-    class INTMOD extends Calculate{
+    class IntMod extends Calculate{
         @Override
         public String toString() {
             return "INTMOD{" +
@@ -207,11 +207,11 @@ public interface ByteCode {
                     '}';
         }
 
-        public INTMOD(int a, int b, int c) {
+        public IntMod(int a, int b, int c) {
             super(a, b, c);
         }
     }
-    class POW extends Calculate{
+    class Pow extends Calculate{
         @Override
         public String toString() {
             return "POW{" +
@@ -221,11 +221,11 @@ public interface ByteCode {
                     '}';
         }
 
-        public POW(int a, int b, int c) {
+        public Pow(int a, int b, int c) {
             super(a, b, c);
         }
     }
-    class BITAND extends Calculate{
+    class BitAnd extends Calculate{
         @Override
         public String toString() {
             return "BITAND{" +
@@ -235,11 +235,11 @@ public interface ByteCode {
                     '}';
         }
 
-        public BITAND(int a, int b, int c) {
+        public BitAnd(int a, int b, int c) {
             super(a, b, c);
         }
     }
-    class BITOR extends Calculate{
+    class BitOr extends Calculate{
         @Override
         public String toString() {
             return "BITOR{" +
@@ -249,11 +249,11 @@ public interface ByteCode {
                     '}';
         }
 
-        public BITOR(int a, int b, int c) {
+        public BitOr(int a, int b, int c) {
             super(a, b, c);
         }
     }
-    class BITLEFTMOVE extends Calculate{
+    class BitLeftShift extends Calculate{
         @Override
         public String toString() {
             return "BITLEFTMOVE{" +
@@ -263,16 +263,16 @@ public interface ByteCode {
                     '}';
         }
 
-        public BITLEFTMOVE(int a, int b, int c) {
+        public BitLeftShift(int a, int b, int c) {
             super(a, b, c);
         }
     }
-    class BITRIGHTMOVE extends Calculate{
-        public BITRIGHTMOVE(int a, int b, int c) {
+    class BitRightShift extends Calculate{
+        public BitRightShift(int a, int b, int c) {
             super(a, b, c);
         }
     }
-    class CAT extends Calculate{
+    class Cat extends Calculate{
         @Override
         public String toString() {
             return "CAT{" +
@@ -282,13 +282,13 @@ public interface ByteCode {
                     '}';
         }
 
-        public CAT(int a, int b, int c) {
+        public Cat(int a, int b, int c) {
             super(a, b, c);
         }
     }
 
-    class AND extends Calculate{
-        public AND(int a, int b, int c) {
+    class And extends Calculate{
+        public And(int a, int b, int c) {
             super(a, b, c);
         }
 
@@ -301,7 +301,7 @@ public interface ByteCode {
                     '}';
         }
     }
-    class OR extends Calculate{
+    class Or extends Calculate{
         @Override
         public String toString() {
             return "OR{" +
@@ -311,7 +311,7 @@ public interface ByteCode {
                     '}';
         }
 
-        public OR(int a, int b, int c) {
+        public Or(int a, int b, int c) {
             super(a, b, c);
         }
     }
@@ -319,7 +319,7 @@ public interface ByteCode {
      * 测试寄存器里面的值是否为真， 为真继续执行，否则跳到假出口
      */
 
-    class TEST extends SingleArgByteCode {
+    class Test extends SingleArgByteCode {
         @Override
         public String toString() {
             return "TEST{" +
@@ -327,7 +327,7 @@ public interface ByteCode {
                     '}';
         }
 
-        public TEST(int a) {
+        public Test(int a) {
             super(a);
         }
     }
@@ -338,7 +338,7 @@ public interface ByteCode {
         }
     }
 
-    class EQ extends Compare{
+    class Eq extends Compare{
         @Override
         public String toString() {
             return "EQ{" +
@@ -347,12 +347,12 @@ public interface ByteCode {
                     '}';
         }
 
-        public EQ(int a, int b) {
+        public Eq(int a, int b) {
             super(a, b);
         }
     }
 
-    class NE extends Compare {
+    class Ne extends Compare {
         @Override
         public String toString() {
             return "NE{" +
@@ -361,11 +361,11 @@ public interface ByteCode {
                     '}';
         }
 
-        public NE(int a, int b) {
+        public Ne(int a, int b) {
             super(a, b);
         }
     }
-    class GE extends Compare{
+    class Ge extends Compare{
         @Override
         public String toString() {
             return "GE{" +
@@ -374,11 +374,11 @@ public interface ByteCode {
                     '}';
         }
 
-        public GE(int a, int b) {
+        public Ge(int a, int b) {
             super(a, b);
         }
     }
-    class GT extends Compare{
+    class Gt extends Compare{
         @Override
         public String toString() {
             return "GT{" +
@@ -387,12 +387,12 @@ public interface ByteCode {
                     '}';
         }
 
-        public GT(int a, int b) {
+        public Gt(int a, int b) {
             super(a, b);
         }
     }
 
-    class LT extends Compare{
+    class Lt extends Compare{
         @Override
         public String toString() {
             return "LT{" +
@@ -401,11 +401,11 @@ public interface ByteCode {
                     '}';
         }
 
-        public LT(int a, int b) {
+        public Lt(int a, int b) {
             super(a, b);
         }
     }
-    class LE extends Compare{
+    class Le extends Compare{
         @Override
         public String toString() {
             return "LE{" +
@@ -414,7 +414,7 @@ public interface ByteCode {
                     '}';
         }
 
-        public LE(int a, int b) {
+        public Le(int a, int b) {
             super(a, b);
         }
     }
@@ -424,7 +424,7 @@ public interface ByteCode {
     /**
      *  变量下标b 加载到 寄存器 a里面
      */
-    class LOADVAR extends TwoArgByteCode{
+    class LoadVar extends TwoArgByteCode{
         @Override
         public String toString() {
             return "LOADVAR{" +
@@ -433,16 +433,17 @@ public interface ByteCode {
                     '}';
         }
 
-        public LOADVAR(int a, int b) {
+        public LoadVar(int a, int b) {
             super(a, b);
         }
     }
 
     /**
+     *
      * 加载父级函数中的变量 到寄存器 a 里面
-     * 变量名存储在b里面
+     * 变量下标存储在b里面
      */
-    class LOADUPVAR extends TwoArgByteCode{
+    class LoadUpVar extends TwoArgByteCode{
         @Override
         public String toString() {
             return "LOADUPVAR{" +
@@ -451,7 +452,7 @@ public interface ByteCode {
                     '}';
         }
 
-        public LOADUPVAR(int a, int b) {
+        public LoadUpVar(int a, int b) {
             super(a, b);
         }
     }
@@ -461,7 +462,7 @@ public interface ByteCode {
      * 变量下标 b
      * 对应的值设置为 nil
      */
-    class SAVENIL extends TwoArgByteCode{
+    class SaveNil extends TwoArgByteCode{
         public static int LOCAL_VAR = 0;
         public static int UPVAL = 1;
         public static int GLOBAL = 2;
@@ -474,7 +475,7 @@ public interface ByteCode {
                     '}';
         }
 
-        public SAVENIL(int a, int b) {
+        public SaveNil(int a, int b) {
             super(a, b);
         }
     }
@@ -482,8 +483,8 @@ public interface ByteCode {
     /**
      * 将函数下标b 加载到寄存器a里面
      */
-    class LOADFUNC extends TwoArgByteCode{
-        public LOADFUNC(int a, int b) {
+    class LoadFunc extends TwoArgByteCode{
+        public LoadFunc(int a, int b) {
             super(a, b);
         }
         @Override
@@ -498,7 +499,7 @@ public interface ByteCode {
     /**
      * 常量下标b 加载到寄存器 a 里面
      */
-    class LOADCONSTANT extends TwoArgByteCode{
+    class LoadConstant extends TwoArgByteCode{
         @Override
         public String toString() {
             return "LOADCONSTANT{" +
@@ -507,7 +508,7 @@ public interface ByteCode {
                     '}';
         }
 
-        public LOADCONSTANT(int a, int b) {
+        public LoadConstant(int a, int b) {
             super(a, b);
         }
     }
@@ -515,7 +516,7 @@ public interface ByteCode {
     /**
      * 全局变量下标b 加载到寄存器 a 里面
      */
-    class LOADGLOBAL extends TwoArgByteCode{
+    class LoadGlobal extends TwoArgByteCode{
         @Override
         public String toString() {
             return "LOADGLOBAL{" +
@@ -524,7 +525,7 @@ public interface ByteCode {
                     '}';
         }
 
-        public LOADGLOBAL(int a, int b) {
+        public LoadGlobal(int a, int b) {
             super(a, b);
         }
     }
@@ -532,7 +533,7 @@ public interface ByteCode {
     /**
      * 寄存器下标b中的值 保存到 变量下标 a里面
      */
-    class SAVEVAR extends TwoArgByteCode{
+    class SaveVar extends TwoArgByteCode{
 
 
         @Override
@@ -543,7 +544,7 @@ public interface ByteCode {
                     '}';
         }
 
-        public SAVEVAR(int a, int b) {
+        public SaveVar(int a, int b) {
             super(a, b);
         }
     }
@@ -552,10 +553,10 @@ public interface ByteCode {
      * 寄存器下标b中的值  保存到全局变量下标 a 里面
      */
 
-    class SAVEGLOBAL extends  TwoArgByteCode{
+    class SaveGlobal extends  TwoArgByteCode{
 
 
-        public SAVEGLOBAL(int a, int b) {
+        public SaveGlobal(int a, int b) {
             super(a, b);
         }
 
@@ -574,7 +575,7 @@ public interface ByteCode {
      * 变量名存储在a里面
      */
 
-    class SAVEUPVAL extends TwoArgByteCode{
+    class SaveUpval extends TwoArgByteCode{
         @Override
         public String toString() {
             return "SAVEUPVAL{" +
@@ -583,7 +584,7 @@ public interface ByteCode {
                     '}';
         }
 
-        public SAVEUPVAL(int a, int b) {
+        public SaveUpval(int a, int b) {
             super(a, b);
         }
     }
@@ -602,7 +603,7 @@ public interface ByteCode {
      *  d 表示 返回值数量， 如果d = -1 表示全部返回
      */
 
-    class CALL extends ThreeArgByteCode{
+    class Call extends ThreeArgByteCode{
         int d;
         @Override
         public String toString() {
@@ -614,12 +615,12 @@ public interface ByteCode {
                     '}';
         }
 
-        public CALL(int a, int b, int c, int d) {
+        public Call(int a, int b, int c, int d) {
             super(a, b, c);
             this.d = d;
         }
 
-        public CALL(int a, int b, int c) {
+        public Call(int a, int b, int c) {
             super(a, b,c);
         }
     }
@@ -628,7 +629,7 @@ public interface ByteCode {
      * 将...的参数的 b个元素  以寄存器a开始，放置
      * 如果 b 为 -1， 表示全部放置
      */
-    class VARARGS extends TwoArgByteCode{
+    class VarArgs extends TwoArgByteCode{
         @Override
         public String toString() {
             return "VARARGS{" +
@@ -637,7 +638,7 @@ public interface ByteCode {
                     '}';
         }
 
-        public VARARGS(int a, int b) {
+        public VarArgs(int a, int b) {
             super(a, b);
         }
     }
@@ -651,7 +652,7 @@ public interface ByteCode {
      * b == -1 表示到 栈顶的全返回
      */
 
-    class RETURNMULTI extends TwoArgByteCode{
+    class ReturnMulti extends TwoArgByteCode{
         @Override
         public String toString() {
             return "RETURNMULTI{" +
@@ -659,14 +660,14 @@ public interface ByteCode {
                     ", b=" + b +
                     '}';
         }
-        public RETURNMULTI(int a, int b) {
+        public ReturnMulti(int a, int b) {
             super(a, b);
         }
     }
     /**
      * 无参数返回
      */
-    class RETURN extends NoArgByteCode{
+    class Return extends NoArgByteCode{
         @Override
         public String toString() {
             return "RETURN{}";
@@ -674,15 +675,15 @@ public interface ByteCode {
     }
 
     /**
+     * a:b()
      * 获取 table的对象方法
-     *
-     * a:b
-     * 结果是
-     *   方法 表
-     *   方便函数调用
+     *  寄存器 a 里面存放 表
+     *  寄存器 b 里面存放 方法在表中的索引
+     *  执行后:
+     *    寄存器 a 里面存放 方法
+     *    寄存器 b 里面存放  表
      */
-    class GETTABLEMETHOD extends TwoArgByteCode{
-
+    class GetTableMethod extends TwoArgByteCode{
         @Override
         public String toString() {
             return "GETTABLEMETHOD{" +
@@ -691,7 +692,7 @@ public interface ByteCode {
                     '}';
         }
 
-        public GETTABLEMETHOD(int a, int b) {
+        public GetTableMethod(int a, int b) {
             super(a, b);
         }
     }
@@ -699,7 +700,7 @@ public interface ByteCode {
      *
      * 将 寄存器A中的Table， 下标b 的内容读取到寄存器A里面
      */
-    class GETTABLE extends TwoArgByteCode{
+    class GetTable extends TwoArgByteCode{
 
         @Override
         public String toString() {
@@ -709,7 +710,7 @@ public interface ByteCode {
                     '}';
         }
 
-        public GETTABLE(int a, int b) {
+        public GetTable(int a, int b) {
             super(a, b);
         }
     }
@@ -717,7 +718,7 @@ public interface ByteCode {
     /**
      * 创建一个 table
      */
-    class NEWTABLE extends SingleArgByteCode{
+    class NewTable extends SingleArgByteCode{
         @Override
         public String toString() {
             return "NEWTABLE{" +
@@ -725,7 +726,7 @@ public interface ByteCode {
                     '}';
         }
 
-        public NEWTABLE(int a) {
+        public NewTable(int a) {
             super(a);
         }
     }
@@ -734,7 +735,7 @@ public interface ByteCode {
      *
      * 将寄存器A，下标b的内容 设置为 nil
      */
-    class SETTABLENIL extends TwoArgByteCode{
+    class SetTableNil extends TwoArgByteCode{
 
         @Override
         public String toString() {
@@ -744,7 +745,7 @@ public interface ByteCode {
                     '}';
         }
 
-        public SETTABLENIL(int a, int b) {
+        public SetTableNil(int a, int b) {
             super(a, b);
         }
     }
@@ -752,7 +753,7 @@ public interface ByteCode {
      *
      * 将寄存器A，下标b的内容 设置为 c寄存器的内容
      */
-    class SETTABLE extends ThreeArgByteCode{
+    class SetTable extends ThreeArgByteCode{
         @Override
         public String toString() {
             return "SETTABLE{" +
@@ -762,7 +763,7 @@ public interface ByteCode {
                     '}';
         }
 
-        public SETTABLE(int a, int b, int c) {
+        public SetTable(int a, int b, int c) {
             super(a, b, c);
         }
 
@@ -782,7 +783,7 @@ public interface ByteCode {
      * 如果步长 < 0
      * 判断初始值是否 大于等于终值， 是继续
      */
-    class NUMBERFOR extends SingleArgByteCode{
+    class NumberFor extends SingleArgByteCode{
         @Override
         public String toString() {
             return "NUMBERFOR{" +
@@ -790,7 +791,7 @@ public interface ByteCode {
                     + "}";
         }
 
-        public NUMBERFOR(int a) {
+        public NumberFor(int a) {
             super(a);
         }
     }
@@ -800,7 +801,7 @@ public interface ByteCode {
      *
      * a 是初始值所在的寄存器
      */
-    class ENDNUMBERFOR extends SingleArgByteCode{
+    class EndNumberFor extends SingleArgByteCode{
         @Override
         public String toString() {
             return "ENDNUMBERFOR{" +
@@ -808,7 +809,7 @@ public interface ByteCode {
                     '}';
         }
 
-        public ENDNUMBERFOR(int a) {
+        public EndNumberFor(int a) {
             super(a);
         }
     }
@@ -825,9 +826,9 @@ public interface ByteCode {
 
      */
 
-    class GENERICFOR extends ThreeArgByteCode{
+    class GenericFor extends ThreeArgByteCode{
         int d;
-        public GENERICFOR(int a, int b, int c,int d) {
+        public GenericFor(int a, int b, int c, int d) {
             super(a, b, c);
             this.d = d;
         }
@@ -847,14 +848,14 @@ public interface ByteCode {
     /**
      * 计算a寄存器里面内容的长度，放在a寄存器里面
      */
-    class LENGTH extends SingleArgByteCode{
+    class Length extends SingleArgByteCode{
         @Override
         public String toString() {
             return "LENGTH{" +
                     "a=" + a +
                     '}';
         }
-        public LENGTH(int a) {
+        public Length(int a) {
             super(a);
         }
     }
@@ -862,7 +863,7 @@ public interface ByteCode {
     /**
      *对a寄存器里面的内容进行 not 运行 结果存放在 a里面
      */
-    class NOT extends SingleArgByteCode{
+    class Not extends SingleArgByteCode{
 
         @Override
         public String toString() {
@@ -871,7 +872,7 @@ public interface ByteCode {
                     '}';
         }
 
-        public NOT(int a) {
+        public Not(int a) {
             super(a);
         }
     }
@@ -879,7 +880,7 @@ public interface ByteCode {
     /**
        进行 ~ 运算
      */
-    class BITREVERSE extends SingleArgByteCode{
+    class BitReverse extends SingleArgByteCode{
         @Override
         public String toString() {
             return "BITREVERSE{" +
@@ -887,7 +888,7 @@ public interface ByteCode {
                     '}';
         }
 
-        public BITREVERSE(int a) {
+        public BitReverse(int a) {
             super(a);
         }
     }
@@ -895,8 +896,8 @@ public interface ByteCode {
     /**
      * 对a寄存器进行   - 运算
      */
-    class SINGLESUB extends SingleArgByteCode{
-        public SINGLESUB(int a) {
+    class Negative extends SingleArgByteCode{
+        public Negative(int a) {
             super(a);
         }
 
@@ -912,7 +913,7 @@ public interface ByteCode {
     /**
      * 将常量 b 作为模块加载到全局变量 a中
      */
-    class LOADGLOBALMODULE extends TwoArgByteCode{
+    class LoadGlobalModule extends TwoArgByteCode{
         @Override
         public String toString() {
             return "LOADMODULE{" +
@@ -921,14 +922,14 @@ public interface ByteCode {
                     '}';
         }
 
-        public LOADGLOBALMODULE(int a, int b) {
+        public LoadGlobalModule(int a, int b) {
             super(a, b);
         }
     }
     /**
      *  将常量 b 作为模块加载到寄存器 a中
      */
-    class LOADMODULE extends TwoArgByteCode{
+    class LoadModule extends TwoArgByteCode{
         @Override
         public String toString() {
             return "LOADMODULE{" +
@@ -937,7 +938,7 @@ public interface ByteCode {
                     '}';
         }
 
-        public LOADMODULE(int a, int b) {
+        public LoadModule(int a, int b) {
             super(a, b);
         }
     }

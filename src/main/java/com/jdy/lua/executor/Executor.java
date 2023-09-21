@@ -231,6 +231,9 @@ public class Executor {
     }
 
     public void executeStatement(Statement statement) {
+        if (statement instanceof EmptyStatement) {
+            return;
+        }
         System.out.println("??????????????");
         System.out.println(statement.getClass());
     }

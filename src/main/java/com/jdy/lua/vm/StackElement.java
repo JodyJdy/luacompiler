@@ -14,13 +14,15 @@ public class StackElement {
         this.value = value;
     }
 
+
     /**
      * 是否是本地变量
      */
     private boolean isLocalVar = false;
 
     /**
-     * 如果是本地变量 下标
+     *
+     * 所处寄存器的下标
      */
     private int index;
     /**
