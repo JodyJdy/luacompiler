@@ -531,8 +531,18 @@ public class Executor {
             returnValue = statement.getExprs().get(0).visitExpr(this);
         } else {
             List<Value> multi = new ArrayList<>();
-            for (Expr expr : statement.getExprs()) {
-                multi.add(expr.visitExpr(this));
+            for (int i = 0; i < statement.getExprs().size(); i++) {
+                Value val = statement.getExprs().get(i).visitExpr(this);
+                if (val instanceof MultiValue multiValue) {
+                    //只有最后一个取多值
+                    if (i == statement.getExprs().size() - 1) {
+                        multi.addAll(multiValue.getValueList());
+                    }  else{
+                        multi.add(multiValue.getValueList().get(0));
+                    }
+                } else{
+                    multi.add(val);
+                }
             }
             returnValue = new MultiValue(multi);
         }
@@ -704,9 +714,20 @@ public class Executor {
             function = checkFunc( expr.getFunc().visitExpr(this));
         }
         //求实参的值
-        expr.getExprs().forEach(argExpr -> {
-            initArgs.add(argExpr.visitExpr(this));
-        });
+        for (int i = 0; i < expr.getExprs().size(); i++) {
+            Expr e = expr.getExprs().get(i);
+            Value value = e.visitExpr(this);
+            if (value instanceof MultiValue multiValue) {
+                //只有最后一个取多值
+                if (i == expr.getExprs().size()-1) {
+                    initArgs.addAll(multiValue.getValueList());
+                }  else{
+                    initArgs.add(multiValue.getValueList().get(0));
+                }
+            }else{
+                initArgs.add(value);
+            }
+        }
         //调用函数
         Executor executor = new Executor(function,initArgs);
         return executor.execute();
