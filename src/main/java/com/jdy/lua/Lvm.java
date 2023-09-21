@@ -4,6 +4,7 @@ import com.jdy.lua.antlr4.LuaLexer;
 import com.jdy.lua.antlr4.LuaParser;
 import com.jdy.lua.luanative.NativeLoader;
 import com.jdy.lua.parser.Parser;
+import com.jdy.lua.statement.Expr;
 import com.jdy.lua.statement.Statement;
 import com.jdy.lua.vm.FuncInfo;
 import com.jdy.lua.vm.InstructionGenerator;
@@ -14,6 +15,7 @@ import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CharStreams;
 
 import java.io.*;
+import java.util.Scanner;
 
 /**
  * @author jdy
@@ -24,7 +26,7 @@ import java.io.*;
 public class Lvm {
 
     /**
-     *运行输入的文件
+     * 运行输入的文件
      */
     public static void run(InputStream inputStream) {
         try {
@@ -33,6 +35,7 @@ public class Lvm {
             throw new RuntimeException(e);
         }
     }
+
     public static void run(CharStream charStream) {
         LuaParser luaParser = new LuaParser(new BufferedTokenStream(new LuaLexer(charStream)));
         //加载库函数
@@ -46,7 +49,7 @@ public class Lvm {
         FuncInfo.fillJMP();
 
         long start = System.currentTimeMillis();
-        Vm.execute(new RuntimeFunc(funcInfo, null));
+        new Vm(new RuntimeFunc(funcInfo, null)).execute();
         System.out.println(System.currentTimeMillis() - start);
     }
 
@@ -65,7 +68,51 @@ public class Lvm {
             throw new RuntimeException(e);
         }
     }
+
     public static void run(String string) {
         run(CharStreams.fromString(string));
+    }
+
+
+    /**
+     * 交互式 命令行
+     */
+    public static void commandLine() {
+        //加载库函数
+        NativeLoader.loadLibrary();
+        FuncInfo funcInfo = FuncInfo.createFunc();
+        Vm vm = new Vm(new RuntimeFunc(funcInfo, null));
+        Scanner scanner = new Scanner(System.in);
+        System.out.println("----------  lua  -----------------输入 bye  结束执行");
+        System.out.print(">>");
+        int runFrom = 0;
+        while (scanner.hasNext()) {
+            //读取一行命令
+            String line = scanner.nextLine();
+            if ("bye".equals(line)) {
+                break;
+            }
+            LuaParser luaParser = new LuaParser(new BufferedTokenStream(new LuaLexer(CharStreams.fromString(line))));
+            LuaParser.CommandLineContext context = luaParser.commandLine();
+            InstructionGenerator instructionGenerator = new InstructionGenerator(funcInfo);
+            if (context.exp() != null) {
+                Expr expr = Parser.parseExpr(context.exp());
+                int reg = instructionGenerator.generateExpr(expr, 1);
+                vm.resetRegisters(funcInfo.getRegisters().size());
+                FuncInfo.fillJMP();
+                vm.executeFrom(runFrom);
+                //打印寄存器里面的内容
+                System.out.println(vm.getRegisters()[reg].getValue());
+            } else if (context.stat() != null) {
+                Statement statement = Parser.parseStat(context.stat());
+                instructionGenerator.generateStatement(statement);
+                vm.resetRegisters(funcInfo.getRegisters().size());
+                FuncInfo.fillJMP();
+                vm.executeFrom(runFrom);
+            }
+            //调整下次执行的位置
+            runFrom = funcInfo.getCodes().size();
+        }
+        System.out.print(">>");
     }
 }

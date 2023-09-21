@@ -133,7 +133,7 @@ public class RuntimeFunc implements Value {
                 registers[i].setValue(new MultiValue(values.subList(i, values.size())));
             }
         }
-        return Vm.execute(this);
+        return new Vm(this).execute();
     }
 
 

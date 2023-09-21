@@ -44,7 +44,7 @@ public class Table implements CalculateValue {
                 Executor executor = new Executor((Function) val, new ArrayList<>());
                 return executor.execute().toString();
             } else if (val instanceof RuntimeFunc runtimeFunc) {
-                return Vm.execute(runtimeFunc).toString();
+                return new Vm(runtimeFunc).execute().toString();
             }
         }
         return String.valueOf(map);
@@ -120,7 +120,7 @@ public class Table implements CalculateValue {
                 return executor.execute();
             }
         }  else if (meta instanceof RuntimeFunc runtimeFunc) {
-            return Vm.execute(runtimeFunc);
+            return new Vm(runtimeFunc).execute();
         }
         return NilValue.NIL;
     }
@@ -145,7 +145,7 @@ public class Table implements CalculateValue {
                     Value val = new Executor(fun, List.of(this, b)).execute();
                     return Checker.checkBool(val);
                 } else if (value instanceof RuntimeFunc runtimeFunc) {
-                    return (BoolValue) Vm.execute(runtimeFunc);
+                    return (BoolValue) new Vm(runtimeFunc).execute();
                 }
             }
              return this.map.equals(t.map) ? BoolValue.TRUE : BoolValue.FALSE;
@@ -162,7 +162,7 @@ public class Table implements CalculateValue {
                     Value val = new Executor(fun, List.of(this, b)).execute();
                     return Checker.checkBool(val);
                 } else if (value instanceof RuntimeFunc runtimeFunc) {
-                    return (BoolValue) Vm.execute(runtimeFunc);
+                    return (BoolValue) new Vm(runtimeFunc).execute();
                 }
             }
             return this.map.equals(t.map) ? BoolValue.FALSE : BoolValue.TRUE;
@@ -179,7 +179,7 @@ public class Table implements CalculateValue {
                     Value val = new Executor(fun, List.of(this, b)).execute();
                     return Checker.checkBool(val);
                 }  else if (value instanceof RuntimeFunc runtimeFunc) {
-                    return (BoolValue) Vm.execute(runtimeFunc);
+                    return (BoolValue) new Vm(runtimeFunc).execute();
                 }
             }
         }
@@ -200,7 +200,7 @@ public class Table implements CalculateValue {
                     Value val = new Executor(fun, List.of(this, b)).execute();
                     return Checker.checkBool(val);
                 }  else if (value instanceof RuntimeFunc runtimeFunc) {
-                    return (BoolValue) Vm.execute(runtimeFunc);
+                    return (BoolValue) new Vm(runtimeFunc).execute();
                 }
             }
         }
@@ -223,7 +223,7 @@ public class Table implements CalculateValue {
             if (value instanceof Function fun) {
                 return new Executor(fun, List.of(this, b)).execute();
             }  else if (value instanceof RuntimeFunc runtimeFunc) {
-                return Vm.execute(runtimeFunc);
+                return new Vm(runtimeFunc).execute();
             }
         }
         return CalculateValue.super.add(b);
@@ -236,7 +236,7 @@ public class Table implements CalculateValue {
             if (value instanceof Function fun) {
                 return new Executor(fun, List.of(this, b)).execute();
             } else if (value instanceof RuntimeFunc runtimeFunc) {
-                return Vm.execute(runtimeFunc);
+                return new Vm(runtimeFunc).execute();
             }
         }
         return CalculateValue.super.sub(b);
@@ -249,7 +249,7 @@ public class Table implements CalculateValue {
             if (value instanceof Function fun) {
                 return new Executor(fun, List.of(this, b)).execute();
             } else if (value instanceof RuntimeFunc runtimeFunc) {
-                return Vm.execute(runtimeFunc);
+                return new Vm(runtimeFunc).execute();
             }
         }
         return CalculateValue.super.mul(b);
@@ -262,7 +262,7 @@ public class Table implements CalculateValue {
             if (value instanceof Function fun) {
                 return new Executor(fun, List.of(this, b)).execute();
             } else if (value instanceof RuntimeFunc runtimeFunc) {
-                return Vm.execute(runtimeFunc);
+                return new Vm(runtimeFunc).execute();
             }
         }
         return CalculateValue.super.div(b);
@@ -275,7 +275,7 @@ public class Table implements CalculateValue {
             if (value instanceof Function fun) {
                 return new Executor(fun, List.of(this)).execute();
             } else if (value instanceof RuntimeFunc runtimeFunc) {
-                return Vm.execute(runtimeFunc);
+                return new Vm(runtimeFunc).execute();
             }
         }
         return CalculateValue.super.unm();
@@ -288,7 +288,7 @@ public class Table implements CalculateValue {
             if (value instanceof Function fun) {
                 return new Executor(fun, List.of(this, b)).execute();
             } else if (value instanceof RuntimeFunc runtimeFunc) {
-                return Vm.execute(runtimeFunc);
+                return new Vm(runtimeFunc).execute();
             }
         }
         return CalculateValue.super.mod(b);
@@ -302,7 +302,7 @@ public class Table implements CalculateValue {
             if (value instanceof Function fun) {
                 return new Executor(fun, List.of(this, b)).execute();
             } else if (value instanceof RuntimeFunc runtimeFunc) {
-                return Vm.execute(runtimeFunc);
+                return new Vm(runtimeFunc).execute();
             }
         }
         return CalculateValue.super.pow(b);
@@ -315,7 +315,7 @@ public class Table implements CalculateValue {
             if (value instanceof Function fun) {
                 return new Executor(fun, List.of(this, b)).execute();
             }else if (value instanceof RuntimeFunc runtimeFunc) {
-                return Vm.execute(runtimeFunc);
+                return new Vm(runtimeFunc).execute();
             }
         }
         return CalculateValue.super.concat(b);

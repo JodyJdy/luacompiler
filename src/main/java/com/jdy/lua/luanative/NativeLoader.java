@@ -113,7 +113,7 @@ public class NativeLoader {
             FuncInfo funcInfo = FuncInfo.createFunc();
             InstructionGenerator instructionGenerator = new InstructionGenerator(funcInfo);
             instructionGenerator.generateStatement(result);
-            Value val = Vm.execute(new RuntimeFunc(funcInfo,null));
+            Value val = new Vm(new RuntimeFunc(funcInfo,null)).execute();
             if (val instanceof NilValue) {
                 throw new RuntimeException(String.format("模块:%s读取失败", moduleName));
             } else if (val instanceof MultiValue mul) {
