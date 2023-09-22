@@ -1,5 +1,3 @@
-local x = 1
-while x < 10000000 do
-    x=x+1
+for i=1, 10000000,1 do
 end
 
