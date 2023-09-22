@@ -36,6 +36,12 @@ public class NumberValue implements CalculateValue, Expr {
         isInt = true;
     }
 
+    public NumberValue(NumberValue n) {
+            isInt = n.isInt;
+            this.l = n.l;
+            this.d= n.d;
+    }
+
     public NumberValue(Long l) {
         this.l = l;
         isInt = true;

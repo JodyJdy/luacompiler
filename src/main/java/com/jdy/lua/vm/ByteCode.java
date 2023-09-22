@@ -13,36 +13,11 @@ public interface ByteCode {
 
     ByteCodeEnum type();
 
-    int getA();
-    int getB();
-    int getC();
-    int getD();
-
-
 
     /**
      * 无参 指令
      */
     abstract class NoArgByteCode implements ByteCode {
-        @Override
-        public int getA() {
-            return 0;
-        }
-
-        @Override
-        public int getB() {
-            return 0;
-        }
-
-        @Override
-        public int getC() {
-            return 0;
-        }
-
-        @Override
-        public int getD() {
-            return 0;
-        }
     }
 
     /**
@@ -53,26 +28,6 @@ public interface ByteCode {
 
         public SingleArgByteCode(int a) {
             this.a = a;
-        }
-
-        @Override
-        public int getA() {
-            return a;
-        }
-
-        @Override
-        public int getB() {
-            return 0;
-        }
-
-        @Override
-        public int getC() {
-            return 0;
-        }
-
-        @Override
-        public int getD() {
-            return 0;
         }
     }
 
@@ -92,26 +47,6 @@ public interface ByteCode {
         public String toString() {
             return this.getClass().getName() + "a = "+ a+ ","+"b="+b;
         }
-
-        @Override
-        public int getA() {
-            return a;
-        }
-
-        @Override
-        public int getB() {
-            return b;
-        }
-
-        @Override
-        public int getC() {
-            return 0;
-        }
-
-        @Override
-        public int getD() {
-            return 0;
-        }
     }
 
     /**
@@ -125,10 +60,6 @@ public interface ByteCode {
             this.c = c;
         }
 
-        @Override
-        public int getC() {
-            return c;
-        }
 
         @Override
         public String toString() {
@@ -143,12 +74,6 @@ public interface ByteCode {
         }
 
         protected int d;
-
-
-        @Override
-        public int getD() {
-            return d;
-        }
     }
 
     /**
