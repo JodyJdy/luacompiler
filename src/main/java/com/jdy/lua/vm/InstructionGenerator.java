@@ -1,15 +1,19 @@
 package com.jdy.lua.vm;
 
-import com.jdy.lua.data.*;
+import com.jdy.lua.data.BoolValue;
+import com.jdy.lua.data.NilValue;
+import com.jdy.lua.data.NumberValue;
+import com.jdy.lua.data.StringValue;
 import com.jdy.lua.statement.Expr;
+import com.jdy.lua.statement.ExprTypeEnum;
 import com.jdy.lua.statement.Statement;
+import com.jdy.lua.statement.StatementTypeEnum;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Stack;
 
 import static com.jdy.lua.data.NilValue.NIL;
-import static com.jdy.lua.executor.Checker.checkMultiValue;
 import static com.jdy.lua.statement.Statement.*;
 import static com.jdy.lua.vm.ByteCode.*;
 
@@ -44,68 +48,29 @@ public class InstructionGenerator {
     }
 
     public void generateStatement(Statement statement) {
-        if (statement instanceof BlockStatement blockStatement) {
-            generateBlockStatement(blockStatement);
-            return;
-        }
-        if (statement instanceof LocalFunctionStatement localFunctionStatement) {
-            generateLocalFuncStatement(localFunctionStatement);
-        }
-        if (statement instanceof LocalDefineStatement localDefineStatement) {
-            generateLocalAssign(localDefineStatement);
-            return;
-        }
-        if (statement instanceof WhileStatement whileStatement) {
-            generateWhile(whileStatement);
-            return;
-        }
-        if (statement instanceof RepeatStatement repeatStatement) {
-            generateRepeat(repeatStatement);
-            return;
-        }
-        if (statement instanceof FunctionStatement functionStatement) {
-            generateFunc(functionStatement);
-        }
-        if (statement instanceof IfStatement ifStatement) {
-            generateIf(ifStatement);
-            return;
-        }
-        if (statement instanceof LabelStatement labelStatement) {
-            generateLabel(labelStatement);
-            return;
-        }
-        if (statement instanceof GotoLabelStatement gotoLabelStatement) {
-            generateGoto(gotoLabelStatement);
-            return;
-        }
-        if (statement instanceof BreakStatement) {
-            generateBreak();
-            return;
-        }
-        if (statement instanceof ReturnStatement returnStatement) {
-            generateReturnStatement(returnStatement);
-            return;
-        }
-        if (statement instanceof AssignStatement assignStatement) {
-            generateAssignStatement(assignStatement);
-            return;
-        }
-        if (statement instanceof NumberForStatement numberForStatement) {
-            generateNumberFor(numberForStatement);
-            return;
-        }
-        if (statement instanceof GenericForStatement genericfor) {
-            generateGenericFor(genericfor);
-            return;
-        }
-        if (statement instanceof RequireModule requireModule) {
-            generateModuleStatement(requireModule);
-        }
-        //不考虑返回值的函数调用
-        if (statement instanceof Expr.FuncCallExpr expr) {
-            int reg = funcInfo.getUsed();
-            generateFuncCallExpr(expr, 0);
-            funcInfo.resetRegister(reg);
+        StatementTypeEnum type = statement.statementType();
+        switch (type){
+            case BlockStatement -> generateBlockStatement((BlockStatement) statement);
+            case LocalFunctionStatement -> generateLocalFuncStatement((LocalFunctionStatement) statement);
+            case LocalDefineStatement -> generateLocalAssign((LocalDefineStatement) statement);
+            case WhileStatement -> generateWhile((WhileStatement) statement);
+            case RepeatStatement -> generateRepeat((RepeatStatement) statement);
+            case FunctionStatement -> generateFunc((FunctionStatement) statement);
+            case IfStatement -> generateIf((IfStatement) statement);
+            case LabelStatement -> generateLabel((LabelStatement) statement);
+            case GotoLabelStatement -> generateGoto((GotoLabelStatement) statement);
+            case BreakStatement -> generateBreak();
+            case ReturnStatement -> generateReturnStatement((ReturnStatement) statement);
+            case AssignStatement -> generateAssignStatement((AssignStatement) statement);
+            case NumberForStatement-> generateNumberFor((NumberForStatement) statement);
+            case GenericForStatement -> generateGenericFor((GenericForStatement) statement);
+            case RequireModule->generateModuleStatement((RequireModule) statement);
+            case FuncCallExpr -> {
+                //不考虑函数返回值的调用
+                int reg = funcInfo.getUsed();
+                generateFuncCallExpr((Expr.FuncCallExpr) statement, 0);
+                funcInfo.resetRegister(reg);
+            }
         }
     }
 
@@ -799,43 +764,27 @@ public class InstructionGenerator {
      * @param expect 期望表达式的值，占用了几个寄存器
      */
     public int generateExpr(Expr expr, int expect) {
-        if (expr instanceof NilValue nilValue) {
-            return generateNilExpr(nilValue);
-        } else if (expr instanceof BoolValue boolValue) {
-            return generateBooleanExpr(boolValue);
-        } else if (expr instanceof Expr.IndexExpr indexExpr) {
-            return generateIndexExpr(indexExpr);
-        } else if (expr instanceof StringValue stringValue) {
-            return generateStringValue(stringValue);
-        } else if (expr instanceof NumberValue numberValue) {
-            return generateNumberExpr(numberValue);
-        } else if (expr instanceof Expr.TableExpr tableExpr) {
-            return generateTableExpr(tableExpr);
-        } else if (expr instanceof Expr.Function function) {
-            return generateFuncExpr(function);
-        } else if (expr instanceof Expr.CalExpr calExpr) {
-            return generateCalExpr(calExpr);
-        } else if (expr instanceof Expr.RelExpr relExpr) {
-            return generateRelExpr(relExpr);
-        } else if (expr instanceof Expr.NameExpr nameExpr) {
-            return generateNameExpr(nameExpr);
-        } else if (expr instanceof Expr.AndExpr andExpr) {
-            return generateAndExpr(andExpr);
-        } else if (expr instanceof Expr.OrExpr orExpr) {
-            return generateOrExpr(orExpr);
-        } else if (expr instanceof Expr.DotExpr dotExpr) {
-            return generateDotExpr(dotExpr);
-        } else if (expr instanceof Expr.FuncCallExpr funcCallExpr) {
-            return generateFuncCallExpr(funcCallExpr, expect);
-        } else if (expr instanceof Expr.ColonExpr colonExpr) {
-            return generateColonExpr(colonExpr);
-        } else if (expr instanceof Expr.MultiArg) {
-            return generateMultiArg(expect);
-        } else if (expr instanceof Expr.UnaryExpr unaryExpr) {
-            return generateUnaryExpr(unaryExpr);
-        } else if (expr instanceof RequireModule requireModule) {
-            return generateModule(requireModule);
-        }
-        return 0;
+        ExprTypeEnum type = expr.exprType();
+        return switch (type) {
+            case NILValue -> generateNilExpr((NilValue) expr);
+            case BoolValue -> generateBooleanExpr((BoolValue) expr);
+            case IndexExpr -> generateIndexExpr((Expr.IndexExpr) expr);
+            case StringValue -> generateStringValue((StringValue) expr);
+            case NumberValue -> generateNumberExpr((NumberValue) expr);
+            case TableExpr -> generateTableExpr((Expr.TableExpr) expr);
+            case Function -> generateFuncExpr((Expr.Function) expr);
+            case CalExpr -> generateCalExpr((Expr.CalExpr) expr);
+            case RelExpr -> generateRelExpr((Expr.RelExpr) expr);
+            case NameExpr -> generateNameExpr((Expr.NameExpr) expr);
+            case AndExpr -> generateAndExpr((Expr.AndExpr) expr);
+            case OrExpr -> generateOrExpr((Expr.OrExpr) expr);
+            case DotExpr -> generateDotExpr((Expr.DotExpr) expr);
+            case FuncCallExpr -> generateFuncCallExpr((Expr.FuncCallExpr) expr, expect);
+            case ColonExpr -> generateColonExpr((Expr.ColonExpr) expr);
+            case MultiArg -> generateMultiArg(expect);
+            case UnaryExpr -> generateUnaryExpr((Expr.UnaryExpr) expr);
+            case RequireModule -> generateModule((RequireModule) expr);
+            default -> 0;
+        };
     }
 }

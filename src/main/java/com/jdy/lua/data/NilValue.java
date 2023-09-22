@@ -2,6 +2,7 @@ package com.jdy.lua.data;
 
 import com.jdy.lua.executor.Executor;
 import com.jdy.lua.statement.Expr;
+import com.jdy.lua.statement.ExprTypeEnum;
 
 /**
  * @author jdy
@@ -14,9 +15,15 @@ public class NilValue implements Value, Expr {
     private NilValue(){
 
     }
+
     @Override
     public DataTypeEnum type() {
         return DataTypeEnum.NIL;
+    }
+
+    @Override
+    public ExprTypeEnum exprType() {
+        return  ExprTypeEnum.NILValue;
     }
 
     @Override

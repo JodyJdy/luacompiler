@@ -2,6 +2,7 @@ package com.jdy.lua.data;
 
 import com.jdy.lua.executor.Executor;
 import com.jdy.lua.statement.Expr;
+import com.jdy.lua.statement.ExprTypeEnum;
 import lombok.Data;
 
 import java.util.Objects;
@@ -33,6 +34,11 @@ public class NumberValue implements CalculateValue, Expr {
     @Override
     public DataTypeEnum type() {
         return DataTypeEnum.NUMBER;
+    }
+
+    @Override
+    public ExprTypeEnum exprType() {
+        return ExprTypeEnum.NumberValue;
     }
 
     @Override

@@ -6,6 +6,7 @@ import lombok.Data;
 
 import java.util.ArrayList;
 import java.util.List;
+import static com.jdy.lua.statement.StatementTypeEnum.*;
 
 /**
  * @author jdy
@@ -17,10 +18,17 @@ public  interface Statement {
 
     void visitStatement(Executor visitor);
 
+    StatementTypeEnum statementType();
+
     class EmptyStatement implements Statement{
         @Override
         public void visitStatement(Executor visitor) {
             visitor.executeStatement(this);
+        }
+
+        @Override
+        public StatementTypeEnum statementType() {
+            return StatementTypeEnum.EmptyStatement;
         }
     }
 
@@ -45,6 +53,11 @@ public  interface Statement {
             visitor.executeStatement(this);
         }
 
+        @Override
+        public StatementTypeEnum statementType() {
+            return LocalDefineStatement;
+        }
+
 
     }
     /**
@@ -54,6 +67,11 @@ public  interface Statement {
     class AssignStatement  implements Statement{
         private final List<Expr> left;
         private final List<Expr> right;
+
+        @Override
+        public StatementTypeEnum statementType() {
+            return AssignStatement;
+        }
 
         public AssignStatement(List<Expr> left, List<Expr> right) {
             this.left = left;
@@ -71,6 +89,11 @@ public  interface Statement {
      */
     @Data
     class  WhileStatement implements Statement{
+        @Override
+        public StatementTypeEnum statementType() {
+            return WhileStatement;
+        }
+
         private final Expr condition;
         private final BlockStatement blockStatement;
 
@@ -88,6 +111,11 @@ public  interface Statement {
 
     @Data
     class BlockStatement implements Statement{
+        @Override
+        public StatementTypeEnum statementType() {
+            return BlockStatement;
+        }
+
         public BlockStatement() {
         }
         private final List<Statement> statements = new ArrayList<>();
@@ -110,6 +138,11 @@ public  interface Statement {
      */
     @Data
     class NumberForStatement implements Statement{
+        @Override
+        public StatementTypeEnum statementType() {
+            return NumberForStatement;
+        }
+
         private String var;
         private Expr expr1;
         private Expr expr2;
@@ -130,6 +163,11 @@ public  interface Statement {
      */
     @Data
     class GenericForStatement implements Statement{
+        @Override
+        public StatementTypeEnum statementType() {
+            return GenericForStatement;
+        }
+
         /**
          * 变量名称
          */
@@ -157,6 +195,11 @@ public  interface Statement {
     class RepeatStatement implements Statement{
         private Expr condition;
 
+        @Override
+        public StatementTypeEnum statementType() {
+            return RepeatStatement;
+        }
+
         public RepeatStatement(Expr condition, BlockStatement blockStatement) {
             this.condition = condition;
             this.blockStatement = blockStatement;
@@ -172,6 +215,11 @@ public  interface Statement {
     @Data
     class  BreakStatement  implements Statement{
         @Override
+        public StatementTypeEnum statementType() {
+            return BreakStatement;
+        }
+
+        @Override
         public void visitStatement(Executor visitor) {
             visitor.executeStatement(this);
         }
@@ -179,6 +227,11 @@ public  interface Statement {
     }
     @Data
     class  ContinueStatement  implements Statement{
+        @Override
+        public StatementTypeEnum statementType() {
+            return null;
+        }
+
         @Override
         public void visitStatement(Executor visitor) {
             visitor.executeStatement(this);
@@ -190,6 +243,12 @@ public  interface Statement {
             this.labelName = labelName;
         }
         private String labelName;
+
+        @Override
+        public StatementTypeEnum statementType() {
+            return GotoLabelStatement;
+        }
+
         @Override
         public void visitStatement(Executor visitor) {
             visitor.executeStatement(this);
@@ -206,11 +265,22 @@ public  interface Statement {
         public void visitStatement(Executor visitor) {
             visitor.executeStatement(this);
         }
+
+        @Override
+        public StatementTypeEnum statementType() {
+            return LabelStatement;
+        }
     }
     @Data
     class  IfStatement implements Statement{
         Expr ifCond;
         BlockStatement ifBlock;
+
+        @Override
+        public StatementTypeEnum statementType() {
+            return IfStatement;
+        }
+
         List<Expr> elseIfConds;
         List<BlockStatement> elseIfBlocks;
         BlockStatement elseBlock;
@@ -229,6 +299,11 @@ public  interface Statement {
     }
     @Data
     class ReturnStatement implements Statement {
+        @Override
+        public StatementTypeEnum statementType() {
+            return ReturnStatement;
+        }
+
         List<Expr> exprs;
 
         public ReturnStatement(List<Expr> exprs) {
@@ -311,6 +386,11 @@ public  interface Statement {
     class FunctionStatement implements Statement {
         private FuncType funcName;
 
+        @Override
+        public StatementTypeEnum statementType() {
+            return FunctionStatement;
+        }
+
         public FunctionStatement(FuncType funcName, Expr.Function funcBody) {
             this.funcName = funcName;
             this.funcBody = funcBody;
@@ -328,6 +408,11 @@ public  interface Statement {
 
     @Data
     class LocalFunctionStatement implements Statement{
+        @Override
+        public StatementTypeEnum statementType() {
+            return LocalFunctionStatement;
+        }
+
         private String funcName;
         private Expr.Function funcBody;
 
@@ -357,6 +442,16 @@ public  interface Statement {
         @Override
         public void visitStatement(Executor visitor) {
             visitor.executeStatement(this);
+        }
+
+        @Override
+        public ExprTypeEnum exprType() {
+            return ExprTypeEnum.RequireModule;
+        }
+
+        @Override
+        public StatementTypeEnum statementType() {
+            return StatementTypeEnum.RequireModule;
         }
     }
 

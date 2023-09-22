@@ -256,7 +256,7 @@ public interface ByteCode {
     class BitLeftShift extends Calculate{
         @Override
         public String toString() {
-            return "BITLEFTMOVE{" +
+            return "BitLeftShift{" +
                     "a=" + a +
                     ", b=" + b +
                     ", c=" + c +
@@ -270,6 +270,15 @@ public interface ByteCode {
     class BitRightShift extends Calculate{
         public BitRightShift(int a, int b, int c) {
             super(a, b, c);
+        }
+
+        @Override
+        public String toString() {
+            return "BitRightShift{" +
+                    "a=" + a +
+                    ", b=" + b +
+                    ", c=" + c +
+                    '}';
         }
     }
     class Cat extends Calculate{
@@ -427,7 +436,7 @@ public interface ByteCode {
     class LoadVar extends TwoArgByteCode{
         @Override
         public String toString() {
-            return "LOADVAR{" +
+            return "LoadVar{" +
                     "a=" + a +
                     ", b=" + b +
                     '}';
@@ -446,7 +455,7 @@ public interface ByteCode {
     class LoadUpVar extends TwoArgByteCode{
         @Override
         public String toString() {
-            return "LOADUPVAR{" +
+            return "LoadUpVar{" +
                     "a=" + a +
                     ", b=" + b +
                     '}';
@@ -469,7 +478,7 @@ public interface ByteCode {
         @Override
         public String toString() {
             String type = a == 0 ? "localVar" : (a == 1) ? "UpVal" : " globalVar";
-            return "SAVENIL{" +
+            return "SaveNil{" +
                     type +
                     ", b=" + b +
                     '}';
@@ -489,7 +498,7 @@ public interface ByteCode {
         }
         @Override
         public String toString() {
-            return "LOADFUNC{" +
+            return "LoadFunc{" +
                     "a=" + a +
                     ", b=" + b +
                     '}';
@@ -502,7 +511,7 @@ public interface ByteCode {
     class LoadConstant extends TwoArgByteCode{
         @Override
         public String toString() {
-            return "LOADCONSTANT{" +
+            return "LoadConstant{" +
                     "a=" + a +
                     ", b=" + b +
                     '}';
@@ -519,7 +528,7 @@ public interface ByteCode {
     class LoadGlobal extends TwoArgByteCode{
         @Override
         public String toString() {
-            return "LOADGLOBAL{" +
+            return "LoadGlobal{" +
                     "a=" + a +
                     ", b=" + b +
                     '}';
@@ -538,7 +547,7 @@ public interface ByteCode {
 
         @Override
         public String toString() {
-            return "SAVEVAR{" +
+            return "SaveVar{" +
                     "a=" + a +
                     ", b=" + b +
                     '}';
@@ -562,7 +571,7 @@ public interface ByteCode {
 
         @Override
         public String toString() {
-            return "SAVEGLOBAL{" +
+            return "SaveGlobal{" +
                     "a=" + a +
                     ", b=" + b +
                     '}';
@@ -578,7 +587,7 @@ public interface ByteCode {
     class SaveUpval extends TwoArgByteCode{
         @Override
         public String toString() {
-            return "SAVEUPVAL{" +
+            return "SaveUpval{" +
                     "a=" + a +
                     ", b=" + b +
                     '}';
@@ -620,9 +629,6 @@ public interface ByteCode {
             this.d = d;
         }
 
-        public Call(int a, int b, int c) {
-            super(a, b,c);
-        }
     }
     /**
      * 处理 ... 参数
@@ -655,7 +661,7 @@ public interface ByteCode {
     class ReturnMulti extends TwoArgByteCode{
         @Override
         public String toString() {
-            return "RETURNMULTI{" +
+            return "ReturnMulti{" +
                     "a=" + a +
                     ", b=" + b +
                     '}';
@@ -686,7 +692,7 @@ public interface ByteCode {
     class GetTableMethod extends TwoArgByteCode{
         @Override
         public String toString() {
-            return "GETTABLEMETHOD{" +
+            return "GetTableMethod{" +
                     "a=" + a +
                     ", b=" + b +
                     '}';
@@ -804,7 +810,7 @@ public interface ByteCode {
     class NumberFor extends SingleArgByteCode{
         @Override
         public String toString() {
-            return "NUMBERFOR{" +
+            return "NumberFor{" +
                     "a= " + a
                     + "}";
         }
@@ -822,7 +828,7 @@ public interface ByteCode {
     class EndNumberFor extends SingleArgByteCode{
         @Override
         public String toString() {
-            return "ENDNUMBERFOR{" +
+            return "EndNumberFor{" +
                     "a=" + a +
                     '}';
         }
@@ -853,7 +859,7 @@ public interface ByteCode {
 
         @Override
         public String toString() {
-            return "GENERICFOR{" +
+            return "GenericFor{" +
                     ", a=" + a +
                     ", b=" + b +
                     ", c=" + c +
@@ -921,7 +927,7 @@ public interface ByteCode {
 
         @Override
         public String toString() {
-            return "SINGLESUB{" +
+            return "Negative{" +
                     "a=" + a +
                     '}';
         }
@@ -934,7 +940,7 @@ public interface ByteCode {
     class LoadGlobalModule extends TwoArgByteCode{
         @Override
         public String toString() {
-            return "LOADMODULE{" +
+            return "LoadGlobalModule{" +
                     "a=" + a +
                     ", b=" + b +
                     '}';
@@ -950,7 +956,7 @@ public interface ByteCode {
     class LoadModule extends TwoArgByteCode{
         @Override
         public String toString() {
-            return "LOADMODULE{" +
+            return "LoadModule{" +
                     "a=" + a +
                     ", b=" + b +
                     '}';

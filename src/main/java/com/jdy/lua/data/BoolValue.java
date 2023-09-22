@@ -2,6 +2,7 @@ package com.jdy.lua.data;
 
 import com.jdy.lua.executor.Executor;
 import com.jdy.lua.statement.Expr;
+import com.jdy.lua.statement.ExprTypeEnum;
 import lombok.Data;
 
 /**
@@ -21,8 +22,8 @@ public class BoolValue implements Value, Expr {
     Boolean b;
 
     @Override
-    public DataTypeEnum type() {
-        return DataTypeEnum.BOOLEAN;
+    public ExprTypeEnum exprType() {
+        return  ExprTypeEnum.BoolValue;
     }
 
     @Override
@@ -33,6 +34,11 @@ public class BoolValue implements Value, Expr {
     @Override
     public String toString() {
         return String.valueOf(b);
+    }
+
+    @Override
+    public DataTypeEnum type() {
+        return DataTypeEnum.BOOLEAN;
     }
 
     @Override

@@ -10,6 +10,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import static com.jdy.lua.statement.ExprTypeEnum.*;
+
+
 /**
  * @author jdy
  * @title: Expr
@@ -19,6 +22,8 @@ import java.util.Map;
 public interface Expr  {
 
     Value visitExpr(Executor visitor);
+
+    ExprTypeEnum exprType();
 
 
 
@@ -36,12 +41,16 @@ public interface Expr  {
             this.name = name;
         }
         @Override
-        public Value visitExpr(Executor vistor) {
-            return vistor.executeExpr(this);
+        public Value visitExpr(Executor visitor) {
+            return visitor.executeExpr(this);
         }
 
-
         String name;
+
+        @Override
+        public ExprTypeEnum exprType() {
+            return ColonExpr;
+        }
     }
     /**
      *
@@ -53,10 +62,15 @@ public interface Expr  {
         Expr right;
 
         @Override
-        public Value visitExpr(Executor vistor) {
-            return vistor.executeExpr(this);
+        public Value visitExpr(Executor visitor) {
+            return visitor.executeExpr(this);
         }
 
+
+        @Override
+        public ExprTypeEnum exprType() {
+            return DotExpr;
+        }
 
         public DotExpr(Expr left, Expr right) {
             this.left = left;
@@ -71,8 +85,13 @@ public interface Expr  {
     class IndexExpr implements Expr{
 
         @Override
-        public Value visitExpr(Executor vistor) {
-            return vistor.executeExpr(this);
+        public ExprTypeEnum exprType() {
+            return IndexExpr;
+        }
+
+        @Override
+        public Value visitExpr(Executor visitor) {
+            return visitor.executeExpr(this);
         }
 
         public IndexExpr(Expr left, Expr right) {
@@ -85,10 +104,14 @@ public interface Expr  {
     }
     @Data
     class AndExpr implements Expr{
+        @Override
+        public ExprTypeEnum exprType() {
+            return AndExpr;
+        }
 
         @Override
-        public Value visitExpr(Executor vistor) {
-            return vistor.executeExpr(this);
+        public Value visitExpr(Executor visitor) {
+            return visitor.executeExpr(this);
         }
 
         public AndExpr(Expr left, Expr right) {
@@ -101,10 +124,14 @@ public interface Expr  {
     }
     @Data
     class OrExpr implements Expr{
+        @Override
+        public ExprTypeEnum exprType() {
+            return OrExpr;
+        }
 
         @Override
-        public Value visitExpr(Executor vistor) {
-            return vistor.executeExpr(this);
+        public Value visitExpr(Executor visitor) {
+            return visitor.executeExpr(this);
         }
 
         public OrExpr(Expr left, Expr right) {
@@ -122,8 +149,13 @@ public interface Expr  {
     @Data
     class CatExpr implements Expr{
         @Override
-        public Value visitExpr(Executor vistor) {
-            return vistor.executeExpr(this);
+        public ExprTypeEnum exprType() {
+            return CatExpr;
+        }
+
+        @Override
+        public Value visitExpr(Executor visitor) {
+            return visitor.executeExpr(this);
         }
 
         Expr left;
@@ -144,12 +176,18 @@ public interface Expr  {
     @Data
     class CalExpr implements Expr{
         @Override
-        public Value visitExpr(Executor vistor) {
-            return vistor.executeExpr(this);
+        public Value visitExpr(Executor visitor) {
+            return visitor.executeExpr(this);
         }
 
         String op;
         Expr left;
+
+        @Override
+        public ExprTypeEnum exprType() {
+            return CalExpr;
+        }
+
         Expr right;
 
         public CalExpr(String op, Expr left, Expr right) {
@@ -165,8 +203,13 @@ public interface Expr  {
     @Data
     class UnaryExpr implements Expr{
         @Override
-        public Value visitExpr(Executor vistor) {
-            return vistor.executeExpr(this);
+        public ExprTypeEnum exprType() {
+            return UnaryExpr;
+        }
+
+        @Override
+        public Value visitExpr(Executor visitor) {
+            return visitor.executeExpr(this);
         }
 
         private String op;
@@ -195,14 +238,19 @@ public interface Expr  {
     @Data
     class RelExpr implements Expr{
         @Override
-        public Value visitExpr(Executor vistor) {
-            return vistor.executeExpr(this);
+        public Value visitExpr(Executor visitor) {
+            return visitor.executeExpr(this);
         }
 
         public RelExpr(String op, Expr left, Expr right) {
             this.op = op;
             this.left = left;
             this.right = right;
+        }
+
+        @Override
+        public ExprTypeEnum exprType() {
+            return RelExpr;
         }
 
         String op;
@@ -213,13 +261,18 @@ public interface Expr  {
     @Data
     class FuncCallExpr implements Expr,Statement{
         @Override
-        public Value visitExpr(Executor vistor) {
-            return vistor.executeExpr(this);
+        public Value visitExpr(Executor visitor) {
+            return visitor.executeExpr(this);
         }
 
         @Override
         public void visitStatement(Executor visitor) {
             visitor.executeStatement(this);
+        }
+
+        @Override
+        public ExprTypeEnum exprType() {
+            return FuncCallExpr;
         }
 
         public FuncCallExpr(Expr func, List<Expr> exprs) {
@@ -232,6 +285,11 @@ public interface Expr  {
          */
         private Expr func;
         private List<Expr> exprs;
+
+        @Override
+        public StatementTypeEnum statementType() {
+            return StatementTypeEnum.FuncCallExpr;
+        }
     }
 
     /**
@@ -240,6 +298,11 @@ public interface Expr  {
      */
     @Data
     class TableExpr implements Expr{
+        @Override
+        public ExprTypeEnum exprType() {
+            return TableExpr;
+        }
+
         private Map<Expr, Expr> exprExprMap = new LinkedHashMap<>();
 
 
@@ -280,6 +343,11 @@ public interface Expr  {
             return visitor.executeExpr(this);
         }
 
+        @Override
+        public ExprTypeEnum exprType() {
+            return Function;
+        }
+
     }
     @Data
     class ExprList implements Expr{
@@ -291,6 +359,12 @@ public interface Expr  {
         public Value visitExpr(Executor vistor) {
             return vistor.executeExpr(this);
         }
+
+        @Override
+        public ExprTypeEnum exprType() {
+            return null;
+        }
+
         private List<Expr> exprs;
     }
     @Data
@@ -299,10 +373,15 @@ public interface Expr  {
             this.name = name;
         }
 
+        @Override
+        public ExprTypeEnum exprType() {
+            return NameExpr;
+        }
+
         private String name;
         @Override
-        public Value visitExpr(Executor vistor) {
-            return vistor.executeExpr(this);
+        public Value visitExpr(Executor visitor) {
+            return visitor.executeExpr(this);
         }
 
     }
@@ -311,8 +390,13 @@ public interface Expr  {
     @Data
     class EmptyArg implements Expr {
         @Override
-        public Value visitExpr(Executor vistor) {
-            return vistor.executeExpr(this);
+        public ExprTypeEnum exprType() {
+            return EmptyArg;
+        }
+
+        @Override
+        public Value visitExpr(Executor visitor) {
+            return visitor.executeExpr(this);
         }
 
     }
@@ -323,10 +407,15 @@ public interface Expr  {
         private MultiArg(){
 
         }
-        @Override
 
-        public Value visitExpr(Executor vistor) {
-            return vistor.executeExpr(this);
+        @Override
+        public ExprTypeEnum exprType() {
+            return MultiArg;
+        }
+
+        @Override
+        public Value visitExpr(Executor visitor) {
+            return visitor.executeExpr(this);
         }
     }
 

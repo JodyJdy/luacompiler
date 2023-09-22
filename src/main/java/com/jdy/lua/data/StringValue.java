@@ -2,6 +2,7 @@ package com.jdy.lua.data;
 
 import com.jdy.lua.executor.Executor;
 import com.jdy.lua.statement.Expr;
+import com.jdy.lua.statement.ExprTypeEnum;
 import lombok.Data;
 
 /**
@@ -28,6 +29,11 @@ public class StringValue implements CalculateValue, Expr {
     @Override
     public String toString() {
         return val;
+    }
+
+    @Override
+    public ExprTypeEnum exprType() {
+        return ExprTypeEnum.StringValue;
     }
 
     @Override
