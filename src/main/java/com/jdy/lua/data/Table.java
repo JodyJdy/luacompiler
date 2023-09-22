@@ -3,7 +3,6 @@ package com.jdy.lua.data;
 import com.jdy.lua.executor.Checker;
 import com.jdy.lua.executor.Executor;
 import com.jdy.lua.statement.Expr;
-import com.jdy.lua.vm.FuncInfo;
 import com.jdy.lua.vm.RuntimeFunc;
 import com.jdy.lua.vm.Vm;
 
@@ -62,7 +61,7 @@ public class Table implements CalculateValue {
 
     public void addVal(Value key, Value value) {
         if (key instanceof NumberValue) {
-            addVal(String.valueOf(((NumberValue) key).getF()), value);
+            addVal(key.toString(), value);
         } else if (key instanceof StringValue) {
             addVal(((StringValue) key).getVal(), value);
         } else {
@@ -88,14 +87,9 @@ public class Table implements CalculateValue {
         map.put(key, value);
     }
 
-    public Value get(float key) {
+    public Value get(NumberValue numberValue) {
         // lua 下标从1开始
-        return get(String.valueOf(key));
-    }
-
-    public Value get(int key) {
-        // lua 下标从1开始
-        return get(String.valueOf(key));
+        return get(numberValue.toString());
     }
 
     public Value get(String key) {
@@ -128,7 +122,7 @@ public class Table implements CalculateValue {
 
     public Value get(Value value) {
         if (value instanceof NumberValue) {
-            return get(((NumberValue) value).getF());
+            return get(value);
         }
         if (value instanceof StringValue) {
             return get(((StringValue) value).getVal());

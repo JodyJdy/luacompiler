@@ -28,7 +28,7 @@ public class Math {
                         arg->{
                             NumberValue numberA = checkNumber(arg.get(0));
                             NumberValue numberB = checkNumber(arg.get(1));
-                            return new NumberValue(numberA.getF() + numberB.getF());
+                            return numberA.add(numberB);
                         }
                 ).build();
 
@@ -36,7 +36,7 @@ public class Math {
     private static NativeFunction pi(){
         return NativeFunction.builder().funcName("pi")
                 .execute(
-                        arg-> new NumberValue((float) java.lang.Math.PI)
+                        arg-> new NumberValue(java.lang.Math.PI)
                 ).build();
     }
 }

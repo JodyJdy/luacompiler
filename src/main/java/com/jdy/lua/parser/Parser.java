@@ -384,7 +384,13 @@ public class Parser {
             return parseString(exp.string());
         }
         if (exp.number() != null) {
-            return new NumberValue(Float.valueOf(exp.number().getText()));
+            String text = exp.number().getText();
+            //浮点数
+            if (text.contains(".")) {
+                return new NumberValue(Double.valueOf(text));
+            } else{
+                return new NumberValue(Long.valueOf(text));
+            }
         }
         if (exp.prefixexp() != null) {
             LuaParser.VarOrExpContext varOrExp = exp.prefixexp().varOrExp();

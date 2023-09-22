@@ -1,4 +1,5 @@
 package com.jdy.lua.vm;
+import static com.jdy.lua.vm.ByteCodeEnum.*;
 
 /**
  * 字节码设计
@@ -10,6 +11,12 @@ package com.jdy.lua.vm;
  */
 public interface ByteCode {
 
+    ByteCodeEnum type();
+
+    int getA();
+    int getB();
+    int getC();
+    int getD();
 
 
 
@@ -17,6 +24,25 @@ public interface ByteCode {
      * 无参 指令
      */
     abstract class NoArgByteCode implements ByteCode {
+        @Override
+        public int getA() {
+            return 0;
+        }
+
+        @Override
+        public int getB() {
+            return 0;
+        }
+
+        @Override
+        public int getC() {
+            return 0;
+        }
+
+        @Override
+        public int getD() {
+            return 0;
+        }
     }
 
     /**
@@ -27,6 +53,26 @@ public interface ByteCode {
 
         public SingleArgByteCode(int a) {
             this.a = a;
+        }
+
+        @Override
+        public int getA() {
+            return a;
+        }
+
+        @Override
+        public int getB() {
+            return 0;
+        }
+
+        @Override
+        public int getC() {
+            return 0;
+        }
+
+        @Override
+        public int getD() {
+            return 0;
         }
     }
 
@@ -46,24 +92,77 @@ public interface ByteCode {
         public String toString() {
             return this.getClass().getName() + "a = "+ a+ ","+"b="+b;
         }
+
+        @Override
+        public int getA() {
+            return a;
+        }
+
+        @Override
+        public int getB() {
+            return b;
+        }
+
+        @Override
+        public int getC() {
+            return 0;
+        }
+
+        @Override
+        public int getD() {
+            return 0;
+        }
     }
 
     /**
      * 三个参数的指令
      */
-    abstract class ThreeArgByteCode implements ByteCode {
+    abstract class ThreeArgByteCode extends TwoArgByteCode {
         protected int a;
         protected int b;
         protected int c;
 
         public ThreeArgByteCode(int a, int b, int c) {
-            this.a = a;
-            this.b = b;
+            super(a,b);
             this.c = c;
         }
+
+        @Override
+        public int getA() {
+            return a;
+        }
+
+        @Override
+        public int getB() {
+            return b;
+        }
+
+        @Override
+        public int getC() {
+            return c;
+        }
+
+        @Override
+        public int getD() {
+            return 0;
+        }
+
         @Override
         public String toString() {
             return this.getClass().getName() + "a = "+ a+ ","+"b="+b+"c="+c;
+        }
+    }
+
+    abstract class FourArgByteCode extends ThreeArgByteCode{
+        public FourArgByteCode(int a, int b, int c) {
+            super(a, b, c);
+        }
+
+        protected int d;
+
+        @Override
+        public int getD() {
+            return d;
         }
     }
 
@@ -79,6 +178,11 @@ public interface ByteCode {
         public Jmp(DynamicLabel dynamicLabel) {
             super(0);
             this.dynamicLabel = dynamicLabel;
+        }
+
+        @Override
+        public ByteCodeEnum type() {
+            return Jmp;
         }
 
         public Jmp(int a) {
@@ -120,6 +224,11 @@ public interface ByteCode {
      */
 
     class Add extends Calculate {
+        @Override
+        public ByteCodeEnum type() {
+            return Add;
+        }
+
         public Add(int a, int b, int c) {
             super(a, b, c);
         }
@@ -147,6 +256,11 @@ public interface ByteCode {
         }
 
         @Override
+        public ByteCodeEnum type() {
+            return Sub;
+        }
+
+        @Override
         public String toString() {
             return "SUB{" +
                     "a=" + a +
@@ -156,6 +270,11 @@ public interface ByteCode {
         }
     }
     class MUL extends Calculate{
+        @Override
+        public ByteCodeEnum type() {
+            return MUL;
+        }
+
         @Override
         public String toString() {
             return "MUL{" +
@@ -171,6 +290,11 @@ public interface ByteCode {
     }
     class Div extends Calculate{
         @Override
+        public ByteCodeEnum type() {
+            return Div;
+        }
+
+        @Override
         public String toString() {
             return "DIV{" +
                     "a=" + a +
@@ -184,6 +308,11 @@ public interface ByteCode {
         }
     }
     class Mod extends Calculate{
+        @Override
+        public ByteCodeEnum type() {
+            return Mod;
+        }
+
         @Override
         public String toString() {
             return "MOD{" +
@@ -199,6 +328,11 @@ public interface ByteCode {
     }
     class IntMod extends Calculate{
         @Override
+        public ByteCodeEnum type() {
+            return IntMod;
+        }
+
+        @Override
         public String toString() {
             return "INTMOD{" +
                     "a=" + a +
@@ -212,6 +346,11 @@ public interface ByteCode {
         }
     }
     class Pow extends Calculate{
+        @Override
+        public ByteCodeEnum type() {
+            return Pow;
+        }
+
         @Override
         public String toString() {
             return "POW{" +
@@ -227,6 +366,11 @@ public interface ByteCode {
     }
     class BitAnd extends Calculate{
         @Override
+        public ByteCodeEnum type() {
+            return BitAnd;
+        }
+
+        @Override
         public String toString() {
             return "BITAND{" +
                     "a=" + a +
@@ -240,6 +384,11 @@ public interface ByteCode {
         }
     }
     class BitOr extends Calculate{
+        @Override
+        public ByteCodeEnum type() {
+            return BitOr;
+        }
+
         @Override
         public String toString() {
             return "BITOR{" +
@@ -255,6 +404,11 @@ public interface ByteCode {
     }
     class BitLeftShift extends Calculate{
         @Override
+        public ByteCodeEnum type() {
+            return BitLeftShift;
+        }
+
+        @Override
         public String toString() {
             return "BitLeftShift{" +
                     "a=" + a +
@@ -268,6 +422,11 @@ public interface ByteCode {
         }
     }
     class BitRightShift extends Calculate{
+        @Override
+        public ByteCodeEnum type() {
+            return BitRightShift;
+        }
+
         public BitRightShift(int a, int b, int c) {
             super(a, b, c);
         }
@@ -282,6 +441,11 @@ public interface ByteCode {
         }
     }
     class Cat extends Calculate{
+        @Override
+        public ByteCodeEnum type() {
+            return Cat;
+        }
+
         @Override
         public String toString() {
             return "CAT{" +
@@ -309,6 +473,11 @@ public interface ByteCode {
                     ", c=" + c +
                     '}';
         }
+
+        @Override
+        public ByteCodeEnum type() {
+            return And;
+        }
     }
     class Or extends Calculate{
         @Override
@@ -318,6 +487,11 @@ public interface ByteCode {
                     ", b=" + b +
                     ", c=" + c +
                     '}';
+        }
+
+        @Override
+        public ByteCodeEnum type() {
+            return Or;
         }
 
         public Or(int a, int b, int c) {
@@ -339,15 +513,25 @@ public interface ByteCode {
         public Test(int a) {
             super(a);
         }
+
+        @Override
+        public ByteCodeEnum type() {
+            return Test;
+        }
     }
 
-    class Compare extends TwoArgByteCode{
+    abstract class Compare extends TwoArgByteCode{
         public Compare(int a, int b) {
             super(a, b);
         }
     }
 
     class Eq extends Compare{
+        @Override
+        public ByteCodeEnum type() {
+            return Eq;
+        }
+
         @Override
         public String toString() {
             return "EQ{" +
@@ -363,6 +547,11 @@ public interface ByteCode {
 
     class Ne extends Compare {
         @Override
+        public ByteCodeEnum type() {
+            return Ne;
+        }
+
+        @Override
         public String toString() {
             return "NE{" +
                     "a=" + a +
@@ -375,6 +564,11 @@ public interface ByteCode {
         }
     }
     class Ge extends Compare{
+        @Override
+        public ByteCodeEnum type() {
+            return Ge;
+        }
+
         @Override
         public String toString() {
             return "GE{" +
@@ -389,6 +583,11 @@ public interface ByteCode {
     }
     class Gt extends Compare{
         @Override
+        public ByteCodeEnum type() {
+            return Gt;
+        }
+
+        @Override
         public String toString() {
             return "GT{" +
                     "a=" + a +
@@ -402,6 +601,11 @@ public interface ByteCode {
     }
 
     class Lt extends Compare{
+        @Override
+        public ByteCodeEnum type() {
+            return Lt;
+        }
+
         @Override
         public String toString() {
             return "LT{" +
@@ -426,6 +630,11 @@ public interface ByteCode {
         public Le(int a, int b) {
             super(a, b);
         }
+
+        @Override
+        public ByteCodeEnum type() {
+            return Le;
+        }
     }
 
 
@@ -445,6 +654,11 @@ public interface ByteCode {
         public LoadVar(int a, int b) {
             super(a, b);
         }
+
+        @Override
+        public ByteCodeEnum type() {
+            return LoadVar;
+        }
     }
 
     /**
@@ -463,6 +677,11 @@ public interface ByteCode {
 
         public LoadUpVar(int a, int b) {
             super(a, b);
+        }
+
+        @Override
+        public ByteCodeEnum type() {
+            return LoadVar;
         }
     }
 
@@ -487,6 +706,11 @@ public interface ByteCode {
         public SaveNil(int a, int b) {
             super(a, b);
         }
+
+        @Override
+        public ByteCodeEnum type() {
+            return SaveNil;
+        }
     }
 
     /**
@@ -502,6 +726,11 @@ public interface ByteCode {
                     "a=" + a +
                     ", b=" + b +
                     '}';
+        }
+
+        @Override
+        public ByteCodeEnum type() {
+            return LoadFunc;
         }
     }
 
@@ -520,6 +749,11 @@ public interface ByteCode {
         public LoadConstant(int a, int b) {
             super(a, b);
         }
+
+        @Override
+        public ByteCodeEnum type() {
+            return LoadConstant;
+        }
     }
 
     /**
@@ -536,6 +770,11 @@ public interface ByteCode {
 
         public LoadGlobal(int a, int b) {
             super(a, b);
+        }
+
+        @Override
+        public ByteCodeEnum type() {
+            return LoadGlobal;
         }
     }
 
@@ -555,6 +794,11 @@ public interface ByteCode {
 
         public SaveVar(int a, int b) {
             super(a, b);
+        }
+
+        @Override
+        public ByteCodeEnum type() {
+            return SaveVar;
         }
     }
 
@@ -576,6 +820,11 @@ public interface ByteCode {
                     ", b=" + b +
                     '}';
         }
+
+        @Override
+        public ByteCodeEnum type() {
+            return SaveGlobal;
+        }
     }
 
     /**
@@ -596,6 +845,11 @@ public interface ByteCode {
         public SaveUpval(int a, int b) {
             super(a, b);
         }
+
+        @Override
+        public ByteCodeEnum type() {
+            return SaveUpval;
+        }
     }
     /**
      *
@@ -612,7 +866,7 @@ public interface ByteCode {
      *  d 表示 返回值数量， 如果d = -1 表示全部返回
      */
 
-    class Call extends ThreeArgByteCode{
+    class Call extends FourArgByteCode{
         int d;
         @Override
         public String toString() {
@@ -629,6 +883,10 @@ public interface ByteCode {
             this.d = d;
         }
 
+        @Override
+        public ByteCodeEnum type() {
+            return Call;
+        }
     }
     /**
      * 处理 ... 参数
@@ -646,6 +904,11 @@ public interface ByteCode {
 
         public VarArgs(int a, int b) {
             super(a, b);
+        }
+
+        @Override
+        public ByteCodeEnum type() {
+            return VarArgs;
         }
     }
 
@@ -669,6 +932,11 @@ public interface ByteCode {
         public ReturnMulti(int a, int b) {
             super(a, b);
         }
+
+        @Override
+        public ByteCodeEnum type() {
+            return ReturnMulti;
+        }
     }
     /**
      * 无参数返回
@@ -677,6 +945,11 @@ public interface ByteCode {
         @Override
         public String toString() {
             return "RETURN{}";
+        }
+
+        @Override
+        public ByteCodeEnum type() {
+            return Return;
         }
     }
 
@@ -701,12 +974,21 @@ public interface ByteCode {
         public GetTableMethod(int a, int b) {
             super(a, b);
         }
+
+        @Override
+        public ByteCodeEnum type() {
+            return GetTableMethod;
+        }
     }
     /**
      *
      * 将 寄存器A中的Table， 下标b 的内容读取到寄存器A里面
      */
     class GetTable extends TwoArgByteCode{
+        @Override
+        public ByteCodeEnum type() {
+            return GetTable;
+        }
 
         @Override
         public String toString() {
@@ -735,6 +1017,11 @@ public interface ByteCode {
         public NewTable(int a) {
             super(a);
         }
+
+        @Override
+        public ByteCodeEnum type() {
+            return NewTable;
+        }
     }
 
     /**
@@ -754,6 +1041,11 @@ public interface ByteCode {
         public SetTableNil(int a, int b) {
             super(a, b);
         }
+
+        @Override
+        public ByteCodeEnum type() {
+            return SetTableNil;
+        }
     }
     /**
      *
@@ -771,6 +1063,11 @@ public interface ByteCode {
 
         public SetTable(int a, int b, int c) {
             super(a, b, c);
+        }
+
+        @Override
+        public ByteCodeEnum type() {
+            return SetTable;
         }
     }
 
@@ -790,6 +1087,11 @@ public interface ByteCode {
 
         public SetTableArray(int a, int b, int c) {
             super(a, b, c);
+        }
+
+        @Override
+        public ByteCodeEnum type() {
+            return SetTableArray;
         }
     }
 
@@ -818,6 +1120,11 @@ public interface ByteCode {
         public NumberFor(int a) {
             super(a);
         }
+
+        @Override
+        public ByteCodeEnum type() {
+            return NumberFor;
+        }
     }
 
     /**
@@ -835,6 +1142,11 @@ public interface ByteCode {
 
         public EndNumberFor(int a) {
             super(a);
+        }
+
+        @Override
+        public ByteCodeEnum type() {
+            return EndNumberFor;
         }
     }
 
@@ -866,6 +1178,11 @@ public interface ByteCode {
                     ",  d=" + d +
                     '}';
         }
+
+        @Override
+        public ByteCodeEnum type() {
+            return GenericFor;
+        }
     }
 
 
@@ -881,6 +1198,11 @@ public interface ByteCode {
         }
         public Length(int a) {
             super(a);
+        }
+
+        @Override
+        public ByteCodeEnum type() {
+            return Length;
         }
     }
 
@@ -899,6 +1221,11 @@ public interface ByteCode {
         public Not(int a) {
             super(a);
         }
+
+        @Override
+        public ByteCodeEnum type() {
+            return Not;
+        }
     }
 
     /**
@@ -910,6 +1237,11 @@ public interface ByteCode {
             return "BITREVERSE{" +
                     "a=" + a +
                     '}';
+        }
+
+        @Override
+        public ByteCodeEnum type() {
+            return BitReverse;
         }
 
         public BitReverse(int a) {
@@ -931,6 +1263,11 @@ public interface ByteCode {
                     "a=" + a +
                     '}';
         }
+
+        @Override
+        public ByteCodeEnum type() {
+            return Negative;
+        }
     }
 
 
@@ -949,6 +1286,11 @@ public interface ByteCode {
         public LoadGlobalModule(int a, int b) {
             super(a, b);
         }
+
+        @Override
+        public ByteCodeEnum type() {
+            return LoadGlobalModule;
+        }
     }
     /**
      *  将常量 b 作为模块加载到寄存器 a中
@@ -960,6 +1302,11 @@ public interface ByteCode {
                     "a=" + a +
                     ", b=" + b +
                     '}';
+        }
+
+        @Override
+        public ByteCodeEnum type() {
+            return LoadModule;
         }
 
         public LoadModule(int a, int b) {

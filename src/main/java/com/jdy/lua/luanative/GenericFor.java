@@ -36,7 +36,7 @@ public class GenericFor {
                             if (val == NilValue.NIL) {
                                 return new MultiValue(List.of(new NumberValue(1),table.get(table.key(0))));
                             } else{
-                                int index = Checker.checkNumber(val).getF().intValue();
+                                int index = Checker.checkNumber(val).intValue();
                                 //迭代结束
                                 if (index >= table.keys().size()) {
                                     return new MultiValue(List.of(NilValue.NIL, NilValue.NIL));

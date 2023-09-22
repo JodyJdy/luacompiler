@@ -33,7 +33,7 @@ public class Executor {
      */
     public static final ThreadLocal<Block> THREAD_LOCAL_BLOCK = new ThreadLocal<>();
 
-    public static  Block currentThreadBlock(){
+    public static Block currentThreadBlock() {
         return THREAD_LOCAL_BLOCK.get();
     }
 
@@ -41,10 +41,12 @@ public class Executor {
     /**
      * 为了减少从ThreadLocal中访问，定义curBlock
      */
-    private  Block curBlock;
-    public  Block currentBlock(){
+    private Block curBlock;
+
+    public Block currentBlock() {
         return curBlock;
     }
+
     public void setCurrentBlock(Block block) {
         THREAD_LOCAL_BLOCK.set(block);
         curBlock = block;
@@ -171,7 +173,7 @@ public class Executor {
         int i = 0;
         //包含self默认参数，第一个就是默认参数
         if (function.isObjMethod()) {
-            currentBlock().addVar("self",args.get(i));
+            currentBlock().addVar("self", args.get(i));
         }
         for (; i < parameterNames.size(); i++) {
             if (i < args.size()) {
@@ -195,7 +197,7 @@ public class Executor {
     /**
      * 如果跳转的位置是当前label则，继续执行，返回执行的下标
      */
-    private  int checkStatementIndex(){
+    private int checkStatementIndex() {
         //如果 发生了goto，且跳转的位置是当前block，则继续
         if (gotoLabel != null) {
             LabelLocation location = labelLocation.get(gotoLabel);
@@ -206,7 +208,7 @@ public class Executor {
                 return location.getStatementIndex();
             }
         }
-        return  -1;
+        return -1;
     }
 
     public void executeBlock(Block block) {
@@ -222,7 +224,7 @@ public class Executor {
             }
             //block是否应该结束
             if (blockShouldStop()) {
-                if ((i = checkStatementIndex()) >= 0){
+                if ((i = checkStatementIndex()) >= 0) {
                 } else {
                     break;
                 }
@@ -319,7 +321,7 @@ public class Executor {
                     variable.setValue(value);
                 }
             } else if (expr instanceof DotExpr dotExpr) {
-                Table  left = checkTable(dotExpr.getLeft().visitExpr(this));
+                Table left = checkTable(dotExpr.getLeft().visitExpr(this));
                 checkName(dotExpr.getRight());
                 NameExpr nameExpr = (NameExpr) dotExpr.getRight();
                 left.addVal(nameExpr.getName(), value);
@@ -376,9 +378,9 @@ public class Executor {
             step = (NumberValue) statement.getExpr3().visitExpr(this);
         }
         currentBlock().addVar(statement.getVar(), initValue);
-        boolean reverse = finalValue.getF() < initValue.getF();
+        boolean reverse = finalValue.lt(initValue) == TRUE;
         circleLevel++;
-        for (; reverse ? initValue.getF() >= finalValue.getF() : initValue.getF() <= finalValue.getF(); initValue.setF(initValue.getF() + step.getF())) {
+        for (; reverse ? initValue.ge(finalValue) == TRUE : initValue.le(finalValue) == TRUE; initValue.increase(step)) {
             statement.getBlockStatement().visitStatement(this);
             if (shouldReturn()) {
                 break;
@@ -404,7 +406,7 @@ public class Executor {
             if (expr instanceof FuncCallExpr) {
                 MultiValue multi = checkMultiValue(expr.visitExpr(this));
                 iteratorMiddle.addAll(multi.getValueList());
-            } else{
+            } else {
                 // for k,v in f,s,var 形式
                 iteratorMiddle.add(expr.visitExpr(this));
             }
@@ -416,11 +418,12 @@ public class Executor {
         List<Iterator> iterators = new ArrayList<>();
         // 将 f,s,var 组成一个 迭代器
         for (int i = 0; i < iteratorMiddle.size(); i += 3) {
-            iterators.add(new Iterator(checkFunc(iteratorMiddle.get(i)),iteratorMiddle.get(i+1),
-                    iteratorMiddle.get(i+2)));
+            iterators.add(new Iterator(checkFunc(iteratorMiddle.get(i)), iteratorMiddle.get(i + 1),
+                    iteratorMiddle.get(i + 2)));
         }
         return iterators;
     }
+
     /**
      * @param statement
      */
@@ -429,10 +432,10 @@ public class Executor {
         List<Iterator> iterators = prepareIterator(statement.getExpList());
         List<String> vars = statement.getVars();
         //变量先放进去
-        vars.forEach(var-> currentBlock().addVar(var,NIL));
+        vars.forEach(var -> currentBlock().addVar(var, NIL));
         circleLevel++;
         Label:
-        while(true){
+        while (true) {
             List<Value> tempValues = new ArrayList<>();
             for (Iterator iter : iterators) {
                 Executor doIter = new Executor(iter.getIteratorFunc(), List.of(iter.getSource(), iter.getVar()));
@@ -537,10 +540,10 @@ public class Executor {
                     //只有最后一个取多值
                     if (i == statement.getExprs().size() - 1) {
                         multi.addAll(multiValue.getValueList());
-                    }  else{
+                    } else {
                         multi.add(multiValue.getValueList().get(0));
                     }
-                } else{
+                } else {
                     multi.add(val);
                 }
             }
@@ -629,7 +632,7 @@ public class Executor {
     public Value executeExpr(CalExpr expr) {
         Value left = expr.getLeft().visitExpr(this);
         Value right = expr.getRight().visitExpr(this);
-        if(left instanceof CalculateValue l && right instanceof CalculateValue r) {
+        if (left instanceof CalculateValue l && right instanceof CalculateValue r) {
             return switch (expr.getOp()) {
                 case "+" -> l.add(r);
                 case "-" -> l.sub(r);
@@ -657,7 +660,7 @@ public class Executor {
                     return cal.len();
                 }
                 if (v instanceof MultiValue mul) {
-                   return new NumberValue(mul.getValueList().size());
+                    return new NumberValue(mul.getValueList().size());
                 }
             }
             case "not" -> {
@@ -668,8 +671,7 @@ public class Executor {
             }
             case "-" -> {
                 if (v instanceof NumberValue) {
-                    float f = -1 * ((NumberValue) v).getF();
-                    return new NumberValue(f);
+                    return ((NumberValue) v).negative();
                 }
             }
             case "~" -> {
@@ -683,7 +685,7 @@ public class Executor {
 
     public Value executeExpr(RelExpr expr) {
         Value left = expr.getLeft().visitExpr(this);
-        Value  right = expr.getRight().visitExpr(this);
+        Value right = expr.getRight().visitExpr(this);
         return switch (expr.getOp()) {
             case "<" -> left.lt(right);
             case ">" -> left.gt(right);
@@ -710,8 +712,8 @@ public class Executor {
             Table table = checkTable(colonExpr.getLeft().visitExpr(this));
             initArgs.add(table);
             function = checkFunc(table.get(colonExpr.getName()));
-        } else{
-            function = checkFunc( expr.getFunc().visitExpr(this));
+        } else {
+            function = checkFunc(expr.getFunc().visitExpr(this));
         }
         //求实参的值
         for (int i = 0; i < expr.getExprs().size(); i++) {
@@ -719,17 +721,17 @@ public class Executor {
             Value value = e.visitExpr(this);
             if (value instanceof MultiValue multiValue) {
                 //只有最后一个取多值
-                if (i == expr.getExprs().size()-1) {
+                if (i == expr.getExprs().size() - 1) {
                     initArgs.addAll(multiValue.getValueList());
-                }  else{
+                } else {
                     initArgs.add(multiValue.getValueList().get(0));
                 }
-            }else{
+            } else {
                 initArgs.add(value);
             }
         }
         //调用函数
-        Executor executor = new Executor(function,initArgs);
+        Executor executor = new Executor(function, initArgs);
         return executor.execute();
     }
 
@@ -751,7 +753,7 @@ public class Executor {
             if (v instanceof MultiArg || v instanceof FuncCallExpr) {
                 MultiValue mul = checkMultiValue(v.visitExpr(this));
                 mul.getValueList().forEach(table::addVal);
-            } else{
+            } else {
                 table.addVal(key, v.visitExpr(this));
             }
         });

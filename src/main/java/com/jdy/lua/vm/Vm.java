@@ -43,161 +43,341 @@ public class Vm {
         int len = codes.length;
         Value result = NIL;
         int pc = from;
+        // 记录下字节码的值，减少 instanceof 运算
+        int a = 0, b = 0, c = 0, d = 0;
         while (pc < len) {
             ByteCode code = codes[pc];
-            if (code instanceof Jmp jmp) {
-                pc = jmp.a;
-                continue;
-            } else if (code instanceof Calculate calculate) {
-                runCalculate(calculate);
-            } else if (code instanceof Compare compare) {
-                runCompare(compare);
-            } else if (code instanceof Test test) {
-                StackElement val = registers[test.a];
-                //为真继续执行
-                if (val.getValue() != NIL && val.getValue() != FALSE) {
-                    pc++;
-                }
-            } else if (code instanceof LoadVar loadvar) {
-                registers[loadvar.a].setValue(registers[loadvar.b].getValue());
-            } else if (code instanceof LoadUpVar loadupvar) {
-                registers[loadupvar.a].setValue(runtimeFunc.upValList.get(loadupvar.b).up.getValue());
-            } else if (code instanceof LoadGlobal loadglobal) {
-                registers[loadglobal.a].setValue(
-                        FuncInfo.getGlobalVal(loadglobal.b).getVal()
-                );
-            } else if (code instanceof LoadConstant loadconstant) {
-                registers[loadconstant.a].setValue(
-                        FuncInfo.getConstant(loadconstant.b)
-                );
-            } else if (code instanceof LoadFunc loadfunc) {
-                runLoadFunc(loadfunc);
-            } else if (code instanceof SaveNil savenil) {
-                if (savenil.a == SaveNil.LOCAL_VAR) {
-                    registers[savenil.b].setValue(NIL);
-                } else if (savenil.a == SaveNil.UPVAL) {
-                    runtimeFunc.upValList.get(savenil.b).up.setValue(NIL);
-                } else {
-                    FuncInfo.getGlobalVal(savenil.b).setVal(NIL);
-                }
-            } else if (code instanceof SaveVar savevar) {
-                registers[savevar.a].setValue(registers[savevar.b].getValue());
-            } else if (code instanceof SaveGlobal saveglobal) {
-                FuncInfo.getGlobalVal(saveglobal.a)
-                        .setVal(registers[saveglobal.b].getValue());
-            } else if (code instanceof SaveUpval saveupval) {
-                runtimeFunc.upValList.get(saveupval.a).up
-                        .setValue(registers[saveupval.b].getValue());
-            } else if (code instanceof Return) {
-                break;
-            } else if (code instanceof ReturnMulti returnmulti) {
-                result = runReturnMulti(returnmulti);
-                break;
-            } else if (code instanceof NewTable newtable) {
-                registers[newtable.a].setValue(new Table());
-            } else if (code instanceof GetTable gettable) {
-                Table table = Checker.checkTable(registers[gettable.a].getValue());
-                Value val = table.get(registers[gettable.b].getValue());
-                registers[gettable.a].setValue(val);
-            } else if (code instanceof GetTableMethod gettablemethod) {
-                Table table = Checker.checkTable(registers[gettablemethod.a].getValue());
-                Value val = table.get(registers[gettablemethod.b].getValue());
-                //交换值
-                registers[gettablemethod.a].setValue(val);
-                registers[gettablemethod.b].setValue(table);
-            } else if (code instanceof SetTableNil settablenil) {
-                Table table = Checker.checkTable(registers[settablenil.a].getValue());
-                Value key = table.get(registers[settablenil.b].getValue());
-                table.addVal(key, NIL);
-            } else if (code instanceof SetTable settable) {
-                Table table = Checker.checkTable(registers[settable.a].getValue());
-                Value key = registers[settable.b].getValue();
-                Value value = registers[settable.c].getValue();
-                table.addVal(key, value);
-            } else if (code instanceof Call call) {
-                runCall(call);
-            } else if (code instanceof VarArgs varargs) {
-                runVarargs(varargs);
-            } else if (code instanceof NumberFor numberfor) {
-                NumberValue init = Checker.checkNumber(registers[numberfor.a].getValue());
-                NumberValue finalValue = Checker.checkNumber(registers[numberfor.a + 1].getValue());
-                NumberValue step = Checker.checkNumber(registers[numberfor.a + 2].getValue());
-                if (step.getF() > 0 && init.getF() <= finalValue.getF()) {
-                    pc++;
-                }
-                if (step.getF() <= 0 && init.getF() >= finalValue.getF()) {
-                    pc++;
-                }
+            //减少判断
+            a = code.getA();
+            b = code.getB();
+            c = code.getC();
+            d = code.getD();
 
-            } else if (code instanceof EndNumberFor endnumberfor) {
-                NumberValue init = Checker.checkNumber(registers[endnumberfor.a].getValue());
-                NumberValue step = Checker.checkNumber(registers[endnumberfor.a + 2].getValue());
-                registers[endnumberfor.a].setValue(new NumberValue(init.getF() + step.getF()));
-            } else if (code instanceof Length length) {
-                Value val = registers[length.a].getValue();
-                if (val instanceof StringValue str) {
-                    registers[length.a].setValue(new NumberValue(str.getVal().length()));
-                } else if (val instanceof Table table) {
-                    registers[length.a].setValue(table.len());
+
+            switch (code.type()) {
+                case Jmp -> {
+                    pc = a;
+                    continue;
                 }
-            } else if (code instanceof Not not) {
-                Value val = registers[not.a].getValue();
-                if (FALSE.equals(val)) {
-                    registers[not.a].setValue(TRUE);
-                } else {
-                    registers[not.a].setValue(FALSE);
+                case Add -> {
+                    StackElement left = registers[b];
+                    StackElement right = registers[c];
+                    CalculateValue l = (CalculateValue) left.getValue();
+                    CalculateValue r = (CalculateValue) right.getValue();
+                    registers[a].setValue(l.add(r));
                 }
-            } else if (code instanceof Negative negative) {
-                NumberValue val = Checker.checkNumber(registers[negative.a].getValue());
-                registers[negative.a].setValue(new NumberValue(val.getF() * -1));
-            } else if (code instanceof BitReverse bitreverse) {
-                CalculateValue val = Checker.checkCalculate(registers[bitreverse.a].getValue());
-                registers[bitreverse.a].setValue(val.unm());
-            } else if (code instanceof LoadGlobalModule loadglobalmodule) {
-                String moduleName = Checker.checkStringVal(FuncInfo.getConstant(loadglobalmodule.b));
-                Table table = NativeLoader.loadVmModule(moduleName);
-                FuncInfo.getGlobalVal(loadglobalmodule.a).setVal(table);
-            } else if (code instanceof LoadModule loadmodule) {
-                String moduleName = Checker.checkStringVal(FuncInfo.getConstant(loadmodule.b));
-                Table table = NativeLoader.loadVmModule(moduleName);
-                registers[loadmodule.a].setValue(table);
-            } else if (code instanceof GenericFor genericfor) {
-                //三个一组 s,f,var
-                List<Value> resultList = new ArrayList<>();
-                for (int i = genericfor.c; i <= genericfor.d; i += 3) {
-                    Value val = registers[i].getValue();
-                    List<Value> args = List.of(registers[i + 1].getValue(), registers[i + 2].getValue());
-                    Value returnVal;
-                    if (val instanceof NativeFunction nativeFunction) {
-                        returnVal = nativeFunction.execute(args);
-                    } else if (val instanceof RuntimeFunc runtimeFunc1) {
-                        returnVal = runtimeFunc1.call(args);
+                case Sub -> {
+                    StackElement left = registers[b];
+                    StackElement right = registers[c];
+                    CalculateValue l = (CalculateValue) left.getValue();
+                    CalculateValue r = (CalculateValue) right.getValue();
+                    registers[a].setValue(l.sub(r));
+                }
+                case MUL -> {
+                    StackElement left = registers[b];
+                    StackElement right = registers[c];
+                    CalculateValue l = (CalculateValue) left.getValue();
+                    CalculateValue r = (CalculateValue) right.getValue();
+                    registers[a].setValue(l.mul(r));
+                }
+                case Div -> {
+                    StackElement left = registers[b];
+                    StackElement right = registers[c];
+                    CalculateValue l = (CalculateValue) left.getValue();
+                    CalculateValue r = (CalculateValue) right.getValue();
+                    registers[a].setValue(l.div(r));
+                }
+                case Mod -> {
+                    StackElement left = registers[b];
+                    StackElement right = registers[c];
+                    CalculateValue l = (CalculateValue) left.getValue();
+                    CalculateValue r = (CalculateValue) right.getValue();
+                    registers[a].setValue(l.mod(r));
+                }
+                case IntMod -> {
+                    StackElement left = registers[b];
+                    StackElement right = registers[c];
+                    CalculateValue l = (CalculateValue) left.getValue();
+                    CalculateValue r = (CalculateValue) right.getValue();
+                    registers[a].setValue(l.intMod(r));
+                }
+                case Pow -> {
+                    StackElement left = registers[b];
+                    StackElement right = registers[c];
+                    CalculateValue l = (CalculateValue) left.getValue();
+                    CalculateValue r = (CalculateValue) right.getValue();
+                    registers[a].setValue(l.pow(r));
+                }
+                case BitAnd -> {
+                    StackElement left = registers[b];
+                    StackElement right = registers[c];
+                    CalculateValue l = (CalculateValue) left.getValue();
+                    CalculateValue r = (CalculateValue) right.getValue();
+                    registers[a].setValue(l.bitAnd(r));
+                }
+                case BitOr -> {
+                    StackElement left = registers[b];
+                    StackElement right = registers[c];
+                    CalculateValue l = (CalculateValue) left.getValue();
+                    CalculateValue r = (CalculateValue) right.getValue();
+                    registers[a].setValue(l.bitOr(r));
+                }
+                case BitLeftShift -> {
+                    StackElement left = registers[b];
+                    StackElement right = registers[c];
+                    CalculateValue l = (CalculateValue) left.getValue();
+                    CalculateValue r = (CalculateValue) right.getValue();
+                    registers[a].setValue(l.bitLeftMove(r));
+                }
+                case BitRightShift -> {
+                    StackElement left = registers[b];
+                    StackElement right = registers[c];
+                    CalculateValue l = (CalculateValue) left.getValue();
+                    CalculateValue r = (CalculateValue) right.getValue();
+                    registers[a].setValue(l.bitRightMove(r));
+                }
+                case Cat -> {
+                    StackElement left = registers[b];
+                    StackElement right = registers[c];
+                    CalculateValue l = (CalculateValue) left.getValue();
+                    CalculateValue r = (CalculateValue) right.getValue();
+                    registers[a].setValue(l.concat(r));
+                }
+                case And -> {
+                    StackElement left = registers[b];
+                    StackElement right = registers[c];
+                    Value l = left.getValue();
+                    Value r = right.getValue();
+                    if (l == FALSE || l == NIL) {
+                        registers[a].setValue(l);
                     } else {
-                        throw new RuntimeException("错误的泛型for循环参数");
+                        registers[a].setValue(r);
                     }
-                    //结束循环
-                    if (returnVal == NIL) {
-                        break;
+                }
+                case Or -> {
+                    StackElement left = registers[b];
+                    StackElement right = registers[c];
+                    Value l = left.getValue();
+                    Value r = right.getValue();
+                    if (l == FALSE || r == NIL) {
+                        registers[a].setValue(r);
+                    } else {
+                        registers[a].setValue(l);
                     }
-                    if (returnVal instanceof MultiValue multiValue) {
+
+                }
+                case Eq -> {
+                    StackElement left = registers[a];
+                    StackElement right = registers[b];
+                    Value leftVal = left.getValue();
+                    Value rightVal = right.getValue();
+                    registers[a].setValue(leftVal.eq(rightVal));
+                }
+                case Ne -> {
+                    StackElement left = registers[a];
+                    StackElement right = registers[b];
+                    Value leftVal = left.getValue();
+                    Value rightVal = right.getValue();
+                    registers[a].setValue(leftVal.ne(rightVal));
+                }
+                case Ge -> {
+                    StackElement left = registers[a];
+                    StackElement right = registers[b];
+                    Value leftVal = left.getValue();
+                    Value rightVal = right.getValue();
+                    registers[a].setValue(leftVal.ge(rightVal));
+                }
+                case Gt -> {
+                    StackElement left = registers[a];
+                    StackElement right = registers[b];
+                    Value leftVal = left.getValue();
+                    Value rightVal = right.getValue();
+                    registers[a].setValue(leftVal.gt(rightVal));
+                }
+                case Lt -> {
+                    StackElement left = registers[a];
+                    StackElement right = registers[b];
+                    Value leftVal = left.getValue();
+                    Value rightVal = right.getValue();
+                    registers[a].setValue(leftVal.lt(rightVal));
+                }
+                case Le -> {
+                    StackElement left = registers[a];
+                    StackElement right = registers[b];
+                    Value leftVal = left.getValue();
+                    Value rightVal = right.getValue();
+                    registers[a].setValue(leftVal.le(rightVal));
+                }
+                case Test -> {
+                    StackElement val = registers[a];
+                    //为真继续执行
+                    if (val.getValue() != NIL && val.getValue() != FALSE) {
+                        pc++;
+                    }
+
+                }
+                case LoadVar -> {
+                    registers[a].setValue(registers[b].getValue());
+                }
+                case LoadUpVar -> {
+                    registers[a].setValue(runtimeFunc.upValList.get(b).up.getValue());
+                }
+                case LoadGlobal -> {
+                    registers[a].setValue(
+                            FuncInfo.getGlobalVal(b).getVal());
+                }
+                case LoadConstant -> {
+                    registers[a].setValue(
+                            FuncInfo.getConstant(b));
+                }
+                case LoadFunc -> {
+                    runLoadFunc(a, b);
+                }
+                case SaveNil -> {
+                    if (a == SaveNil.LOCAL_VAR) {
+                        registers[b].setValue(NIL);
+                    } else if (a == SaveNil.UPVAL) {
+                        runtimeFunc.upValList.get(b).up.setValue(NIL);
+                    } else {
+                        FuncInfo.getGlobalVal(b).setVal(NIL);
+                    }
+                }
+                case SaveVar -> {
+                    registers[a].setValue(registers[b].getValue());
+                }
+                case SaveGlobal -> {
+                    FuncInfo.getGlobalVal(a)
+                            .setVal(registers[b].getValue());
+                }
+                case SaveUpval -> {
+                    runtimeFunc.upValList.get(a).up
+                            .setValue(registers[b].getValue());
+                }
+                case Return -> {
+                }
+                case ReturnMulti -> {
+                    result = runReturnMulti(a, b);
+                }
+                case NewTable -> {
+                    registers[a].setValue(new Table());
+                }
+                case GetTable -> {
+                    Table table = Checker.checkTable(registers[a].getValue());
+                    Value val = table.get(registers[b].getValue());
+                    registers[a].setValue(val);
+                }
+                case GetTableMethod -> {
+                    Table table = Checker.checkTable(registers[a].getValue());
+                    Value val = table.get(registers[b].getValue());
+                    //交换值
+                    registers[a].setValue(val);
+                    registers[b].setValue(table);
+                }
+                case SetTableNil -> {
+                    Table table = Checker.checkTable(registers[a].getValue());
+                    Value key = table.get(registers[b].getValue());
+                    table.addVal(key, NIL);
+                }
+                case SetTable -> {
+                    Table table = Checker.checkTable(registers[a].getValue());
+                    Value key = registers[b].getValue();
+                    Value value = registers[c].getValue();
+                    table.addVal(key, value);
+                }
+                case Call -> {
+                    runCall((Call) code);
+                }
+                case VarArgs -> {
+                    runVarargs((VarArgs) code);
+                }
+                case NumberFor -> {
+                    NumberValue init = Checker.checkNumber(registers[a].getValue());
+                    NumberValue finalValue = Checker.checkNumber(registers[a + 1].getValue());
+                    NumberValue step = Checker.checkNumber(registers[a + 2].getValue());
+                    if (step.gtZero() && init.le(finalValue) == TRUE) {
+                        pc++;
+                    }
+                    if (step.leZero() && init.ge(finalValue) == TRUE) {
+                        pc++;
+                    }
+                }
+                case EndNumberFor -> {
+                    NumberValue init = Checker.checkNumber(registers[a].getValue());
+                    NumberValue step = Checker.checkNumber(registers[a + 2].getValue());
+                    registers[a].setValue(init.add(step));
+                }
+                case Length -> {
+                    Value val = registers[a].getValue();
+                    if (val instanceof StringValue str) {
+                        registers[a].setValue(new NumberValue(str.getVal().length()));
+                    } else if (val instanceof Table table) {
+                        registers[a].setValue(table.len());
+                    }
+                }
+                case Not -> {
+                    Value val = registers[a].getValue();
+                    if (FALSE.equals(val)) {
+                        registers[a].setValue(TRUE);
+                    } else {
+                        registers[a].setValue(FALSE);
+                    }
+                }
+                case Negative -> {
+                    NumberValue val = Checker.checkNumber(registers[a].getValue());
+                    registers[a].setValue(val.negative());
+                }
+                case BitReverse -> {
+                    CalculateValue val = Checker.checkCalculate(registers[a].getValue());
+                    registers[a].setValue(val.unm());
+                }
+                case LoadGlobalModule -> {
+                    String moduleName = Checker.checkStringVal(FuncInfo.getConstant(b));
+                    Table table = NativeLoader.loadVmModule(moduleName);
+                    FuncInfo.getGlobalVal(a).setVal(table);
+                }
+                case LoadModule -> {
+                    String moduleName = Checker.checkStringVal(FuncInfo.getConstant(b));
+                    Table table = NativeLoader.loadVmModule(moduleName);
+                    registers[a].setValue(table);
+                }
+                case GenericFor -> {
+                    List<Value> resultList = new ArrayList<>();
+                    for (int i = c; i <= d; i += 3) {
+                        Value val = registers[i].getValue();
+                        List<Value> args = List.of(registers[i + 1].getValue(), registers[i + 2].getValue());
+                        Value returnVal;
+                        if (val instanceof NativeFunction nativeFunction) {
+                            returnVal = nativeFunction.execute(args);
+                        } else if (val instanceof RuntimeFunc runtimeFunc1) {
+                            returnVal = runtimeFunc1.call(args);
+                        } else {
+                            throw new RuntimeException("错误的泛型for循环参数");
+                        }
                         //结束循环
-                        if (multiValue.getValueList().get(0) == NIL) {
+                        if (returnVal == NIL) {
                             break;
                         }
-                        //更新变量的值
-                        registers[i + 2].setValue(multiValue.getValueList().get(0));
-                        resultList.addAll(multiValue.getValueList());
+                        if (returnVal instanceof MultiValue multiValue) {
+                            //结束循环
+                            if (multiValue.getValueList().get(0) == NIL) {
+                                break;
+                            }
+                            //更新变量的值
+                            registers[i + 2].setValue(multiValue.getValueList().get(0));
+                            resultList.addAll(multiValue.getValueList());
+                        }
+                    }
+                    //表示可以继续执行
+                    if (!resultList.isEmpty()) {
+                        pc++;
+                        for (int i = 0; i < resultList.size() && i + a <= b; i++) {
+                            registers[i + a].setValue(resultList.get(i));
+                        }
                     }
                 }
-                //表示可以继续执行
-                if (!resultList.isEmpty()) {
-                    pc++;
-                    for (int i = 0; i < resultList.size() && i + genericfor.a <= genericfor.b; i++) {
-                        registers[i + genericfor.a].setValue(resultList.get(i));
-                    }
+                case SetTableArray -> {
+                    runSetTableArray((SetTableArray) code);
                 }
-            } else if (code instanceof SetTableArray setTableArray) {
-                runSetTableArray(setTableArray);
             }
             pc++;
         }
@@ -211,82 +391,16 @@ public class Vm {
         return executeFrom(0);
     }
 
-    private void runCalculate(Calculate code) {
-        StackElement left = registers[code.b];
-        StackElement right = registers[code.c];
-        Value l = left.getValue();
-        Value r = right.getValue();
-        if (l instanceof CalculateValue leftVal && r instanceof CalculateValue rightVal) {
-            if (code instanceof Add add) {
-                registers[add.a].setValue(leftVal.add(rightVal));
-            } else if (code instanceof Sub sub) {
-                registers[sub.a].setValue(leftVal.sub(rightVal));
-            } else if (code instanceof MUL mul) {
-                registers[mul.a].setValue(leftVal.mul(rightVal));
-            } else if (code instanceof Div div) {
-                registers[div.a].setValue(leftVal.div(rightVal));
-            } else if (code instanceof Mod mod) {
-                registers[mod.a].setValue(leftVal.mod(rightVal));
-            } else if (code instanceof IntMod intmod) {
-                registers[intmod.a].setValue(leftVal.intMod(rightVal));
-            } else if (code instanceof Pow pow) {
-                registers[pow.a].setValue(leftVal.pow(rightVal));
-            } else if (code instanceof BitAnd bitand) {
-                registers[bitand.a].setValue(leftVal.bitAnd(rightVal));
-            } else if (code instanceof BitOr bitor) {
-                registers[bitor.a].setValue(leftVal.bitOr(rightVal));
-            } else if (code instanceof BitLeftShift bitleftmove) {
-                registers[bitleftmove.a].setValue(leftVal.bitLeftMove(rightVal));
-            } else if (code instanceof BitRightShift bitRightShift) {
-                registers[bitRightShift.a].setValue(leftVal.bitOr(rightVal));
-            } else if (code instanceof Cat cat) {
-                registers[cat.a].setValue(leftVal.concat(rightVal));
-            }
-        }
-        if (code instanceof And and) {
-            if (l == FALSE || r == NIL) {
-                registers[and.a].setValue(l);
-            } else {
-                registers[and.a].setValue(r);
-            }
-        } else if (code instanceof Or or) {
-            if (l == TRUE || (l != FALSE && l != NIL)) {
-                registers[or.a].setValue(l);
-            } else {
-                registers[or.a].setValue(r);
-            }
-        }
-    }
 
-    private void runCompare(Compare code) {
-        StackElement left = registers[code.a];
-        StackElement right = registers[code.b];
-        Value leftVal = left.getValue();
-        Value rightVal = right.getValue();
-        if (code instanceof Eq) {
-            registers[code.a].setValue(leftVal.eq(rightVal));
-        } else if (code instanceof Ne) {
-            registers[code.a].setValue(leftVal.ne(rightVal));
-        } else if (code instanceof Ge) {
-            registers[code.a].setValue(leftVal.ge(rightVal));
-        } else if (code instanceof Gt) {
-            registers[code.a].setValue(leftVal.gt(rightVal));
-        } else if (code instanceof Lt) {
-            registers[code.a].setValue(leftVal.lt(rightVal));
-        } else if (code instanceof Le) {
-            registers[code.a].setValue(leftVal.le(rightVal));
-        }
-    }
-
-    private Value runReturnMulti(ReturnMulti code) {
+    private Value runReturnMulti(int a,int b) {
         List<Value> returnList = new ArrayList<>();
         int realB;
-        if (code.b == -1) {
+        if (b == -1) {
             realB = runtimeFunc.used;
         } else {
-            realB = code.b;
+            realB = b;
         }
-        for (int i = code.a; i <= realB; i++) {
+        for (int i = a; i <= realB; i++) {
             if (i < registers.length) {
                 returnList.add(registers[i].getValue());
             } else {
@@ -426,10 +540,10 @@ public class Vm {
     /**
      * 此函数是 核心， 通过对LOADFUNC 进行处理， 将函数转换成运行时函数
      */
-    private void runLoadFunc(LoadFunc loadfunc) {
-        FuncInfo loadFuncInfo = FuncInfo.funcInfos().get(loadfunc.b);
+    private void runLoadFunc(int a,int b) {
+        FuncInfo loadFuncInfo = FuncInfo.funcInfos().get(b);
         RuntimeFunc funcRuntime = new RuntimeFunc(loadFuncInfo, runtimeFunc);
-        registers[loadfunc.a].setValue(
+        registers[a].setValue(
                 funcRuntime);
     }
 
