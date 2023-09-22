@@ -45,6 +45,7 @@ public class Vm {
         int pc = from;
         // 记录下字节码的值，减少 instanceof 运算
         int a = 0, b = 0, c = 0, d = 0;
+        Label:
         while (pc < len) {
             ByteCode code = codes[pc];
             //减少判断
@@ -254,9 +255,11 @@ public class Vm {
                             .setValue(registers[b].getValue());
                 }
                 case Return -> {
+                    break Label;
                 }
                 case ReturnMulti -> {
                     result = runReturnMulti(a, b);
+                    break Label;
                 }
                 case NewTable -> {
                     registers[a].setValue(new Table());

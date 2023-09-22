@@ -47,7 +47,9 @@ public class Lvm {
         instructionGenerator.generateStatement(result);
         //填充jmp指针
         FuncInfo.fillJMP();
+        long start =System.currentTimeMillis();
         new Vm(new RuntimeFunc(funcInfo, null)).execute();
+        System.out.println(System.currentTimeMillis() - start);
     }
 
     public static void run(File file) {

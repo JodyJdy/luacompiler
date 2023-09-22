@@ -118,8 +118,6 @@ public interface ByteCode {
      * 三个参数的指令
      */
     abstract class ThreeArgByteCode extends TwoArgByteCode {
-        protected int a;
-        protected int b;
         protected int c;
 
         public ThreeArgByteCode(int a, int b, int c) {
@@ -128,23 +126,8 @@ public interface ByteCode {
         }
 
         @Override
-        public int getA() {
-            return a;
-        }
-
-        @Override
-        public int getB() {
-            return b;
-        }
-
-        @Override
         public int getC() {
             return c;
-        }
-
-        @Override
-        public int getD() {
-            return 0;
         }
 
         @Override
@@ -154,11 +137,13 @@ public interface ByteCode {
     }
 
     abstract class FourArgByteCode extends ThreeArgByteCode{
-        public FourArgByteCode(int a, int b, int c) {
+        public FourArgByteCode(int a, int b, int c,int d) {
             super(a, b, c);
+            this.d = d;
         }
 
         protected int d;
+
 
         @Override
         public int getD() {
@@ -867,7 +852,6 @@ public interface ByteCode {
      */
 
     class Call extends FourArgByteCode{
-        int d;
         @Override
         public String toString() {
             return "CALL{" +
@@ -879,8 +863,7 @@ public interface ByteCode {
         }
 
         public Call(int a, int b, int c, int d) {
-            super(a, b, c);
-            this.d = d;
+            super(a, b, c,d);
         }
 
         @Override
@@ -1162,11 +1145,9 @@ public interface ByteCode {
 
      */
 
-    class GenericFor extends ThreeArgByteCode{
-        int d;
+    class GenericFor extends FourArgByteCode{
         public GenericFor(int a, int b, int c, int d) {
-            super(a, b, c);
-            this.d = d;
+            super(a, b, c,d);
         }
 
         @Override
