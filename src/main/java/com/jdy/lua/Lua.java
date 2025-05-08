@@ -72,15 +72,24 @@ public class Lua {
         //启动
         executor.execute();
         Scanner scanner = new Scanner(System.in);
-        System.out.println("----------  lua  -----------------输入 bye  结束执行");
+        System.out.println("----------  lua  -----------------输入 bye  结束执行, 多行使用\\结尾");
         System.out.print(">>");
+        StringBuilder command = new StringBuilder();
         while (scanner.hasNext()) {
             //读取一行命令
             String line = scanner.nextLine();
             if ("bye".equals(line)) {
                 break;
             }
-            LuaParser luaParser = new LuaParser(new BufferedTokenStream(new LuaLexer(CharStreams.fromString(line))));
+            //多行
+            if(line.charAt(line.length()-1)=='\\'){
+                line = line.substring(0,line.length()-1);
+                command.append(line);
+                continue;
+            } else{
+                command.append(line);
+            }
+            LuaParser luaParser = new LuaParser(new BufferedTokenStream(new LuaLexer(CharStreams.fromString(command.toString()))));
             LuaParser.CommandLineContext context = luaParser.commandLine();
             if (context.exp() != null) {
                 Expr expr = Parser.parseExpr(context.exp());
@@ -90,6 +99,7 @@ public class Lua {
                 statement.visitStatement(executor);
             }
             System.out.print(">>");
+            command = new StringBuilder();
         }
 
     }

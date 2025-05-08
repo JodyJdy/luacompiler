@@ -80,16 +80,25 @@ public class Lvm {
         FuncInfo funcInfo = FuncInfo.createFunc();
         Vm vm = new Vm(new RuntimeFunc(funcInfo, null));
         Scanner scanner = new Scanner(System.in);
-        System.out.println("----------  lua  -----------------输入 bye  结束执行");
+        System.out.println("----------  lua  -----------------输入 bye  结束执行, 多行使用\\结尾");
         System.out.print(">>");
         int runFrom = 0;
+        StringBuilder command = new StringBuilder();
         while (scanner.hasNext()) {
             //读取一行命令
             String line = scanner.nextLine();
             if ("bye".equals(line)) {
                 break;
             }
-            LuaParser luaParser = new LuaParser(new BufferedTokenStream(new LuaLexer(CharStreams.fromString(line))));
+            //多行
+            if(line.charAt(line.length()-1)=='\\'){
+                line = line.substring(0,line.length()-1);
+                command.append(line);
+                continue;
+            } else{
+                command.append(line);
+            }
+            LuaParser luaParser = new LuaParser(new BufferedTokenStream(new LuaLexer(CharStreams.fromString(command.toString()))));
             LuaParser.CommandLineContext context = luaParser.commandLine();
             InstructionGenerator instructionGenerator = new InstructionGenerator(funcInfo);
             if (context.exp() != null) {
@@ -109,6 +118,7 @@ public class Lvm {
             }
             //调整下次执行的位置
             runFrom = funcInfo.getCodes().size();
+            command = new StringBuilder();
         }
         System.out.print(">>");
     }
