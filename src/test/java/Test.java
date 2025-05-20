@@ -7,11 +7,10 @@ import java.awt.*;
 
 public class Test {
     public static void main(String[] args) throws Exception {
-        //虚拟机执行文件
-        Lvm.runFileName("src/test/b.lua");
-        //ast执行文件
-        Lua.runFileName("src/test/b.lua");
-        System.out.println("-----");
+        System.out.println("lvm 执行:");
+        Lvm.runFileName("src/test/iter.lua");
+        System.out.println("lua 执行:");
+        Lua.runFileName("src/test/iter.lua");
     }
 
 }

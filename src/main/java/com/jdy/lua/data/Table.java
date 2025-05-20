@@ -121,8 +121,8 @@ public class Table implements CalculateValue {
     }
 
     public Value get(Value value) {
-        if (value instanceof NumberValue) {
-            return get(value);
+        if (value instanceof NumberValue numberValue) {
+            return get(numberValue);
         }
         if (value instanceof StringValue) {
             return get(((StringValue) value).getVal());

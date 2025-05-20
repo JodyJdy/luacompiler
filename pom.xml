@@ -3,13 +3,13 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.example</groupId>
+    <groupId>com.jdy</groupId>
     <artifactId>luacompiler</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>luacompiler</name>
+    <name>compiler</name>
     <description></description>
     <properties>
-        <java.version>13</java.version>
+        <java.version>16</java.version>
     </properties>
     <dependencies>
 
@@ -32,8 +32,8 @@
             <plugin>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <configuration>
-                    <source>13</source>
-                    <target>13</target>
+                    <source>16</source>
+                    <target>16</target>
                 </configuration>
             </plugin>
             <plugin>
