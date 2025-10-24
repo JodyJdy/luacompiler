@@ -1,13 +1,13 @@
 package com.jdy.lua.executor;
 
-import com.jdy.lua.data.Function;
+import com.jdy.lua.data.LuaFunction;
 import com.jdy.lua.data.Value;
 
 public class Iterator {
     /**
      * 迭代的函数
      */
-    private Function iteratorFunc;
+    private LuaFunction iteratorFunc;
     /**
      * 被迭代的对象
      */
@@ -18,11 +18,11 @@ public class Iterator {
      */
     private Value var;
 
-    public Function getIteratorFunc() {
+    public LuaFunction getIteratorFunc() {
         return iteratorFunc;
     }
 
-    public void setIteratorFunc(Function iteratorFunc) {
+    public void setIteratorFunc(LuaFunction iteratorFunc) {
         this.iteratorFunc = iteratorFunc;
     }
 
@@ -42,7 +42,7 @@ public class Iterator {
         this.var = var;
     }
 
-    public Iterator(Function iteratorFunc, Value source, Value var) {
+    public Iterator(LuaFunction iteratorFunc, Value source, Value var) {
         this.iteratorFunc = iteratorFunc;
         this.source = source;
         this.var = var;

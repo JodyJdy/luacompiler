@@ -391,12 +391,12 @@ public  interface Statement {
             return FunctionStatement;
         }
 
-        public FunctionStatement(FuncType funcName, Expr.Function funcBody) {
+        public FunctionStatement(FuncType funcName, Expr.LuaFunctionBody funcBody) {
             this.funcName = funcName;
             this.funcBody = funcBody;
         }
 
-        private Expr.Function funcBody;
+        private Expr.LuaFunctionBody funcBody;
         @Override
         public void visitStatement(Executor visitor) {
             visitor.executeStatement(this);
@@ -414,9 +414,9 @@ public  interface Statement {
         }
 
         private String funcName;
-        private Expr.Function funcBody;
+        private Expr.LuaFunctionBody funcBody;
 
-        public LocalFunctionStatement(String funcName, Expr.Function funcBody) {
+        public LocalFunctionStatement(String funcName, Expr.LuaFunctionBody funcBody) {
             this.funcName = funcName;
             this.funcBody = funcBody;
         }

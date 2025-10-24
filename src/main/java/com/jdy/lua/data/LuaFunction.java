@@ -7,25 +7,25 @@ import lombok.Data;
 import java.util.Objects;
 
 @Data
-public class Function implements Value {
+public class LuaFunction implements Value {
     /**
      * 是否是原生的
      */
     protected boolean isNative = false;
 
     private final Block parent;
-    private final Expr.Function body;
+    private final Expr.LuaFunctionBody body;
     /*
     是否是对象方法 a:b
      */
     private boolean objMethod =false;
 
-    public Function(Block parent, Expr.Function body,boolean objMethod) {
+    public LuaFunction(Block parent, Expr.LuaFunctionBody body, boolean objMethod) {
         this(parent, body);
         this.objMethod = objMethod;
     }
 
-    public Function(Block parent, Expr.Function body) {
+    public LuaFunction(Block parent, Expr.LuaFunctionBody body) {
         this.parent = parent;
         this.body = body;
     }
@@ -42,7 +42,7 @@ public class Function implements Value {
 
     @Override
     public BoolValue eq(Value b) {
-        if (b instanceof Function f) {
+        if (b instanceof LuaFunction f) {
            if(f.objMethod == this. objMethod
                    && this.isNative == f.isNative
                     && this.body.equals(f.body)

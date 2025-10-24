@@ -268,7 +268,7 @@ public class InstructionGenerator {
     public void generateLocalFuncStatement(LocalFunctionStatement localFunctionStatement) {
 
         FuncInfo localFunc = FuncInfo.createFunc(funcInfo);
-        Expr.Function body = localFunctionStatement.getFuncBody();
+        Expr.LuaFunctionBody body = localFunctionStatement.getFuncBody();
         localFunc.setHasMultiArg(body.isHasMultiArg());
         localFunc.setParamNames(body.getParamNames());
         for (String param : body.getParamNames()) {
@@ -383,7 +383,7 @@ public class InstructionGenerator {
     public void generateFunc(FunctionStatement func) {
         //初始化 FuncInfo信息
         FuncInfo newFunc = FuncInfo.createFunc(this.funcInfo);
-        Expr.Function body = func.getFuncBody();
+        Expr.LuaFunctionBody body = func.getFuncBody();
         newFunc.setHasMultiArg(body.isHasMultiArg());
         newFunc.setParamNames(body.getParamNames());
         FuncType funcType = func.getFuncName();
@@ -652,21 +652,21 @@ public class InstructionGenerator {
     }
 
 
-    public int generateFuncExpr(Expr.Function function) {
+    public int generateFuncExpr(Expr.LuaFunctionBody luaFunctionBody) {
         FuncInfo func = FuncInfo.createFunc(funcInfo);
-        func.setHasMultiArg(function.isHasMultiArg());
-        func.setParamNames(function.getParamNames());
-        function.getParamNames().forEach(param -> {
+        func.setHasMultiArg(luaFunctionBody.isHasMultiArg());
+        func.setParamNames(luaFunctionBody.getParamNames());
+        luaFunctionBody.getParamNames().forEach(param -> {
             func.addVar(param, NilValue.NIL);
         });
-        if (function.isHasMultiArg()) {
+        if (luaFunctionBody.isHasMultiArg()) {
             func.addVar("...", NilValue.NIL);
         }
         InstructionGenerator instructionGenerator = new InstructionGenerator(func);
         int reg = funcInfo.allocRegister();
         //将函数加载到寄存器中
         funcInfo.addCode(new LoadFunc(reg, func.getGlobalFuncIndex()));
-        instructionGenerator.generateStatement(function.getBlockStatement());
+        instructionGenerator.generateStatement(luaFunctionBody.getBlockStatement());
         return reg;
     }
 
@@ -772,7 +772,7 @@ public class InstructionGenerator {
             case StringValue -> generateStringValue((StringValue) expr);
             case NumberValue -> generateNumberExpr((NumberValue) expr);
             case TableExpr -> generateTableExpr((Expr.TableExpr) expr);
-            case Function -> generateFuncExpr((Expr.Function) expr);
+            case Function -> generateFuncExpr((Expr.LuaFunctionBody) expr);
             case CalExpr -> generateCalExpr((Expr.CalExpr) expr);
             case RelExpr -> generateRelExpr((Expr.RelExpr) expr);
             case NameExpr -> generateNameExpr((Expr.NameExpr) expr);

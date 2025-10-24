@@ -188,7 +188,7 @@ public class Parser {
 
     public static Statement parseFunc(LuaParser.StatContext funcStat) {
         Statement.FuncType funcType = parseFuncType(funcStat.funcname());
-        Expr.Function body = parseFuncBody(funcStat.funcbody());
+        Expr.LuaFunctionBody body = parseFuncBody(funcStat.funcbody());
         return new Statement.FunctionStatement(funcType, body);
     }
 
@@ -212,25 +212,25 @@ public class Parser {
     }
 
 
-    public static Expr.Function parseFuncBody(LuaParser.FuncbodyContext funcbodyContext) {
-        Expr.Function functionBody = new Expr.Function();
+    public static Expr.LuaFunctionBody parseFuncBody(LuaParser.FuncbodyContext funcbodyContext) {
+        Expr.LuaFunctionBody luaFunctionBody = new Expr.LuaFunctionBody();
         if (funcbodyContext.parlist() != null) {
             //处理普通的参数
             if (funcbodyContext.parlist().namelist() != null) {
                 List<String> names = parseNameList(funcbodyContext.parlist().namelist());
-                functionBody.setParamNames(names);
+                luaFunctionBody.setParamNames(names);
             }
             //处理 ... 参数
             int nodeSize = funcbodyContext.parlist().children.size();
             if (funcbodyContext.parlist().children.get(nodeSize - 1) instanceof TerminalNode last) {
                 if ("...".equals(last.getText())) {
-                    functionBody.setHasMultiArg(true);
+                    luaFunctionBody.setHasMultiArg(true);
                 }
             }
         }
 
-        functionBody.setBlockStatement((Statement.BlockStatement) parseBlock(funcbodyContext.block()));
-        return functionBody;
+        luaFunctionBody.setBlockStatement((Statement.BlockStatement) parseBlock(funcbodyContext.block()));
+        return luaFunctionBody;
     }
 
     public static Statement parseAttnameList(LuaParser.StatContext stat) {

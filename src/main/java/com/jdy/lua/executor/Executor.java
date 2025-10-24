@@ -1,8 +1,8 @@
 package com.jdy.lua.executor;
 
-import com.jdy.lua.data.Function;
+import com.jdy.lua.data.LuaFunction;
 import com.jdy.lua.data.*;
-import com.jdy.lua.luanative.NativeFunction;
+import com.jdy.lua.luanative.NativeJavaFunction;
 import com.jdy.lua.luanative.NativeLoader;
 import com.jdy.lua.statement.Expr;
 import com.jdy.lua.statement.Statement;
@@ -130,9 +130,9 @@ public class Executor {
     /**
      * 执行函数
      */
-    public Executor(com.jdy.lua.data.Function func, List<Value> args) {
-        this.function = func;
-        if (!(function instanceof NativeFunction)) {
+    public Executor(LuaFunction func, List<Value> args) {
+        this.luaFunction = func;
+        if (!(luaFunction instanceof NativeJavaFunction)) {
             this.blockStatement = func.getBody().getBlockStatement();
         }
         this.args = args;
@@ -150,12 +150,12 @@ public class Executor {
 
     public Value execute() {
         //如果执行的是Native函数
-        if (function != null && function.isNative()) {
-            NativeFunction nativeFunction = (NativeFunction) function;
+        if (luaFunction != null && luaFunction.isNative()) {
+            NativeJavaFunction nativeFunction = (NativeJavaFunction) luaFunction;
             return nativeFunction.execute(args);
         }
-        if (function != null) {
-            return execute(function.getParent());
+        if (luaFunction != null) {
+            return execute(luaFunction.getParent());
         }
         return execute(null);
     }
@@ -168,11 +168,11 @@ public class Executor {
         if (this.args == null) {
             return;
         }
-        Expr.Function functionBody = function.getBody();
-        List<String> parameterNames = functionBody.getParamNames();
+        LuaFunctionBody luaFunctionBody = luaFunction.getBody();
+        List<String> parameterNames = luaFunctionBody.getParamNames();
         int i = 0;
         //包含self默认参数，第一个就是默认参数
-        if (function.isObjMethod()) {
+        if (luaFunction.isObjMethod()) {
             currentBlock().addVar("self", args.get(i));
         }
         for (; i < parameterNames.size(); i++) {
@@ -183,7 +183,7 @@ public class Executor {
             }
         }
         //处理变长参数
-        if (functionBody.isHasMultiArg()) {
+        if (luaFunctionBody.isHasMultiArg()) {
             if (i < args.size()) {
                 currentBlock().addVar("...", new MultiValue(args.subList(i, args.size())));
             }
@@ -191,7 +191,7 @@ public class Executor {
     }
 
     private BlockStatement blockStatement;
-    private Function function;
+    private LuaFunction luaFunction;
 
 
     /**
@@ -557,13 +557,13 @@ public class Executor {
     public void executeStatement(FunctionStatement statement) {
         FuncType funcType = statement.getFuncName();
         if (funcType instanceof BasicFuncType) {
-            currentBlock().addGlobalVar(((BasicFuncType) funcType).getFuncName(), new com.jdy.lua.data.Function(currentBlock(), statement.getFuncBody()));
+            currentBlock().addGlobalVar(((BasicFuncType) funcType).getFuncName(), new LuaFunction(currentBlock(), statement.getFuncBody()));
         } else if (funcType instanceof TableMethod method) {
             Table table = resolveTable(method.getTableNames());
-            table.addVal(method.getMethodName(), new com.jdy.lua.data.Function(currentBlock(), statement.getFuncBody()));
+            table.addVal(method.getMethodName(), new LuaFunction(currentBlock(), statement.getFuncBody()));
         } else if (funcType instanceof TableExtendMethod method) {
             Table table = resolveTable(method.getFatherTableNames());
-            table.addVal(method.getMethodName(), new com.jdy.lua.data.Function(currentBlock(), statement.getFuncBody(), true));
+            table.addVal(method.getMethodName(), new LuaFunction(currentBlock(), statement.getFuncBody(), true));
         }
     }
 
@@ -581,7 +581,7 @@ public class Executor {
      * 添加一个函数
      */
     public void executeStatement(LocalFunctionStatement statement) {
-        currentBlock().addVar(statement.getFuncName(), new com.jdy.lua.data.Function(currentBlock(), statement.getFuncBody()));
+        currentBlock().addVar(statement.getFuncName(), new LuaFunction(currentBlock(), statement.getFuncBody()));
     }
 
     public Value executeExpr(Expr expr) {
@@ -702,7 +702,7 @@ public class Executor {
     }
 
     private Value doFuncCall(FuncCallExpr expr) {
-        com.jdy.lua.data.Function function;
+        LuaFunction luaFunction;
         //存储实参
         final List<Value> initArgs = new ArrayList<>();
         //一共两种形式  a.b() a:b()
@@ -711,9 +711,9 @@ public class Executor {
             //取table，作为self参数
             Table table = checkTable(colonExpr.getLeft().visitExpr(this));
             initArgs.add(table);
-            function = checkFunc(table.get(colonExpr.getName()));
+            luaFunction = checkFunc(table.get(colonExpr.getName()));
         } else {
-            function = checkFunc(expr.getFunc().visitExpr(this));
+            luaFunction = checkFunc(expr.getFunc().visitExpr(this));
         }
         //求实参的值
         for (int i = 0; i < expr.getExprs().size(); i++) {
@@ -731,7 +731,7 @@ public class Executor {
             }
         }
         //调用函数
-        Executor executor = new Executor(function, initArgs);
+        Executor executor = new Executor(luaFunction, initArgs);
         return executor.execute();
     }
 
@@ -769,8 +769,8 @@ public class Executor {
     }
 
 
-    public Value executeExpr(Expr.Function functionBody) {
-        return new Function(currentBlock(), functionBody);
+    public Value executeExpr(LuaFunctionBody luaFunctionBodyBody) {
+        return new LuaFunction(currentBlock(), luaFunctionBodyBody);
     }
 
     public Value executeExpr(NameExpr expr) {

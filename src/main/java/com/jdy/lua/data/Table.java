@@ -39,8 +39,8 @@ public class Table implements CalculateValue {
     public String toString() {
         if (map.containsKey(TO_STRING)) {
             Value val = map.get(TO_STRING);
-            if (val instanceof Function) {
-                Executor executor = new Executor((Function) val, new ArrayList<>());
+            if (val instanceof LuaFunction) {
+                Executor executor = new Executor((LuaFunction) val, new ArrayList<>());
                 return executor.execute().toString();
             } else if (val instanceof RuntimeFunc runtimeFunc) {
                 return new Vm(runtimeFunc).execute().toString();
@@ -107,8 +107,8 @@ public class Table implements CalculateValue {
         //从元表中返回数据
         if (meta instanceof Table) {
             return ((Table) meta).get(key);
-        } else if (meta instanceof Function call) {
-            Expr.Function body = call.getBody();
+        } else if (meta instanceof LuaFunction call) {
+            Expr.LuaFunctionBody body = call.getBody();
             //只支持无参函数调用， 有参的没有使用场景
             if (body.getParamNames().isEmpty()) {
                 Executor executor = new Executor(call, new ArrayList<>());
@@ -136,7 +136,7 @@ public class Table implements CalculateValue {
         if (b instanceof Table t) {
             if (metatable.hasKey(EQ)) {
                 Value value = metatable.get(EQ);
-                if (value instanceof Function fun) {
+                if (value instanceof LuaFunction fun) {
                     Value val = new Executor(fun, List.of(this, b)).execute();
                     return Checker.checkBool(val);
                 } else if (value instanceof RuntimeFunc runtimeFunc) {
@@ -153,7 +153,7 @@ public class Table implements CalculateValue {
         if (b instanceof Table t) {
             if (metatable.hasKey(NE)) {
                 Value value = metatable.get(NE);
-                if (value instanceof Function fun) {
+                if (value instanceof LuaFunction fun) {
                     Value val = new Executor(fun, List.of(this, b)).execute();
                     return Checker.checkBool(val);
                 } else if (value instanceof RuntimeFunc runtimeFunc) {
@@ -170,7 +170,7 @@ public class Table implements CalculateValue {
         if (b instanceof Table) {
             if (metatable.hasKey(LT)) {
                 Value value = metatable.get(LT);
-                if (value instanceof Function fun) {
+                if (value instanceof LuaFunction fun) {
                     Value val = new Executor(fun, List.of(this, b)).execute();
                     return Checker.checkBool(val);
                 }  else if (value instanceof RuntimeFunc runtimeFunc) {
@@ -191,7 +191,7 @@ public class Table implements CalculateValue {
         if (b instanceof Table) {
             if (metatable.hasKey(LE)) {
                 Value value = metatable.get(LE);
-                if (value instanceof Function fun) {
+                if (value instanceof LuaFunction fun) {
                     Value val = new Executor(fun, List.of(this, b)).execute();
                     return Checker.checkBool(val);
                 }  else if (value instanceof RuntimeFunc runtimeFunc) {
@@ -215,7 +215,7 @@ public class Table implements CalculateValue {
     public Value add(Value b) {
         if (metatable != null && metatable.hasKey(ADD)) {
             Value value = metatable.get(ADD);
-            if (value instanceof Function fun) {
+            if (value instanceof LuaFunction fun) {
                 return new Executor(fun, List.of(this, b)).execute();
             }  else if (value instanceof RuntimeFunc runtimeFunc) {
                 return new Vm(runtimeFunc).execute();
@@ -228,7 +228,7 @@ public class Table implements CalculateValue {
     public Value sub(Value b) {
         if (metatable != null && metatable.hasKey(SUB)) {
             Value value = metatable.get(SUB);
-            if (value instanceof Function fun) {
+            if (value instanceof LuaFunction fun) {
                 return new Executor(fun, List.of(this, b)).execute();
             } else if (value instanceof RuntimeFunc runtimeFunc) {
                 return new Vm(runtimeFunc).execute();
@@ -241,7 +241,7 @@ public class Table implements CalculateValue {
     public Value mul(Value b) {
         if (metatable != null && metatable.hasKey(MUL)) {
             Value value = metatable.get(MUL);
-            if (value instanceof Function fun) {
+            if (value instanceof LuaFunction fun) {
                 return new Executor(fun, List.of(this, b)).execute();
             } else if (value instanceof RuntimeFunc runtimeFunc) {
                 return new Vm(runtimeFunc).execute();
@@ -254,7 +254,7 @@ public class Table implements CalculateValue {
     public Value div(Value b) {
         if (metatable != null && metatable.hasKey(DIV)) {
             Value value = metatable.get(DIV);
-            if (value instanceof Function fun) {
+            if (value instanceof LuaFunction fun) {
                 return new Executor(fun, List.of(this, b)).execute();
             } else if (value instanceof RuntimeFunc runtimeFunc) {
                 return new Vm(runtimeFunc).execute();
@@ -267,7 +267,7 @@ public class Table implements CalculateValue {
     public Value unm() {
         if (metatable != null && metatable.hasKey(UNM)) {
             Value value = metatable.get(UNM);
-            if (value instanceof Function fun) {
+            if (value instanceof LuaFunction fun) {
                 return new Executor(fun, List.of(this)).execute();
             } else if (value instanceof RuntimeFunc runtimeFunc) {
                 return new Vm(runtimeFunc).execute();
@@ -280,7 +280,7 @@ public class Table implements CalculateValue {
     public Value mod(Value b) {
         if (metatable != null && metatable.hasKey(MOD)) {
             Value value = metatable.get(MOD);
-            if (value instanceof Function fun) {
+            if (value instanceof LuaFunction fun) {
                 return new Executor(fun, List.of(this, b)).execute();
             } else if (value instanceof RuntimeFunc runtimeFunc) {
                 return new Vm(runtimeFunc).execute();
@@ -294,7 +294,7 @@ public class Table implements CalculateValue {
     public Value pow(Value b) {
         if (metatable != null && metatable.hasKey(POW)) {
             Value value = metatable.get(POW);
-            if (value instanceof Function fun) {
+            if (value instanceof LuaFunction fun) {
                 return new Executor(fun, List.of(this, b)).execute();
             } else if (value instanceof RuntimeFunc runtimeFunc) {
                 return new Vm(runtimeFunc).execute();
@@ -307,7 +307,7 @@ public class Table implements CalculateValue {
     public Value concat(Value b) {
         if (metatable != null && metatable.hasKey(CONCAT)) {
             Value value = metatable.get(CONCAT);
-            if (value instanceof Function fun) {
+            if (value instanceof LuaFunction fun) {
                 return new Executor(fun, List.of(this, b)).execute();
             }else if (value instanceof RuntimeFunc runtimeFunc) {
                 return new Vm(runtimeFunc).execute();

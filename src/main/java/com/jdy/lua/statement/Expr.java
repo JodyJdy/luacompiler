@@ -325,7 +325,7 @@ public interface Expr  {
     }
 
     @Data
-    class Function implements Expr{
+    class LuaFunctionBody implements Expr{
         /**
          * 普通参数
          */

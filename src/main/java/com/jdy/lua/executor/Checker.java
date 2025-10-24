@@ -14,11 +14,11 @@ public class Checker {
 
 
 
-    public static Function checkFunc(Value val){
-        if (!(val instanceof com.jdy.lua.data.Function)) {
+    public static LuaFunction checkFunc(Value val){
+        if (!(val instanceof LuaFunction)) {
             throw new RuntimeException("函数不存在");
         }
-        return (Function) val;
+        return (LuaFunction) val;
     }
 
     public static Expr.NameExpr checkName(Expr expr) {

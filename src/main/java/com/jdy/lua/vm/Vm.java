@@ -3,7 +3,7 @@ package com.jdy.lua.vm;
 import com.jdy.lua.data.*;
 import com.jdy.lua.executor.Checker;
 import com.jdy.lua.luanative.NativeFuncBody;
-import com.jdy.lua.luanative.NativeFunction;
+import com.jdy.lua.luanative.NativeJavaFunction;
 import com.jdy.lua.luanative.NativeLoader;
 
 import java.util.ArrayList;
@@ -167,7 +167,7 @@ public class Vm {
                     Value val = registers[i].getValue();
                     List<Value> args = List.of(registers[i + 1].getValue(), registers[i + 2].getValue());
                     Value returnVal;
-                    if (val instanceof NativeFunction nativeFunction) {
+                    if (val instanceof NativeJavaFunction nativeFunction) {
                         returnVal = nativeFunction.execute(args);
                     } else if (val instanceof RuntimeFunc runtimeFunc1) {
                         returnVal = runtimeFunc1.call(args);
@@ -338,7 +338,7 @@ public class Vm {
             args = prepareArgs(info.isObjMethod, runtimeFunc.used, info.paramNames.size(),
                     info.hasMultiArg, call);
             returnValue = realCall.call(args);
-        } else if (func instanceof NativeFunction nativeFunction) {
+        } else if (func instanceof NativeJavaFunction nativeFunction) {
             NativeFuncBody body = (NativeFuncBody) nativeFunction.getBody();
             args = prepareArgs(false, runtimeFunc.used, body.getParamNames().size(), body.isHasMultiArg(), call);
             returnValue = nativeFunction.execute(args);

@@ -1,17 +1,18 @@
 package com.jdy.lua.luanative;
 
-import com.jdy.lua.data.Function;
+import com.jdy.lua.data.LuaFunction;
 import com.jdy.lua.data.Value;
 import lombok.Getter;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.Function;
 
 @Getter
-public class NativeFunction extends Function {
+public class NativeJavaFunction extends LuaFunction {
     private final String funcName;
-    public NativeFunction(String funcName, NativeFuncBody funcBody) {
+    public NativeJavaFunction(String funcName, NativeFuncBody funcBody) {
         // 原生方法不会使用到Block
         super(null, funcBody);
         isNative = true;
@@ -22,7 +23,7 @@ public class NativeFunction extends Function {
     public static class Builder {
         private String funcName;
         private final List<String> parameterNames = new ArrayList<>();
-        private java.util.function.Function<List<Value>,Value> execute;
+        private Function<List<Value>,Value> execute;
         private boolean hasMultiVar = false;
 
         public Builder funcName(String funcName) {
@@ -41,13 +42,13 @@ public class NativeFunction extends Function {
             hasMultiVar = true;
             return this;
         }
-        public Builder execute(java.util.function.Function<List<Value>,Value> execute) {
+        public Builder execute(Function<List<Value>,Value> execute) {
             this.execute = execute;
             return this;
         }
-        public NativeFunction build(){
+        public NativeJavaFunction build(){
             NativeFuncBody body = new NativeFuncBody(parameterNames, hasMultiVar, execute);
-            return  new NativeFunction(funcName, body);
+            return  new NativeJavaFunction(funcName, body);
         }
 
     }

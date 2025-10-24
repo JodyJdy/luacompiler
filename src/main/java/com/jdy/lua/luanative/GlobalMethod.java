@@ -9,8 +9,8 @@ import static com.jdy.lua.executor.Checker.checkTable;
 
 public class GlobalMethod {
 
-    public static NativeFunction type(){
-        return NativeFunction.builder().funcName("type")
+    public static NativeJavaFunction type(){
+        return NativeJavaFunction.builder().funcName("type")
                 .parameterNames("a")
                 .execute(
                         arg-> new StringValue(arg.get(0).type().getStr())
@@ -18,8 +18,8 @@ public class GlobalMethod {
     }
 
 
-    public static NativeFunction print(){
-        return NativeFunction.builder().funcName("print")
+    public static NativeJavaFunction print(){
+        return NativeJavaFunction.builder().funcName("print")
                 .hasMultiVar()
                 .execute(
                         arg->{
@@ -34,8 +34,8 @@ public class GlobalMethod {
                 ).build();
     }
 
-    public static NativeFunction println(){
-        NativeFunction.Builder builder = NativeFunction.builder();
+    public static NativeJavaFunction println(){
+        NativeJavaFunction.Builder builder = NativeJavaFunction.builder();
         builder.funcName("println");
         builder.hasMultiVar();
         builder.execute(
@@ -53,8 +53,8 @@ public class GlobalMethod {
     /**
      * setmetatable 函数
      */
-    public static NativeFunction setmetatable(){
-        return NativeFunction.builder().funcName("setmetatable")
+    public static NativeJavaFunction setmetatable(){
+        return NativeJavaFunction.builder().funcName("setmetatable")
                 .parameterNames("a","b")
                 .execute(
                         arg->{
@@ -69,8 +69,8 @@ public class GlobalMethod {
     /**
      * getmetatable
      */
-    public static NativeFunction getmetatable(){
-        return NativeFunction.builder().funcName("getmetatable")
+    public static NativeJavaFunction getmetatable(){
+        return NativeJavaFunction.builder().funcName("getmetatable")
                 .parameterNames("a")
                 .execute(
                         arg->{

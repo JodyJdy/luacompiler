@@ -7,20 +7,21 @@ import com.jdy.lua.statement.Statement;
 import lombok.Getter;
 
 import java.util.List;
+import java.util.function.Function;
 
 /**
  * 原生方法结构体
  */
 @Getter
-public class NativeFuncBody extends Expr.Function {
-    private final java.util.function.Function<List<Value>,Value> execute;
+public class NativeFuncBody extends Expr.LuaFunctionBody {
+    private final Function<List<Value>,Value> execute;
 
-    public NativeFuncBody(List<String> paramNames,java.util.function.Function<List<Value>,Value> execute) {
+    public NativeFuncBody(List<String> paramNames,Function<List<Value>,Value> execute) {
         this.paramNames = paramNames;
         this.execute = execute;
     }
 
-    public NativeFuncBody(List<String> paramNames, boolean hasMulti,java.util.function.Function<List<Value>,Value> execute ) {
+    public NativeFuncBody(List<String> paramNames, boolean hasMulti,Function<List<Value>,Value> execute ) {
         this(paramNames,execute);
         this.hasMultiArg = hasMulti;
     }
