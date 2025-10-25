@@ -87,7 +87,7 @@ public class GlobalMethod {
         successResult.add(BoolValue.TRUE);
         if (result != null) {
             if (result instanceof MultiValue multiValue) {
-                successResult.add(multiValue.getValueList().get(0));
+                successResult.addAll(multiValue.getValueList());
             }else{
                 successResult.add(result);
             }
