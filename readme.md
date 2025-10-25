@@ -106,4 +106,5 @@ public class Test {
 - `string.len(s)` - 返回字符串长度
 - `string.lower(s)` - 转换为小写
 - `string.reverse(s)` - 反转字符串
+- `string.gmatch(s, pattern [, init])` 使用java正则格式
 

@@ -202,7 +202,19 @@ public class LuaString {
     // string.gmatch(s, pattern)
     public static Value gmatch(List<Value> args) {
         // 简化实现
-        return NilValue.NIL;
+        StringValue s = checkString(args.get(0));
+        StringValue pattern = checkString(args.get(1));
+        String sVal =s.getVal();
+        String pVal = pattern.getVal();
+        pVal = pVal.replace("\\\\", "\\");
+        Pattern p = Pattern.compile(pVal);
+        Matcher matcher = p.matcher(sVal);
+        Table result = new Table();
+        while (matcher.find()) {
+            //返回匹配的子串
+            result.addVal(new StringValue(matcher.group()));
+        }
+        return GenericFor.ipairs(List.of(result));
     }
 
     private static NativeJavaFunction gmatch() {
