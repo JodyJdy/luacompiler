@@ -2,6 +2,7 @@ package com.jdy.lua.luanative;
 
 import com.jdy.lua.data.LuaFunction;
 import com.jdy.lua.data.Value;
+import com.jdy.lua.vm.Vm;
 import lombok.Getter;
 
 import java.util.ArrayList;
@@ -12,6 +13,10 @@ import java.util.function.Function;
 @Getter
 public class NativeJavaFunction extends LuaFunction {
     private final String funcName;
+    /**
+     * 当前所处的vm
+     */
+    Vm vm;
     public NativeJavaFunction(String funcName, NativeFuncBody funcBody) {
         // 原生方法不会使用到Block
         super(null, funcBody);

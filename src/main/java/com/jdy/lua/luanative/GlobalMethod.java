@@ -1,9 +1,12 @@
 package com.jdy.lua.luanative;
 
 import com.jdy.lua.data.*;
+import com.jdy.lua.executor.Executor;
+import com.jdy.lua.vm.RuntimeFunc;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import static com.jdy.lua.executor.Checker.checkTable;
 
@@ -78,6 +81,19 @@ public class GlobalMethod {
                 .execute(GlobalMethod::error).build();
     }
 
+
+    private static Value pcallProcessResult(Value result) {
+        List<Value> successResult = new ArrayList<>();
+        successResult.add(BoolValue.TRUE);
+        if (result != null) {
+            if (result instanceof MultiValue multiValue) {
+                successResult.add(multiValue.getValueList().get(0));
+            }else{
+                successResult.add(result);
+            }
+        }
+        return MultiValue.of(successResult);
+    }
     /**
      * pcall 函数实现
      */
@@ -85,23 +101,17 @@ public class GlobalMethod {
         if (args.isEmpty()) {
             return MultiValue.of(BoolValue.FALSE, new StringValue("bad argument #1 to 'pcall' (value expected)"));
         }
-
         try {
             Value func = args.get(0);
-            if (func instanceof NativeJavaFunction) {
-                List<Value> funcArgs = args.subList(1, args.size());
-                Value result = ((NativeJavaFunction) func).execute(funcArgs);
-
-                List<Value> successResult = new ArrayList<>();
-                successResult.add(BoolValue.TRUE);
-                if (result != null) {
-                    successResult.add(result);
-                }
-                return MultiValue.of(successResult);
+            if (func instanceof RuntimeFunc runtimeFunc) {
+                return pcallProcessResult(runtimeFunc.call(args.subList(1, args.size())));
+            } else if (func instanceof LuaFunction luaFunction) {
+                Executor executor = new Executor(luaFunction, args.subList(1, args.size()));
+                return pcallProcessResult(executor.execute());
             } else {
                 return MultiValue.of(BoolValue.FALSE, new StringValue("attempt to call a " + func.type().getStr() + " value"));
             }
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             return MultiValue.of(BoolValue.FALSE, new StringValue(e.getMessage()));
         }
     }
@@ -118,7 +128,30 @@ public class GlobalMethod {
     public static Value rawequal(List<Value> args) {
         Value v1 = args.get(0);
         Value v2 = args.get(1);
-        return BoolValue.valueOf(v1.equals(v2));
+        //根据不同类型进行判断，返回结果
+        if (v1.type() != v2.type()) {
+            return BoolValue.FALSE;
+        }
+        if(v1.type() == DataTypeEnum.FUNCTION || v2.type() == DataTypeEnum.FUNCTION){
+            return Objects.equals(v1,v2) ? BoolValue.TRUE : BoolValue.FALSE;
+        }
+        //如果 v1 和 v2 都是Table, 则进行深度比较
+        if (v1.type() == DataTypeEnum.TABLE && v2.type() == DataTypeEnum.TABLE) {
+            Table t1 = (Table) v1;
+            Table t2 = (Table) v2;
+            if (t1.len() != t2.len()) {
+                return BoolValue.FALSE;
+            }
+            //遍历表，进行深度比较
+            for (String key : t1.keys()) {
+                Value value1 = t1.get(key);
+                Value value2 = t2.get(key);
+                if (value1.eq(value2) == BoolValue.FALSE) {
+                    return BoolValue.FALSE;
+                }
+            }
+        }
+        return (v1.eq(v2));
     }
 
     public static NativeJavaFunction rawequal() {

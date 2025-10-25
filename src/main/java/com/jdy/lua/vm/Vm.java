@@ -25,6 +25,7 @@ public class Vm {
     public Vm(RuntimeFunc runtimeFunc) {
         this.runtimeFunc = runtimeFunc;
         this.registers = runtimeFunc.registers;
+        runtimeFunc.vm = this;
     }
 
     private final RuntimeFunc runtimeFunc;

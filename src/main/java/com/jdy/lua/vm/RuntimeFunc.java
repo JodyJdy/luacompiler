@@ -21,6 +21,11 @@ public class RuntimeFunc implements Value {
     final List<RuntimeUpVal> upValList = new ArrayList<>();
 
     /**
+     * 执行当前函数的vm类
+     */
+    Vm vm;
+
+    /**
      * 对应的函数信息
      */
     final FuncInfo funcInfo;
@@ -136,5 +141,9 @@ public class RuntimeFunc implements Value {
         return new Vm(this).execute();
     }
 
+
+    public Vm getVm() {
+        return vm;
+    }
 
 }
