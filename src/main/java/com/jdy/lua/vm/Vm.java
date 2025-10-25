@@ -373,13 +373,14 @@ public class Vm {
         }
         int i = 0;
         //调用对象方法，对象自身
+        int shift = 0;
         if (objMethod) {
             args.add(registers[i + startArg].getValue());
-            i++;
+            shift = 1;
         }
         for (; i < paramSize; i++) {
             if (i + startArg <= endArg) {
-                args.add(registers[i + startArg].getValue());
+                args.add(registers[i + startArg + shift].getValue());
             } else {
                 args.add(NIL);
             }

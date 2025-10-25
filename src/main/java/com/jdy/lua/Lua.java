@@ -2,6 +2,7 @@ package com.jdy.lua;
 
 import com.jdy.lua.antlr4.LuaLexer;
 import com.jdy.lua.antlr4.LuaParser;
+import com.jdy.lua.data.Value;
 import com.jdy.lua.executor.Executor;
 import com.jdy.lua.luanative.NativeLoader;
 import com.jdy.lua.parser.Parser;
@@ -25,39 +26,39 @@ public class Lua {
     /**
      *运行输入的文件
      */
-    public static void run(InputStream inputStream) {
+    public static Value run(InputStream inputStream) {
         try {
-            run(CharStreams.fromStream(inputStream));
+            return run(CharStreams.fromStream(inputStream));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
-    public static void run(CharStream charStream) {
+    public static Value run(CharStream charStream) {
         LuaParser luaParser = new LuaParser(new BufferedTokenStream(new LuaLexer(charStream)));
         //加载库函数
         NativeLoader.loadLibrary();
         LuaParser.ChunkContext context = luaParser.chunk();
         Statement result = Parser.parseBlock(context.block());
-        new Executor((Statement.BlockStatement) result).execute();
+        return new Executor((Statement.BlockStatement) result).execute();
     }
 
-    public static void run(File file) {
+    public static Value run(File file) {
         try {
-            run(new FileInputStream(file));
+            return run(new FileInputStream(file));
         } catch (FileNotFoundException e) {
             throw new RuntimeException(e);
         }
     }
 
-    public static void runFileName(String fileName) {
+    public static Value runFileName(String fileName) {
         try {
-            run(new FileInputStream(fileName));
+            return run(new FileInputStream(fileName));
         } catch (FileNotFoundException e) {
             throw new RuntimeException(e);
         }
     }
-    public static void run(String string) {
-        run(CharStreams.fromString(string));
+    public static Value run(String string) {
+        return run(CharStreams.fromString(string));
     }
 
     /**

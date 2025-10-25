@@ -171,13 +171,16 @@ public class Executor {
         LuaFunctionBody luaFunctionBody = luaFunction.getBody();
         List<String> parameterNames = luaFunctionBody.getParamNames();
         int i = 0;
-        //包含self默认参数，第一个就是默认参数
+        //包含self默认参数，第一个就是默认参数，
+        int shift = 0;
         if (luaFunction.isObjMethod()) {
             currentBlock().addVar("self", args.get(i));
+            //后面的参数下标从1取
+            shift = 1;
         }
         for (; i < parameterNames.size(); i++) {
-            if (i < args.size()) {
-                currentBlock().addVar(parameterNames.get(i), args.get(i));
+            if (i + shift < args.size()) {
+                currentBlock().addVar(parameterNames.get(i), args.get(i+shift));
             } else {
                 currentBlock().addVar(parameterNames.get(i), NIL);
             }

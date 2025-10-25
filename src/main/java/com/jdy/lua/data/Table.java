@@ -1,5 +1,6 @@
 package com.jdy.lua.data;
 
+import com.jdy.lua.Lua;
 import com.jdy.lua.executor.Checker;
 import com.jdy.lua.executor.Executor;
 import com.jdy.lua.statement.Expr;
@@ -58,21 +59,40 @@ public class Table implements CalculateValue {
         return metatable;
     }
 
-
-    public void addVal(Value key, Value value) {
+    public void addVal(Value key, Value value, boolean useNewIndex) {
         if (key instanceof NumberValue) {
-            addVal(key.toString(), value);
+            addVal(key.toString(), value,useNewIndex);
         } else if (key instanceof StringValue) {
-            addVal(((StringValue) key).getVal(), value);
+            addVal(((StringValue) key).getVal(), value,useNewIndex);
         } else {
             throw new RuntimeException("不支持的表索引类型");
         }
     }
 
-    public void addVal(String key, Value value) {
-        checkKeyExist(key);
-        map.put(key, value);
+    public void addVal(Value key, Value value) {
+        addVal(key,value,true);
     }
+
+    /**
+     *检查元表重是否存在某个属性
+     */
+    public Boolean checkMetatableExist(String key) {
+        return metatable != null && metatable.get(key) != NilValue.NIL;
+    }
+
+    public void addVal(String key, Value value,boolean useNewIndex) {
+        if (useNewIndex && !keys.contains(key) && checkMetatableExist(NEW_INDEX)) {
+            setToNewIndex(key,value);
+        } else{
+            checkKeyExist(key);
+            map.put(key, value);
+        }
+    }
+
+    public void addVal(String key, Value value) {
+        addVal(key,value,true);
+    }
+
 
 
     public void checkKeyExist(String key) {
@@ -87,20 +107,34 @@ public class Table implements CalculateValue {
         map.put(key, value);
     }
 
-    public Value get(NumberValue numberValue) {
+    public Value get(NumberValue numberValue,boolean useIndex) {
         // lua 下标从1开始
-        return get(numberValue.toString());
+        return get(numberValue.toString(),useIndex);
     }
 
-    public Value get(String key) {
+    public Value get(String key,boolean useIndex) {
         if (map.containsKey(key)) {
             return map.get(key);
         }
         //从元表获取数据
-        if (metatable != null && metatable.get(INDEX) != NilValue.NIL) {
+        if (useIndex && metatable != null && metatable.get(INDEX) != NilValue.NIL) {
             return getFromMetaTable(metatable.get(INDEX), key);
         }
         return NilValue.NIL;
+    }
+    public Value get(String key) {
+        return get(key,true);
+    }
+
+    private void setToNewIndex(String key, Value value) {
+        Value meta = metatable.get(NEW_INDEX);
+        if (meta instanceof Table table) {
+           table.addVal(key,value);
+        } else if (meta instanceof LuaFunction call) {
+            // function(table,key,value)
+            Executor executor = new Executor(call,List.of(this,new StringValue(key),value));
+            executor.execute();
+        }
     }
 
     private Value getFromMetaTable(Value meta, String key) {
@@ -120,14 +154,17 @@ public class Table implements CalculateValue {
         return NilValue.NIL;
     }
 
-    public Value get(Value value) {
+    public Value get(Value value,boolean useIndex) {
         if (value instanceof NumberValue numberValue) {
-            return get(numberValue);
+            return get(numberValue,useIndex);
         }
-        if (value instanceof StringValue) {
-            return get(((StringValue) value).getVal());
+        if (value instanceof StringValue stringValue) {
+            return get(stringValue.getVal(),useIndex);
         }
         throw new RuntimeException("不支持索引的类型");
+    }
+    public Value get(Value value) {
+        return get(value, true);
     }
 
 

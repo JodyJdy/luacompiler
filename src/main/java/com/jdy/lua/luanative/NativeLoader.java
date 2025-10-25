@@ -41,6 +41,17 @@ public class NativeLoader {
         Block.addNative("ipairs",GenericFor.ipairs());
         Block.addNative("pairs",GenericFor.pairs());
 
+        Block.addNative("assert",GlobalMethod.assertFunc());
+        Block.addNative("collectgarbage",GlobalMethod.collectgarbage());
+        Block.addNative("error",GlobalMethod.error());
+        Block.addNative("pcall",GlobalMethod.pcall());
+        Block.addNative("rawequal",GlobalMethod.rawequal());
+        Block.addNative("rawget",GlobalMethod.rawget());
+        Block.addNative("rawlen",GlobalMethod.rawlen());
+        Block.addNative("rawset",GlobalMethod.rawset());
+        Block.addNative("next",GlobalMethod.next());
+
+
         //为 vm 调用添加native方法
 
         FuncInfo.addGlobalVal(Math.TABLE_NAME,Math.MATH);
@@ -51,6 +62,17 @@ public class NativeLoader {
         FuncInfo.addGlobalVal("getmetatable",GlobalMethod.getmetatable());
         FuncInfo.addGlobalVal("ipairs",GenericFor.ipairs());
         FuncInfo.addGlobalVal("pairs",GenericFor.pairs());
+
+        FuncInfo.addGlobalVal("assert",GlobalMethod.assertFunc());
+        FuncInfo.addGlobalVal("collectgarbage",GlobalMethod.collectgarbage());
+        FuncInfo.addGlobalVal("error",GlobalMethod.error());
+        FuncInfo.addGlobalVal("pcall",GlobalMethod.pcall());
+        FuncInfo.addGlobalVal("rawequal",GlobalMethod.rawequal());
+        FuncInfo.addGlobalVal("rawget",GlobalMethod.rawget());
+        FuncInfo.addGlobalVal("rawlen",GlobalMethod.rawlen());
+        FuncInfo.addGlobalVal("rawset",GlobalMethod.rawset());
+        FuncInfo.addGlobalVal("next", GlobalMethod.next());
+
     }
     public static void setModulePath(String modulePath) {
         NativeLoader.modulePath = modulePath;

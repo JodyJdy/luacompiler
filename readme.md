@@ -43,16 +43,11 @@ public class Test {
 
 ```
 
-## 部分实现的库函数
+## 实现的库
 
-* math.add
-* math.pi
-* print
-* println
-* type
-* setmetatable
-* getmetatable
-* ipairs
-* pairs
+* global
+* math
+
+
 
 

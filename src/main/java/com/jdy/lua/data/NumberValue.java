@@ -24,8 +24,8 @@ public class NumberValue implements CalculateValue, Expr {
 
 
 
-    private Double d;
-    private Long l;
+    Double d;
+    Long l;
     /**
      *是否是整形
      */
@@ -368,5 +368,20 @@ public class NumberValue implements CalculateValue, Expr {
             return l.intValue();
         }
         return d.intValue();
+    }
+
+    public Double getD() {
+        return d;
+    }
+
+    public Long getL() {
+        return l;
+    }
+
+    public Number getValue() {
+        if (isInt) {
+            return l;
+        }
+        return d;
     }
 }

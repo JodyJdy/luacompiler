@@ -10,6 +10,13 @@ public class MultiValue implements Value{
         this.valueList = valueList;
     }
 
+    public static MultiValue of(Value... values) {
+        return new MultiValue(List.of(values));
+    }
+    public static MultiValue of(List<Value> valueList) {
+        return new MultiValue(valueList);
+    }
+
     private final List<Value> valueList;
     @Override
     public DataTypeEnum type() {

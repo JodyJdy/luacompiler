@@ -19,6 +19,10 @@ public class BoolValue implements Value, Expr {
         this.b = b;
     }
 
+    public static BoolValue valueOf(Boolean b) {
+        return b ? TRUE : FALSE;
+    }
+
     Boolean b;
 
     @Override
