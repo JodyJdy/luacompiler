@@ -1,8 +1,8 @@
-It supports the complete Lua syntax features, but does not fully implement the library functions in Lua.
+支持完整的lua语法特性,但没有完整实现lua中的库函数
 
-##  Lua interpreter
+##  lua解释器实现
 
-Execute Lua code directly using Java.
+直接使用java执行lua代码
 
 ```java
 
@@ -10,20 +10,20 @@ import com.jdy.lua.Lua;
 
 public class Test {
     public static void main(String[] args)  {
-        // execute file
+        // 执行文件
         Lua.runFileName("src/test/b.lua");
-        // execute lua  script string
+        //执行字符串形式的脚本
         Lua.run("print('helo')");
-        //Interactive execution
+        //启动交互式执行
         Lua.commandLine();
     }
 }
 
 ```
 
-## lua compiler
+## lua编译器实现
 
-After compiling into custom bytecode, execute the bytecode.
+编译成自定义的字节码后，执行字节码
 
 ```java
 
@@ -31,11 +31,11 @@ import com.jdy.lua.Lvm;
 
 public class Test {
     public static void main(String[] args)  {
-        // execute file
+        // 执行文件
         Lvm.runFileName("src/test/b.lua");
-        // execute lua  script string
+        //执行字符串形式的脚本
         Lvm.run("print('helo')");
-        // Interactive execution
+        //启动交互式执行
         Lvm.commandLine();
     }
 }
@@ -43,13 +43,13 @@ public class Test {
 
 ```
 
-## The content to be achieved
+## 实现的库
 
 * global
 * math
 * string
 
-### The function interfaces implemented in the global library
+### global 库已实现的函数接口
 
 - `assert()`
 - `collectgarbage()`
@@ -66,7 +66,7 @@ public class Test {
 - `getmetatable()`
 - `next()`
 
-### The function interfaces implemented in the math library
+### math 库已实现的函数接口
 
 - `math.abs(x)` - 计算绝对值
 - `math.acos(x)` - 计算反余弦值
@@ -97,7 +97,7 @@ public class Test {
 - `math.maxinteger` - 最大长整型值
 - `math.mininteger` - 最小长整型值
 
-### The function interfaces implemented in the string library
+### string 库已实现的函数接口
 
 - `string.byte(s [, i [, j]])` - 返回字符的内部数值代码
 - `string.char(...)` - 根据数值代码创建字符
