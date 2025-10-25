@@ -33,6 +33,7 @@ public class NativeLoader {
     public static void loadLibrary(){
         //为 ast 调用添加 native方法
         Block.addNative(Math.TABLE_NAME,Math.MATH);
+        Block.addNative(LuaString.TABLE_NAME,LuaString.STRING);
         Block.addNative("print",GlobalMethod.print());
         Block.addNative("println",GlobalMethod.println());
         Block.addNative("type",GlobalMethod.type());
@@ -55,6 +56,7 @@ public class NativeLoader {
         //为 vm 调用添加native方法
 
         FuncInfo.addGlobalVal(Math.TABLE_NAME,Math.MATH);
+        FuncInfo.addGlobalVal(LuaString.TABLE_NAME, LuaString.STRING);
         FuncInfo.addGlobalVal("print",GlobalMethod.print());
         FuncInfo.addGlobalVal("println",GlobalMethod.println());
         FuncInfo.addGlobalVal("type",GlobalMethod.type());
