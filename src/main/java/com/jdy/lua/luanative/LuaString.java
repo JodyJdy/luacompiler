@@ -3,7 +3,6 @@ package com.jdy.lua.luanative;
 import com.jdy.lua.data.*;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -362,7 +361,7 @@ public class LuaString {
         if (j > len) j = len;
 
         // 如果i > j 或者超出范围，返回空字符串
-        if (i > j || i > len) {
+        if (i > j) {
             return new StringValue("");
         }
 

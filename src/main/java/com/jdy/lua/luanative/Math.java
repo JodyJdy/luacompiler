@@ -362,16 +362,16 @@ public class Math {
                 .execute(Math::tan).build();
     }
 
-    // 新增 tointeger 函数
     public static Value tointeger(List<Value> args) {
         Value val = args.get(0);
-        if (val instanceof NumberValue) {
-            NumberValue num = (NumberValue) val;
-            if (num.getValue() instanceof Long || num.getValue().doubleValue() == num.getValue().longValue()) {
-                return new NumberValue(num.getValue().longValue());
+        if (val instanceof NumberValue num) {
+            if (num.isInt()) {
+                return num;
+            } else{
+                return new NumberValue(num.getD().intValue());
             }
         }
-        return NilValue.NIL; // 返回 nil
+        return NilValue.NIL;
     }
 
     private static NativeJavaFunction tointeger() {
@@ -380,7 +380,6 @@ public class Math {
                 .execute(Math::tointeger).build();
     }
 
-    // 新增 type 函数
     public static Value type(List<Value> args) {
         Value val = args.get(0);
         if (val instanceof NumberValue num) {
@@ -399,7 +398,6 @@ public class Math {
                 .execute(Math::type).build();
     }
 
-    // 新增 ult 函数
     public static Value ult(List<Value> args) {
         NumberValue m = checkNumber(args.get(0));
         NumberValue n = checkNumber(args.get(1));

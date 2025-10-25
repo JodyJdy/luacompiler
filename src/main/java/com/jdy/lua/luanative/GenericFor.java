@@ -2,7 +2,6 @@ package com.jdy.lua.luanative;
 
 import com.jdy.lua.data.*;
 import com.jdy.lua.executor.Checker;
-import com.jdy.lua.vm.ByteCode;
 
 import java.util.List;
 

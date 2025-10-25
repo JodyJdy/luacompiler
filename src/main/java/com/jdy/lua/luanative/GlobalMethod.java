@@ -308,7 +308,6 @@ public class GlobalMethod {
                 return  MultiValue.of(new StringValue(table.key(from)), table.get(table.key(from)));
             }
         }
-        // 更复杂的索引逻辑在此简化处理
         return NilValue.NIL;
     }
 
