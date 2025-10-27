@@ -7,10 +7,6 @@ package com.jdy.lua.vm;
  * @data 2023/9/18 16:35
  */
 public class UpVal {
-    public void setUp(StackElement up) {
-        this.up = up;
-    }
-
     /**
      * 上级的变量
      */
@@ -61,4 +57,7 @@ public class UpVal {
    public int funcIndex(){
         return up.funcIndex();
    }
+    public void setUp(StackElement up) {
+        this.up = up;
+    }
 }

@@ -3,17 +3,15 @@ package com.jdy.lua.vm;
 import com.jdy.lua.data.DataTypeEnum;
 import com.jdy.lua.data.Value;
 
+import java.io.Serializable;
+
 /**
  * @author jdy
  * @title: StackElement
  * @description:
  * @data 2023/9/18 14:46
  */
-public class StackElement {
-    public void setValue(Value value) {
-        this.value = value;
-    }
-
+public class StackElement implements Serializable {
 
     /**
      * 是否是本地变量
@@ -59,6 +57,10 @@ public class StackElement {
 
     public boolean isLocalVar() {
         return isLocalVar;
+    }
+
+    public void setValue(Value value) {
+        this.value = value;
     }
 
     public int getIndex() {

@@ -1,24 +1,14 @@
 package com.jdy.lua.vm;
 
-import lombok.Getter;
+
+import java.io.Serializable;
 
 /**
  * label
+ *
+ * @param pc      程序指针
+ * @param usedReg 使用的寄存器数目
  */
-@Getter
-public class LabelMessage {
+public record LabelMessage(int pc, int usedReg) implements Serializable {
 
-    /**
-     * 程序指针
-     */
-    private final int pc;
-    /**
-     * 使用的寄存器数目
-     */
-    private final int usedReg;
-
-    public LabelMessage(int pc, int usedReg) {
-        this.pc = pc;
-        this.usedReg = usedReg;
-    }
 }

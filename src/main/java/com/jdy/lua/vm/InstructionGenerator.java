@@ -522,8 +522,8 @@ public class InstructionGenerator {
 
     public void generateGoto(GotoLabelStatement gotoLabelStatement) {
         LabelMessage message = funcInfo.getLabel(gotoLabelStatement.getLabelName());
-        funcInfo.addCode(new Jmp(message.getPc()));
-        funcInfo.resetRegister(message.getUsedReg());
+        funcInfo.addCode(new Jmp(message.pc()));
+        funcInfo.resetRegister(message.usedReg());
     }
 
     public void generateLabel(LabelStatement labelStatement) {

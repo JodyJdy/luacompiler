@@ -14,7 +14,7 @@ import java.util.function.Function;
  */
 @Getter
 public class NativeFuncBody extends Expr.LuaFunctionBody {
-    private final Function<List<Value>,Value> execute;
+    private final transient Function<List<Value>,Value> execute;
 
     public NativeFuncBody(List<String> paramNames,Function<List<Value>,Value> execute) {
         this.paramNames = paramNames;

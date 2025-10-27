@@ -4,6 +4,7 @@ import com.jdy.lua.data.Value;
 import com.jdy.lua.executor.Executor;
 import lombok.Data;
 
+import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 import static com.jdy.lua.statement.StatementTypeEnum.*;
@@ -14,7 +15,30 @@ import static com.jdy.lua.statement.StatementTypeEnum.*;
  * @description:
  * @data 2023/9/14 16:50
  */
-public  interface Statement {
+public  interface Statement extends Serializable {
+
+
+    default byte[] serializeStat() {
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        try {
+            ObjectOutputStream os = new ObjectOutputStream(bos);
+            os.writeObject(this);
+            os.close();
+            return bos.toByteArray();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    default Statement deserializeStat(byte[] bytes) {
+        ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
+        try{
+            ObjectInputStream is = new ObjectInputStream(bis);
+            return (Statement)is.readObject();
+        } catch (IOException | ClassNotFoundException e) {
+            throw new RuntimeException(e);
+        }
+    }
 
     void visitStatement(Executor visitor);
 
@@ -319,7 +343,7 @@ public  interface Statement {
     /**
      * 函数名称可能有多个类型
      */
-    interface FuncType{
+    interface FuncType extends Serializable{
 
     }
 

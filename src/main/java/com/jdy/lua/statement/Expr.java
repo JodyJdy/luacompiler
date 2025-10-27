@@ -5,6 +5,7 @@ import com.jdy.lua.data.Value;
 import com.jdy.lua.executor.Executor;
 import lombok.Data;
 
+import java.io.*;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -19,11 +20,34 @@ import static com.jdy.lua.statement.ExprTypeEnum.*;
  * @description:
  * @data 2023/9/14 16:51
  */
-public interface Expr  {
+public interface Expr extends Serializable {
 
     Value visitExpr(Executor visitor);
 
     ExprTypeEnum exprType();
+
+
+    default byte[] serializeExpr() {
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        try {
+            ObjectOutputStream os = new ObjectOutputStream(bos);
+            os.writeObject(this);
+            os.close();
+            return bos.toByteArray();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    default Expr deserialieExpr(byte[] bytes) {
+        ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
+        try{
+            ObjectInputStream is = new ObjectInputStream(bis);
+            return (Expr)is.readObject();
+        } catch (IOException | ClassNotFoundException e) {
+            throw new RuntimeException(e);
+        }
+    }
 
 
 

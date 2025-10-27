@@ -16,7 +16,7 @@ public class NativeJavaFunction extends LuaFunction {
     /**
      * 当前所处的vm
      */
-    Vm vm;
+    transient Vm vm;
     public NativeJavaFunction(String funcName, NativeFuncBody funcBody) {
         // 原生方法不会使用到Block
         super(null, funcBody);

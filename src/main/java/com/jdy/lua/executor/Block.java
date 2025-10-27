@@ -4,6 +4,7 @@ import com.jdy.lua.data.Value;
 import com.jdy.lua.statement.Statement;
 import lombok.Data;
 
+import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -14,7 +15,7 @@ import java.util.Map;
  * @data 2023/9/14 16:34
  */
 @Data
-public class Block {
+public class Block implements Serializable {
     /**
      * block对应的blockStatement
      */

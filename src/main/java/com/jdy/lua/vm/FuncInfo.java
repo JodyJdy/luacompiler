@@ -1,6 +1,8 @@
 package com.jdy.lua.vm;
 
 import com.jdy.lua.data.*;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -27,6 +29,7 @@ public class FuncInfo implements Value {
     /**
      * 只有 函数定义 和最外层的  block 拥有 codes
      */
+    @Getter
     final List<ByteCode> codes = new ArrayList<>();
 
     /**
@@ -37,6 +40,7 @@ public class FuncInfo implements Value {
     /**
      * 引用的 父级 block 中的变量
      */
+    @Getter
     private final List<UpVal> upVal = new ArrayList<>();
     private final Map<String, UpVal> upValMap = new HashMap<>();
 
@@ -67,6 +71,7 @@ public class FuncInfo implements Value {
     /**
      * 当前block的寄存器
      */
+    @Getter
     private final List<StackElement> registers = new ArrayList<>();
 
 
@@ -79,6 +84,7 @@ public class FuncInfo implements Value {
     /**
      * 寄存器的使用情况 （指令生成时）
      */
+    @Getter
     private int used = -1;
     private FuncInfo parent;
 
@@ -94,6 +100,7 @@ public class FuncInfo implements Value {
     /**
      * 当前函数的全局索引
      */
+    @Getter
     private final int globalFuncIndex;
 
     public static FuncInfo createFunc() {
@@ -251,61 +258,22 @@ public class FuncInfo implements Value {
         return labelLocation.get(labelName);
     }
 
-    public void setParamNames(List<String> paramNames) {
-        this.paramNames = paramNames;
-    }
-
-    public void setHasMultiArg(boolean hasMultiArg) {
-        this.hasMultiArg = hasMultiArg;
-    }
-
     /**
      * 普通参数
      */
 
+    @Setter
     protected List<String> paramNames = new ArrayList<>();
     /**
      * 结尾有 变长参数  ...这种
      */
+    @Setter
     protected boolean hasMultiArg;
 
-
-    public int getUsed() {
-        return used;
-    }
 
     public boolean isObjMethod() {
         return isObjMethod;
     }
-
-    public List<ByteCode> getCodes() {
-        return codes;
-    }
-
-    public Map<String, LabelMessage> getLabelLocation() {
-        return labelLocation;
-    }
-
-    public List<UpVal> getUpVal() {
-        return upVal;
-    }
-
-    public Map<String, UpVal> getUpValMap() {
-        return upValMap;
-    }
-
-    public Map<String, StackElement> getLocalVarMap() {
-        return localVarMap;
-    }
-
-    public List<StackElement> getRegisters() {
-        return registers;
-    }
-
-    public FuncInfo getParent() {
-        return parent;
-    }
-
 
 
 
@@ -351,10 +319,6 @@ public class FuncInfo implements Value {
 
     public static GlobalVal getGlobalVal(int index) {
         return globalVar.get(index);
-    }
-
-    public int getGlobalFuncIndex() {
-        return globalFuncIndex;
     }
 
     public static List<FuncInfo> funcInfos() {

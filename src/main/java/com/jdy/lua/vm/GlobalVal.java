@@ -2,6 +2,8 @@ package com.jdy.lua.vm;
 
 import com.jdy.lua.data.DataTypeEnum;
 import com.jdy.lua.data.Value;
+import lombok.Getter;
+import lombok.Setter;
 
 /**
  * @author jdy
@@ -9,26 +11,13 @@ import com.jdy.lua.data.Value;
  * @description:
  * @data 2023/9/18 16:40
  */
+@Getter
 public class GlobalVal {
-    public int getIndex() {
-        return index;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setVal(Value val) {
-        this.val = val;
-    }
-
-    public Value getVal() {
-        return val;
-    }
 
     int index;
     private final String name;
 
+    @Setter
     private Value val;
 
     public GlobalVal(int index, String name, Value val) {

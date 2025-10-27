@@ -1,4 +1,6 @@
 package com.jdy.lua.vm;
+import java.io.Serializable;
+
 import static com.jdy.lua.vm.ByteCodeEnum.*;
 
 /**
@@ -9,7 +11,7 @@ import static com.jdy.lua.vm.ByteCodeEnum.*;
  * @description:
  * @data 2023/9/18 11:09
  */
-public interface ByteCode {
+public interface ByteCode extends Serializable {
 
     ByteCodeEnum type();
 

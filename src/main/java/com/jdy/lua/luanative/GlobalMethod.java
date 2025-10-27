@@ -285,7 +285,7 @@ public class GlobalMethod {
      * next 函数实现
      */
     public static Value next(List<Value> args) {
-        if(args.size() == 0 || NilValue.NIL.equals(args.get(0))){
+        if(args.isEmpty() || NilValue.NIL.equals(args.get(0))){
             return NilValue.NIL;
         }
         Table table = checkTable(args.get(0));

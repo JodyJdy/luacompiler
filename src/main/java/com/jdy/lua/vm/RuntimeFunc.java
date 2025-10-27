@@ -4,6 +4,7 @@ import com.jdy.lua.data.DataTypeEnum;
 import com.jdy.lua.data.MultiValue;
 import com.jdy.lua.data.NilValue;
 import com.jdy.lua.data.Value;
+import lombok.Getter;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -23,7 +24,8 @@ public class RuntimeFunc implements Value {
     /**
      * 执行当前函数的vm类
      */
-    Vm vm;
+    @Getter
+    transient Vm vm;
 
     /**
      * 对应的函数信息
@@ -31,13 +33,10 @@ public class RuntimeFunc implements Value {
     final FuncInfo funcInfo;
 
 
+    @Getter
     final RuntimeFunc parent;
 
     int used = -1;
-
-    public int getFinalParamArg() {
-        return finalParamArg;
-    }
 
     /**
      * 最后一个参数的 寄存器索引
@@ -62,10 +61,6 @@ public class RuntimeFunc implements Value {
             StackElement runtime = getRuntimeUpValValue(upVal);
             upValList.add(new RuntimeUpVal(runtime, upValList.size()));
         }
-    }
-
-    public RuntimeFunc getParent() {
-        return parent;
     }
 
     /**
@@ -123,7 +118,7 @@ public class RuntimeFunc implements Value {
      */
     public Value call(List<Value> values) {
         int i = 0;
-        if (values.size() > 0) {
+        if (!values.isEmpty()) {
             if (funcInfo.isObjMethod) {
                 registers[0].setValue(values.get(i));
                 i++;
@@ -141,9 +136,5 @@ public class RuntimeFunc implements Value {
         return new Vm(this).execute();
     }
 
-
-    public Vm getVm() {
-        return vm;
-    }
 
 }
