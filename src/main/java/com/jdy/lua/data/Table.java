@@ -1,11 +1,12 @@
 package com.jdy.lua.data;
 
-import com.jdy.lua.Lua;
 import com.jdy.lua.executor.Checker;
 import com.jdy.lua.executor.Executor;
 import com.jdy.lua.statement.Expr;
 import com.jdy.lua.vm.RuntimeFunc;
 import com.jdy.lua.vm.Vm;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -29,10 +30,8 @@ public class Table implements CalculateValue {
      */
     private final List<String> keys = new ArrayList<>();
 
-    public void setMetatable(Table metatable) {
-        this.metatable = metatable;
-    }
-
+    @Getter
+    @Setter
     private Table metatable;
 
 
@@ -53,10 +52,6 @@ public class Table implements CalculateValue {
     @Override
     public DataTypeEnum type() {
         return DataTypeEnum.TABLE;
-    }
-
-    public Table getMetatable() {
-        return metatable;
     }
 
     public void addVal(Value key, Value value, boolean useNewIndex) {

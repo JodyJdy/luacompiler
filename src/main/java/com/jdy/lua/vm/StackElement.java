@@ -2,6 +2,8 @@ package com.jdy.lua.vm;
 
 import com.jdy.lua.data.DataTypeEnum;
 import com.jdy.lua.data.Value;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.io.Serializable;
 
@@ -22,18 +24,23 @@ public class StackElement implements Serializable {
      *
      * 所处寄存器的下标
      */
+    @Getter
     private int index;
     /**
      * 如果是本地变量 变量名
      */
+    @Getter
     private String varName;
     /**
      * 是否闭包引用
      */
+    @Getter
     private boolean  capture = false;
     /**
      * 值
      */
+    @Getter
+    @Setter
     private Value value;
 
     public StackElement(Value value,int index) {
@@ -57,26 +64,6 @@ public class StackElement implements Serializable {
 
     public boolean isLocalVar() {
         return isLocalVar;
-    }
-
-    public void setValue(Value value) {
-        this.value = value;
-    }
-
-    public int getIndex() {
-        return index;
-    }
-
-    public String getVarName() {
-        return varName;
-    }
-
-    public boolean isCapture() {
-        return capture;
-    }
-
-    public Value getValue() {
-        return value;
     }
 
     @Override

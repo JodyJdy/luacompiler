@@ -11,8 +11,9 @@ import com.jdy.lua.statement.ExprTypeEnum;
  * @data 2023/9/14 16:29
  */
 public class NilValue implements Value, Expr {
-    public static NilValue NIL = new NilValue();
-    private NilValue(){
+    public static final NilValue NIL = new NilValue();
+
+    private NilValue() {
 
     }
 

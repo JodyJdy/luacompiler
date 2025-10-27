@@ -4,6 +4,7 @@ import com.jdy.lua.executor.Executor;
 import com.jdy.lua.statement.Expr;
 import com.jdy.lua.statement.ExprTypeEnum;
 import lombok.Data;
+import lombok.Getter;
 
 import javax.swing.plaf.PanelUI;
 
@@ -20,11 +21,9 @@ import java.util.Objects;
 @Data
 public class NumberValue implements CalculateValue, Expr {
 
-
-
-
-
+    @Getter
     Double d;
+    @Getter
     Long l;
     /**
      *是否是整形
@@ -368,14 +367,6 @@ public class NumberValue implements CalculateValue, Expr {
             return l.intValue();
         }
         return d.intValue();
-    }
-
-    public Double getD() {
-        return d;
-    }
-
-    public Long getL() {
-        return l;
     }
 
     public Number getValue() {

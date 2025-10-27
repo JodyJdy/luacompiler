@@ -13,8 +13,9 @@ import lombok.Data;
  */
 @Data
 public class BoolValue implements Value, Expr {
-    public static BoolValue TRUE = new BoolValue(true);
-    public static BoolValue FALSE = new BoolValue(false);
+    public static final BoolValue TRUE = new BoolValue(true);
+    public static final BoolValue FALSE = new BoolValue(false);
+
     private BoolValue(Boolean b) {
         this.b = b;
     }
@@ -27,7 +28,7 @@ public class BoolValue implements Value, Expr {
 
     @Override
     public ExprTypeEnum exprType() {
-        return  ExprTypeEnum.BoolValue;
+        return ExprTypeEnum.BoolValue;
     }
 
     @Override

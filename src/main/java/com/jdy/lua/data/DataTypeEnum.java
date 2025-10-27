@@ -1,11 +1,14 @@
 package com.jdy.lua.data;
 
+import lombok.Getter;
+
 /**
  * @author jdy
  * @title: DataTypeEnum
  * @description:
  * @data 2023/9/14 16:24
  */
+@Getter
 public enum DataTypeEnum {
 
     NIL("nil"),
@@ -23,7 +26,4 @@ public enum DataTypeEnum {
         this.str = str;
     }
 
-    public String getStr() {
-        return str;
-    }
 }

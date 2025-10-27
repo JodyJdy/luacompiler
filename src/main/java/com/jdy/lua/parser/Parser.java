@@ -171,10 +171,7 @@ public class Parser {
     }
 
     public static Expr.ExprList parseExprList2(LuaParser.ExplistContext exps) {
-        List<Expr> exprs = new ArrayList<>();
-        exps.exp().forEach(e ->
-                exprs.add(parseExpr(e))
-        );
+        List<Expr> exprs = parseExprList(exps);
         return new Expr.ExprList(exprs);
     }
 
