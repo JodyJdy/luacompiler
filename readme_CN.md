@@ -1,5 +1,10 @@
 支持完整的lua语法特性,但没有完整实现lua中的库函数
 
+<p align="center">
+  <a href="./readme.md">English</a> 
+  <a href="./readme_CN.md">简体中文</a> 
+</p>
+
 ##  lua解释器实现
 
 直接使用java执行lua代码

@@ -1,5 +1,11 @@
 It supports the complete Lua syntax features, but does not fully implement the library functions in Lua.
 
+<p align="center">
+  <a href="./readme.md">English</a> 
+  <a href="./readme_CN.md">简体中文</a> 
+</p>
+
+
 ##  Lua interpreter
 
 Execute Lua code directly using Java.
