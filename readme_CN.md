@@ -48,6 +48,29 @@ public class Test {
 
 ```
 
+## 设置模块搜索路径
+
+```java
+
+import com.jdy.lua.luanative.NativeLoader;
+public class Test {
+    public static void main(String[] args) {
+        // windows
+        NativeLoader.setModulePath("src/test;src/test/lua");
+        // linux
+        NativeLoader.setModulePath("src/test:src/test/lua");
+        
+        // Lvm.runFileName("src/test/b.lua");
+        // Lua.runFileName("src/test/b.lua");
+    }
+}
+
+
+
+```
+
+
+
 ## 实现的库
 
 * global

@@ -308,13 +308,11 @@ public class FuncInfo implements Value {
      * 填充jmp指令的跳转位置
      */
     public static void fillJMP() {
-        FuncInfo.allFuncs.forEach(funcInfo -> {
-            funcInfo.codes.forEach(code -> {
-                if (code instanceof ByteCode.Jmp jmp) {
-                    jmp.applyLabel();
-                }
-            });
-        });
+        FuncInfo.allFuncs.forEach(funcInfo -> funcInfo.codes.forEach(code -> {
+            if (code instanceof ByteCode.Jmp jmp) {
+                jmp.applyLabel();
+            }
+        }));
     }
 
     public static GlobalVal getGlobalVal(int index) {

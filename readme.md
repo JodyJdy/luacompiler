@@ -49,6 +49,23 @@ public class Test {
 
 ```
 
+## Config Module Search Path
+
+```java
+
+import com.jdy.lua.luanative.NativeLoader;
+public class Test {
+    public static void main(String[] args) {
+        // windows
+        NativeLoader.setModulePath("src/test;src/test/lua");
+        // linux
+        NativeLoader.setModulePath("src/test:src/test/lua");
+        
+        // Lvm.runFileName("src/test/b.lua");
+        // Lua.runFileName("src/test/b.lua");
+    }
+}
+
 ## The content to be achieved
 
 * global
