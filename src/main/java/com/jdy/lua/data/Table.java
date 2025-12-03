@@ -93,12 +93,8 @@ public class Table implements CalculateValue {
         map.put(key, value);
     }
 
-    public Value get(NumberValue numberValue,boolean useIndex) {
-        // lua 下标从1开始
-        return get(numberValue.toString(),useIndex);
-    }
 
-    public Value get(String key,boolean useIndex) {
+    public Value get(Value key,boolean useIndex) {
         if (map.containsKey(key)) {
             return map.get(key);
         }
@@ -109,7 +105,7 @@ public class Table implements CalculateValue {
         return NilValue.NIL;
     }
     public Value get(String key) {
-        return get(key,true);
+        return get(new StringValue(key),true);
     }
 
     private void setToNewIndex(Value key, Value value) {
@@ -123,7 +119,7 @@ public class Table implements CalculateValue {
         }
     }
 
-    private Value getFromMetaTable(Value meta, String key) {
+    private Value getFromMetaTable(Value meta, Value key) {
         //从元表中返回数据
         if (meta instanceof Table) {
             return ((Table) meta).get(key);
@@ -140,15 +136,6 @@ public class Table implements CalculateValue {
         return NilValue.NIL;
     }
 
-    public Value get(Value value,boolean useIndex) {
-        if (value instanceof NumberValue numberValue) {
-            return get(numberValue,useIndex);
-        }
-        if (value instanceof StringValue stringValue) {
-            return get(stringValue.getVal(),useIndex);
-        }
-        throw new RuntimeException("不支持索引的类型");
-    }
     public Value get(Value value) {
         return get(value, true);
     }
