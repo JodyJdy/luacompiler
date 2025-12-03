@@ -5,6 +5,8 @@ import com.jdy.lua.statement.Expr;
 import com.jdy.lua.statement.ExprTypeEnum;
 import lombok.Data;
 
+import java.util.Objects;
+
 /**
  * @author jdy
  * @title: StringValue
@@ -106,5 +108,17 @@ public class StringValue implements CalculateValue, Expr {
     @Override
     public Value len() {
         return new NumberValue(val.length());
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) return false;
+        StringValue that = (StringValue) o;
+        return Objects.equals(val, that.val);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(val);
     }
 }

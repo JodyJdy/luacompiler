@@ -9,26 +9,29 @@ public class MetaTable {
     /**
      * 支持的元表类型
      */
-    public static String ADD = "__add";
-    public static String SUB = "__sub";
-    public static String MUL = "__mul";
-    public static String DIV = "__div";
-    public static String MOD = "__mod";
-    public static String UNM = "__unm";
-    public static String POW = "__pow";
-    public static String CONCAT = "__concat";
+    public static StringValue ADD = new StringValue("__add");
+    public static StringValue SUB = new StringValue("__sub");
+    public static StringValue MUL = new StringValue("__mul");
+    public static StringValue DIV = new StringValue("__div");
+    public static StringValue MOD = new StringValue("__mod");
+    public static StringValue UNM = new StringValue("__unm");
+    public static StringValue POW = new StringValue("__pow");
+    public static StringValue CONCAT = new StringValue("__concat");
 
-    public static String NE = "__ne";
-    public static String EQ = "__eq";
+    public static StringValue NE = new StringValue("__ne");
+    public static StringValue EQ = new StringValue("__eq");
 
-    public static String LT = "__lt";
-    public static String LE = "__le";
-    public static String INDEX = "__index";
-    public static String NEW_INDEX = "__newindex";
+    public static StringValue LT = new StringValue("__lt");
+    public static StringValue LE = new StringValue("__le");
+    public static StringValue INDEX = new StringValue("__index");
+    public static StringValue NEW_INDEX = new StringValue("__newindex");
 
-    public static String TO_STRING = "__tostring";
+    public static StringValue TO_STRING = new StringValue("__tostring");
 
-    public static Set<String> META_SET = Set.of(
-            ADD,SUB,MUL,DIV,MOD,UNM,POW,CONCAT,EQ,LT,LE,NE,INDEX,NEW_INDEX,TO_STRING
+    public static Set<StringValue> META_SET = Set.of(
+            ADD, SUB, MUL, DIV, MOD, UNM, POW, CONCAT,
+            EQ, LT, LE, NE, INDEX, NEW_INDEX, TO_STRING
     );
+
+
 }

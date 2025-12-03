@@ -23,12 +23,12 @@ import static com.jdy.lua.data.MetaTable.*;
 public class Table implements CalculateValue {
 
 
-    private final LinkedHashMap<String, Value> map = new LinkedHashMap<>();
+    private final LinkedHashMap<Value, Value> map = new LinkedHashMap<>();
 
     /**
      * 记录key 用于遍历
      */
-    private final List<String> keys = new ArrayList<>();
+    private final List<Value> keys = new ArrayList<>();
 
     @Getter
     @Setter
@@ -54,15 +54,6 @@ public class Table implements CalculateValue {
         return DataTypeEnum.TABLE;
     }
 
-    public void addVal(Value key, Value value, boolean useNewIndex) {
-        if (key instanceof NumberValue) {
-            addVal(key.toString(), value,useNewIndex);
-        } else if (key instanceof StringValue) {
-            addVal(((StringValue) key).getVal(), value,useNewIndex);
-        } else {
-            throw new RuntimeException("不支持的表索引类型");
-        }
-    }
 
     public void addVal(Value key, Value value) {
         addVal(key,value,true);
@@ -71,11 +62,11 @@ public class Table implements CalculateValue {
     /**
      *检查元表重是否存在某个属性
      */
-    public Boolean checkMetatableExist(String key) {
+    public Boolean checkMetatableExist(Value key) {
         return metatable != null && metatable.get(key) != NilValue.NIL;
     }
 
-    public void addVal(String key, Value value,boolean useNewIndex) {
+    public void addVal(Value key, Value value,boolean useNewIndex) {
         if (useNewIndex && !keys.contains(key) && checkMetatableExist(NEW_INDEX)) {
             setToNewIndex(key,value);
         } else{
@@ -85,19 +76,19 @@ public class Table implements CalculateValue {
     }
 
     public void addVal(String key, Value value) {
-        addVal(key,value,true);
+        addVal(new StringValue(key),value,true);
     }
 
 
 
-    public void checkKeyExist(String key) {
+    public void checkKeyExist(Value key) {
         if (!keys.contains(key)) {
             keys.add(key);
         }
     }
 
     public void addVal(Value value) {
-        String key = String.valueOf(map.size() + 1);
+        NumberValue key = new NumberValue(map.size() + 1);
         checkKeyExist(key);
         map.put(key, value);
     }
@@ -121,13 +112,13 @@ public class Table implements CalculateValue {
         return get(key,true);
     }
 
-    private void setToNewIndex(String key, Value value) {
+    private void setToNewIndex(Value key, Value value) {
         Value meta = metatable.get(NEW_INDEX);
         if (meta instanceof Table table) {
            table.addVal(key,value);
         } else if (meta instanceof LuaFunction call) {
             // function(table,key,value)
-            Executor executor = new Executor(call,List.of(this,new StringValue(key),value));
+            Executor executor = new Executor(call,List.of(this,key,value));
             executor.execute();
         }
     }
@@ -358,14 +349,14 @@ public class Table implements CalculateValue {
      *
      * @return
      */
-    public boolean hasKey(String key) {
+    public boolean hasKey(Value key) {
         return map.containsKey(key);
     }
 
-    public String key(int i){
+    public Value key(int i){
         return keys.get(i);
     }
-    public List<String> keys(){
+    public List<Value> keys(){
         return keys;
     }
 }

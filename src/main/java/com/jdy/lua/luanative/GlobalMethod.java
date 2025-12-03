@@ -143,7 +143,7 @@ public class GlobalMethod {
                 return BoolValue.FALSE;
             }
             //遍历表，进行深度比较
-            for (String key : t1.keys()) {
+            for (Value key : t1.keys()) {
                 Value value1 = t1.get(key);
                 Value value2 = t2.get(key);
                 if (value1.eq(value2) == BoolValue.FALSE) {
@@ -295,9 +295,9 @@ public class GlobalMethod {
             //由于需要访问下一个索引，所以从-1开始
             from = -1;
         }else if (index instanceof NumberValue numberValue) {
-            from = table.keys().indexOf(numberValue.toString());
+            from = table.keys().indexOf(numberValue);
         } else if (index instanceof StringValue stringValues) {
-            from = table.keys().indexOf(stringValues.getVal());
+            from = table.keys().indexOf(stringValues);
         } else{
             return NilValue.NIL;
         }
@@ -305,7 +305,7 @@ public class GlobalMethod {
         from++;
         while (from < table.keys().size()) {
             if (table.hasKey(table.key(from)) && !table.get(table.key(from)).equals(NilValue.NIL)) {
-                return  MultiValue.of(new StringValue(table.key(from)), table.get(table.key(from)));
+                return  MultiValue.of(table.key(from), table.get(table.key(from)));
             }
         }
         return NilValue.NIL;

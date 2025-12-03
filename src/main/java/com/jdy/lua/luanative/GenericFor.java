@@ -72,17 +72,17 @@ public class GenericFor {
     public static Value pairsIterator(List<Value> arg) {
         Table table = Checker.checkTable(arg.get(0));
         Value val = arg.get(1);
-        List<String> keys = table.keys();
+        List<Value> keys = table.keys();
         //第一次迭代
         if (val == NilValue.NIL) {
-            return new MultiValue(List.of(new StringValue(keys.get(0)),table.get(keys.get(0))));
+            return new MultiValue(List.of(keys.get(0),table.get(keys.get(0))));
         } else{
-            int index = keys.indexOf(Checker.checkString(val).getVal());
+            int index = keys.indexOf(val);
             //迭代结束
             if (index+1 >= table.keys().size()) {
                 return new MultiValue(List.of(NilValue.NIL, NilValue.NIL));
             } else{
-                return new MultiValue(List.of(new StringValue(keys.get(index+1)),table.get(keys.get(index+1))));
+                return new MultiValue(List.of(keys.get(index+1),table.get(keys.get(index+1))));
             }
         }
     }

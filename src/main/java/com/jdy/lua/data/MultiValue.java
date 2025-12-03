@@ -3,6 +3,7 @@ package com.jdy.lua.data;
 import lombok.Data;
 
 import java.util.List;
+import java.util.Objects;
 
 @Data
 public class MultiValue implements Value{
@@ -66,5 +67,17 @@ public class MultiValue implements Value{
     @Override
     public BoolValue ge(Value b) {
         throw new RuntimeException("MultiValue无法比较大小");
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) return false;
+        MultiValue that = (MultiValue) o;
+        return Objects.equals(valueList, that.valueList);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(valueList);
     }
 }

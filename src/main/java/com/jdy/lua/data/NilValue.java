@@ -72,5 +72,15 @@ public class NilValue implements Value, Expr {
     public BoolValue ge(Value b) {
         throw new RuntimeException("空值无法比较大小");
     }
+
+    @Override
+    public int hashCode() {
+        return super.hashCode();
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        return super.equals(obj);
+    }
 }
 

@@ -5,6 +5,8 @@ import com.jdy.lua.statement.Expr;
 import com.jdy.lua.statement.ExprTypeEnum;
 import lombok.Data;
 
+import java.util.Objects;
+
 /**
  * @author jdy
  * @title: BoolValue
@@ -74,5 +76,17 @@ public class BoolValue implements Value, Expr {
     @Override
     public BoolValue ge(Value b) {
         throw new RuntimeException("布尔值无法比较大小");
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) return false;
+        BoolValue boolValue = (BoolValue) o;
+        return Objects.equals(b, boolValue.b);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(b);
     }
 }
